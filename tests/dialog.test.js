@@ -12,7 +12,8 @@ function harness({ count = 6, placeholders = 5, moveFails = false } = {}) {
   let outcome;
 
   const ids = [
-    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "statusText", "toast",
+    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "savePageBtn", "statusText", "toast",
+    "savePageDialog", "savePagePrefixInput", "savePagePrefixError", "savePageDialogSaveBtn", "savePageDialogCancelBtn",
     "resultPanel", "resultPanelTitle", "resultPanelMessage",
     "resultDialog", "resultDialogTitle", "resultDialogMessage", "resultDialogOk"
   ];
@@ -75,6 +76,13 @@ function harness({ count = 6, placeholders = 5, moveFails = false } = {}) {
       if (name === "./src/tools/swapPhotos") {
         return {
           runSwapPhotos: async () => ({ success: true, count: 2, message: "2 photos swapped" })
+        };
+      }
+      if (name === "./src/tools/savePage") {
+        return {
+          runSavePage: async () => ({ outcome: "success", fileName: "MMRLT1" }),
+          buildSavePageToast: () => ({ message: "Saved: MMRLT1", type: "success" }),
+          isValidPrefix: () => true
         };
       }
       if (name === "./src/ui/toast") {

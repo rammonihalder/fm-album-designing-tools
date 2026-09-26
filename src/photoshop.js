@@ -633,6 +633,51 @@ async function addAlbumGuides(doc, { verticalGuides = [], horizontalGuides = [] 
   }
 }
 
+function findDocumentById(id, appRef = app) {
+  if (!appRef || !appRef.documents || id === undefined || id === null) return null;
+  const docs = appRef.documents;
+  for (let i = 0; i < docs.length; i++) {
+    if (docs[i] && docs[i].id === id) {
+      return docs[i];
+    }
+  }
+  return null;
+}
+
+async function saveDocumentCopyPsd(doc, fileEntry, options = {}) {
+  const saveOptions = {
+    embedColorProfile: options.embedColorProfile !== false,
+    alphaChannels: options.alphaChannels !== false,
+    ...options
+  };
+
+  if (doc && doc.saveAs && typeof doc.saveAs.psd === "function") {
+    return doc.saveAs.psd(fileEntry, saveOptions, true);
+  }
+  throw new Error("Photoshop saveAs.psd API is not available on this document.");
+}
+
+async function saveDocumentCopyJpeg(doc, fileEntry, options = {}) {
+  const saveOptions = {
+    quality: typeof options.quality === "number" ? options.quality : 12,
+    ...options
+  };
+
+  if (doc && doc.saveAs && typeof doc.saveAs.jpg === "function") {
+    return doc.saveAs.jpg(fileEntry, saveOptions, true);
+  }
+  throw new Error("Photoshop saveAs.jpg API is not available on this document.");
+}
+
+async function executeSavePageModal(operationFn, commandName = "MM Save Page") {
+  if (core && typeof core.executeAsModal === "function") {
+    return core.executeAsModal(async executionContext => {
+      return operationFn(executionContext);
+    }, { commandName });
+  }
+  return operationFn();
+}
+
 module.exports = {
   inspectImageFiles,
   runPlacement,
@@ -644,6 +689,7 @@ module.exports = {
   replaceSmartObjectContents,
   executeSwapModal,
   executeOpenPsdModal,
+  executeSavePageModal,
   getDocumentMetrics,
   normalizeDocumentToPixels,
   normalizeAlbumSize,
@@ -651,6 +697,9 @@ module.exports = {
   addAlbumGuides,
   extractPixels,
   extractResolution,
+  findDocumentById,
+  saveDocumentCopyPsd,
+  saveDocumentCopyJpeg,
   px
 };
 
