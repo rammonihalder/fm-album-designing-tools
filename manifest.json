@@ -4,6 +4,16 @@
   "name": "MM Album Design Tools",
   "version": "1.0.0",
   "main": "index.html",
+  "icons": [
+    {
+      "width": 24,
+      "height": 24,
+      "path": "assets/plugin-icons/plugin-icon.png",
+      "scale": [1, 2],
+      "theme": ["all"],
+      "species": ["pluginList"]
+    }
+  ],
   "host": {
     "app": "PS",
     "minVersion": "23.3.0",
