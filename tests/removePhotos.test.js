@@ -21,9 +21,16 @@ const {
 function createMainHarness({ runRemovePhotosOutcome = { outcome: "success", removedCount: 1, failedCount: 0 } } = {}) {
   const elements = new Map();
   const ids = [
-    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "savePageBtn", "saveEditedPhotosBtn", "removePhotosBtn",
+    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "flipPhotoBtn", "savePageBtn", "saveEditedPhotosBtn", "savePsdCategoryBtn", "removePhotosBtn",
     "statusText", "toast",
     "savePageDialog", "savePagePrefixInput", "savePagePrefixError", "savePageDialogSaveBtn", "savePageDialogCancelBtn",
+    "savePageFolderDialog", "savePageLastFolderPath", "savePageUseFolderBtn", "savePageChangeFolderBtn", "savePageFolderCancelBtn",
+    "saveEditedFolderDialog", "saveEditedLastFolderPath", "saveEditedUseFolderBtn", "saveEditedChangeFolderBtn", "saveEditedFolderCancelBtn",
+    "savePsdCategoryFolderDialog", "savePsdCategoryLastFolderPath", "savePsdCategoryUseFolderBtn", "savePsdCategoryChangeFolderBtn", "savePsdCategoryFolderCancelBtn",
+    "savePsdCategoryDeviceDialog", "deviceLtBtn", "devicePcBtn", "deviceCustomBtn", "customDeviceInputContainer", "customDeviceInput", "savePsdCategoryDeviceSaveBtn", "savePsdCategoryDeviceCancelBtn",
+    "savePsdCategoryDialog", "savePsdCategorySelect", "savePsdCustomNameInput", "savePsdDeleteOriginalCheckbox", "savePsdDeleteWarning", "savePsdDialogSaveBtn", "savePsdDialogCancelBtn",
+    "savePsdOrientationDialog", "orientationLandscapeInput", "orientationPortraitInput", "orientationSquareInput", "orientationContinueBtn", "orientationCancelBtn",
+    "savePsdDeleteConfirmDialog", "savePsdConfirmDeleteBtn", "savePsdCancelDeleteBtn",
     "editedPhotosDeviceDialog", "editedPhotosDeviceLaptopBtn", "editedPhotosDeviceDesktopBtn", "editedPhotosDeviceCancelBtn"
   ];
   for (const id of ids) {
@@ -66,6 +73,11 @@ function createMainHarness({ runRemovePhotosOutcome = { outcome: "success", remo
           runSwapPhotos: async () => ({ success: true, count: 2, message: "2 photos swapped" })
         };
       }
+      if (name === "./src/tools/flipPhoto") {
+        return {
+          runFlipPhoto: async () => ({ outcome: "success", flippedCount: 1, skippedCount: 0 })
+        };
+      }
       if (name === "./src/tools/savePage") {
         return {
           runSavePage: async () => ({ outcome: "success", fileName: "MMRLT1" }),
@@ -77,6 +89,11 @@ function createMainHarness({ runRemovePhotosOutcome = { outcome: "success", remo
         return {
           runSaveEditedPhotos: async () => ({ outcome: "success", successCount: 1, failedCount: 0 }),
           buildSaveEditedPhotosToast: () => ({ message: "1 edited photo saved", type: "success" })
+        };
+      }
+      if (name === "./src/tools/savePsdCategory") {
+        return {
+          runSavePsdCategory: async () => ({ outcome: "success", fileName: "MMR 3 PHOTOS 01 PC.psd" })
         };
       }
       if (name === "./src/tools/removePhotos") {
@@ -109,37 +126,43 @@ test("1. REMOVE PHOTOS button exists in index.html", () => {
   assert.ok(html.includes("REMOVE PHOTOS"), "button label must be REMOVE PHOTOS");
 });
 
-test("2. Exact button order: OPEN PSD -> AUTO PHOTO FILL -> SWAP PHOTOS -> SAVE PAGE -> SAVE EDITED PHOTOS -> REMOVE PHOTOS", () => {
+test("2. Exact button order: OPEN PSD -> AUTO PHOTO FILL -> SWAP PHOTOS -> FLIP PHOTO -> SAVE PAGE -> SAVE EDITED PHOTOS -> SAVE PSD CATEGORY -> REMOVE PHOTOS", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
   const openPos = html.indexOf('id="openPsdBtn"');
   const autoPos = html.indexOf('id="autoPhotoFillBtn"');
   const swapPos = html.indexOf('id="swapPhotosBtn"');
+  const flipPos = html.indexOf('id="flipPhotoBtn"');
   const savePos = html.indexOf('id="savePageBtn"');
   const saveEditedPos = html.indexOf('id="saveEditedPhotosBtn"');
+  const savePsdCategoryPos = html.indexOf('id="savePsdCategoryBtn"');
   const removePos = html.indexOf('id="removePhotosBtn"');
 
   assert.ok(openPos !== -1, "openPsdBtn must exist");
   assert.ok(autoPos !== -1, "autoPhotoFillBtn must exist");
   assert.ok(swapPos !== -1, "swapPhotosBtn must exist");
+  assert.ok(flipPos !== -1, "flipPhotoBtn must exist");
   assert.ok(savePos !== -1, "savePageBtn must exist");
   assert.ok(saveEditedPos !== -1, "saveEditedPhotosBtn must exist");
+  assert.ok(savePsdCategoryPos !== -1, "savePsdCategoryBtn must exist");
   assert.ok(removePos !== -1, "removePhotosBtn must exist");
 
   assert.ok(openPos < autoPos, "openPsdBtn must be before autoPhotoFillBtn");
   assert.ok(autoPos < swapPos, "autoPhotoFillBtn must be before swapPhotosBtn");
-  assert.ok(swapPos < savePos, "swapPhotosBtn must be before savePageBtn");
+  assert.ok(swapPos < flipPos, "swapPhotosBtn must be before flipPhotoBtn");
+  assert.ok(flipPos < savePos, "flipPhotoBtn must be before savePageBtn");
   assert.ok(savePos < saveEditedPos, "savePageBtn must be before saveEditedPhotosBtn");
-  assert.ok(saveEditedPos < removePos, "saveEditedPhotosBtn must be before removePhotosBtn");
+  assert.ok(saveEditedPos < savePsdCategoryPos, "saveEditedPhotosBtn must be before savePsdCategoryBtn");
+  assert.ok(savePsdCategoryPos < removePos, "savePsdCategoryBtn must be before removePhotosBtn");
 });
 
-test("3. Visible version is v0.7.0 in index.html", () => {
+test("3. Visible version is v1.0.0 in index.html", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v0.7.0"), "index.html must display v0.7.0");
+  assert.ok(html.includes("v1.0.0"), "index.html must display v1.0.0");
 });
 
-test("4. Manifest version = 0.7.0", () => {
+test("4. Manifest version = 1.0.0", () => {
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "0.7.0", "manifest.json version must be 0.7.0");
+  assert.equal(manifest.version, "1.0.0", "manifest.json version must be 1.0.0");
 });
 
 test("5. Plugin ID unchanged", () => {

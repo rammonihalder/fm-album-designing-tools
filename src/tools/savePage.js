@@ -1,7 +1,14 @@
 "use strict";
 
-const BASE_FOLDER_TOKEN_KEY = "mm_save_page_base_folder_token";
+const {
+  TOKEN_KEYS,
+  resolveRememberedFolder
+} = require("../folderMemory");
+
+const BASE_FOLDER_TOKEN_KEY = TOKEN_KEYS.SAVE_PAGE;
 const PREFIX_STORAGE_KEY = "mmrlt_prefix";
+const OUTPUT_MODE_STORAGE_KEY = "mm_save_page_output_mode";
+const OUTPUT_MODES = Object.freeze(["psd", "jpeg", "both"]);
 const SERIAL_REGEX = /MMRLT(\d+)\.(psd|jpg|jpeg)$/i;
 const INVALID_FILENAME_CHARS = /[<>:"/\\|?*]/;
 
@@ -53,6 +60,10 @@ function buildPageBaseName(prefix, number) {
   return `MMRLT${num}`;
 }
 
+function normalizeOutputMode(mode) {
+  return OUTPUT_MODES.includes(mode) ? mode : "both";
+}
+
 function buildSavePageToast(result) {
   if (!result) return { message: "Save Page failed", type: "error" };
 
@@ -68,9 +79,10 @@ function buildSavePageToast(result) {
     case "psd-failed":
       return { message: "PSD save failed", type: "error" };
     case "jpeg-failed":
-      return { message: "PSD saved • JPEG failed", type: "warning" };
+      return { message: result.outputMode === "jpeg" ? "JPEG save failed" : "PSD saved • JPEG failed", type: "warning" };
     case "success":
-      return { message: `Saved: ${result.fileName || result.baseName}`, type: "success" };
+      if (!result.outputMode) return { message: `Saved: ${result.fileName || result.baseName}`, type: "success" };
+      return { message: result.outputMode === "psd" ? "PSD page saved" : result.outputMode === "jpeg" ? "JPEG page saved" : "Page saved", type: "success" };
     case "error":
     default:
       return { message: "Save Page failed", type: "error" };
@@ -129,6 +141,17 @@ async function getOrCreateSubfolder(parentFolder, folderName) {
   return parentFolder.createFolder(folderName);
 }
 
+async function getOrCreateSubfolderIfNeeded(parentFolder, folderName, needed) {
+  if (needed) return getOrCreateSubfolder(parentFolder, folderName);
+  try {
+    const existing = await parentFolder.getEntry(folderName);
+    return existing && (existing.isFolder || !existing.isFile) ? existing : null;
+  } catch (error) {
+    if (isMissingEntry(error)) return null;
+    throw error;
+  }
+}
+
 async function getFolderFileNames(folder) {
   if (!folder || typeof folder.getEntries !== "function") return [];
   try {
@@ -153,7 +176,11 @@ async function entryExists(folder, name) {
   }
 }
 
-async function resolveSafeFileEntries(psdFolder, jpegFolder, prefix, maxAttempts = 1000) {
+async function resolveSafeFileEntries(psdFolder, jpegFolder, prefix, mode = "both", maxAttempts = 1000) {
+  if (typeof mode === "number") { maxAttempts = mode; mode = "both"; }
+  mode = normalizeOutputMode(mode);
+  const needPsd = mode === "psd" || mode === "both";
+  const needJpeg = mode === "jpeg" || mode === "both";
   let psdNames = await getFolderFileNames(psdFolder);
   let jpegNames = await getFolderFileNames(jpegFolder);
   let serial = getNextPageNumber(psdNames, jpegNames);
@@ -166,25 +193,21 @@ async function resolveSafeFileEntries(psdFolder, jpegFolder, prefix, maxAttempts
     const psdExists = await entryExists(psdFolder, psdFileName);
     const jpegExists = await entryExists(jpegFolder, jpegFileName);
 
-    if (psdExists || jpegExists) {
+    if ((needPsd && psdExists) || (needJpeg && jpegExists)) {
       serial++;
       continue;
     }
 
     try {
-      const psdEntry = await psdFolder.createFile(psdFileName, { overwrite: false });
+      const psdEntry = needPsd ? await psdFolder.createFile(psdFileName, { overwrite: false }) : null;
       let jpegEntry = null;
-      try {
-        jpegEntry = await jpegFolder.createFile(jpegFileName, { overwrite: false });
-      } catch (jpegCreateError) {
-        // If JPEG creation failed because file exists, clean up psdEntry if needed and retry
+      if (needJpeg) {
         try {
-          if (psdEntry && typeof psdEntry.delete === "function") {
-            await psdEntry.delete();
-          }
-        } catch (_) {}
-        serial++;
-        continue;
+          jpegEntry = await jpegFolder.createFile(jpegFileName, { overwrite: false });
+        } catch (jpegCreateError) {
+          try { if (psdEntry?.delete) await psdEntry.delete(); } catch (_) {}
+          throw jpegCreateError;
+        }
       }
 
       return {
@@ -263,31 +286,16 @@ async function executeSavePage(dependencies = {}, options = {}) {
   // 2. Stage: select-folder
   let baseFolder = null;
   try {
-    if (typeof selectFolder === "function") {
-      baseFolder = await selectFolder();
-    } else if (localFileSystem && typeof localFileSystem.getFolder === "function") {
-      // Attempt to check remembered token
-      const savedToken = getStoredValue(BASE_FOLDER_TOKEN_KEY, storage);
-      if (savedToken && typeof localFileSystem.getEntryForPersistentToken === "function") {
-        try {
-          await localFileSystem.getEntryForPersistentToken(savedToken);
-        } catch (_) {
-          removeStoredValue(BASE_FOLDER_TOKEN_KEY, storage);
-        }
-      }
-
-      baseFolder = await localFileSystem.getFolder();
-      if (baseFolder && typeof localFileSystem.createPersistentToken === "function") {
-        try {
-          const token = await localFileSystem.createPersistentToken(baseFolder);
-          setStoredValue(BASE_FOLDER_TOKEN_KEY, token, storage);
-        } catch (tokErr) {
-          console.warn("[SAVE PAGE] Could not create persistent token for folder:", tokErr);
-        }
-      }
-    } else {
-      throw new Error("Folder selection API is not available.");
-    }
+    baseFolder = await resolveRememberedFolder({
+      tokenKey: BASE_FOLDER_TOKEN_KEY,
+      legacyTokenKey: "mm_save_page_base_folder_token",
+      localFileSystem,
+      storage,
+      selectFolder,
+      browseFolder: dependencies.browseFolder || options.browseFolder,
+      tool: "SAVE PAGE",
+      useRememberedDirectly: options.useRememberedDirectly === true
+    });
   } catch (folderError) {
     logDiagnostic({
       stage: "select-folder",
@@ -307,23 +315,11 @@ async function executeSavePage(dependencies = {}, options = {}) {
   // 3. Stage: prepare-folders
   let psdFolder = null;
   let jpegFolder = null;
-  try {
-    psdFolder = await getOrCreateSubfolder(baseFolder, "PSD");
-    jpegFolder = await getOrCreateSubfolder(baseFolder, "JPEG");
-  } catch (subfolderError) {
-    logDiagnostic({
-      stage: "prepare-folders",
-      documentId: targetDocumentId,
-      documentName: targetDocumentName,
-      baseFolderName,
-      error: subfolderError
-    });
-    return { outcome: "error", error: subfolderError };
-  }
-
-  // 4. Stage: prefix
+  // 3. Stage: prefix and output format
   const rememberedPrefix = getStoredValue(PREFIX_STORAGE_KEY, storage) || "";
+  const rememberedOutputMode = normalizeOutputMode(getStoredValue(OUTPUT_MODE_STORAGE_KEY, storage) || "both");
   let userPrefix = "";
+  let outputMode = rememberedOutputMode;
 
   if (typeof promptForPrefix === "function") {
     let prefixResponse = null;
@@ -349,15 +345,28 @@ async function executeSavePage(dependencies = {}, options = {}) {
     }
 
     userPrefix = sanitizePrefix(prefixResponse.prefix);
+    outputMode = normalizeOutputMode(prefixResponse.outputMode || rememberedOutputMode);
     setStoredValue(PREFIX_STORAGE_KEY, userPrefix, storage);
+    // Format preference is updated only after the user confirms SAVE.
+    setStoredValue(OUTPUT_MODE_STORAGE_KEY, outputMode, storage);
   } else {
     userPrefix = rememberedPrefix;
+  }
+
+  // 4. Stage: inspect both namespaces and create only requested folders
+  try {
+    psdFolder = await getOrCreateSubfolderIfNeeded(baseFolder, "PSD", outputMode === "psd" || outputMode === "both");
+    jpegFolder = await getOrCreateSubfolderIfNeeded(baseFolder, "JPEG", outputMode === "jpeg" || outputMode === "both");
+  } catch (subfolderError) {
+    logDiagnostic({ stage: "prepare-folders", documentId: targetDocumentId,
+      documentName: targetDocumentName, baseFolderName, error: subfolderError });
+    return { outcome: "error", error: subfolderError };
   }
 
   // 5. Stage: scan-number & collision-check
   let safeFiles = null;
   try {
-    safeFiles = await resolveSafeFileEntries(psdFolder, jpegFolder, userPrefix);
+    safeFiles = await resolveSafeFileEntries(psdFolder, jpegFolder, userPrefix, outputMode);
   } catch (scanError) {
     logDiagnostic({
       stage: "collision-check",
@@ -405,8 +414,8 @@ async function executeSavePage(dependencies = {}, options = {}) {
         } catch (_) {}
       }
 
-      // Save PSD Copy
-      try {
+      // Save PSD Copy when requested.
+      if (outputMode === "psd" || outputMode === "both") try {
         if (typeof saveDocumentCopyPsd === "function") {
           await saveDocumentCopyPsd(targetDoc, psdEntry, {
             embedColorProfile: true,
@@ -432,11 +441,11 @@ async function executeSavePage(dependencies = {}, options = {}) {
           fileName: baseName,
           error: psdError
         });
-        return { outcome: "psd-failed", error: psdError };
+        return { outcome: "psd-failed", outputMode, error: psdError };
       }
 
-      // Save JPEG Copy (Quality 12)
-      try {
+      // Save JPEG Copy (Quality 12) when requested.
+      if (outputMode === "jpeg" || outputMode === "both") try {
         if (typeof saveDocumentCopyJpeg === "function") {
           await saveDocumentCopyJpeg(targetDoc, jpegEntry, { quality: 12 });
         } else if (targetDoc.saveAs && typeof targetDoc.saveAs.jpg === "function") {
@@ -461,6 +470,7 @@ async function executeSavePage(dependencies = {}, options = {}) {
           baseName,
           serial,
           psdEntry,
+          outputMode,
           error: jpegError
         };
       }
@@ -471,7 +481,8 @@ async function executeSavePage(dependencies = {}, options = {}) {
         baseName,
         serial,
         psdEntry,
-        jpegEntry
+        jpegEntry,
+        outputMode
       };
     }, "MM Save Page");
   } catch (modalError) {
@@ -507,11 +518,12 @@ async function executeSavePage(dependencies = {}, options = {}) {
         baseName,
         serial,
         psdEntry,
+        outputMode,
         error: modalError
       };
     }
 
-    return { outcome: "psd-failed", error: modalError };
+    return { outcome: "psd-failed", outputMode, error: modalError };
   }
 
   return saveOutcome || { outcome: "error" };
@@ -543,10 +555,6 @@ function getDefaultDependencies() {
     core,
     localFileSystem: fs,
     storage: typeof localStorage !== "undefined" ? localStorage : null,
-    selectFolder: async () => {
-      if (!fs || typeof fs.getFolder !== "function") return null;
-      return fs.getFolder();
-    },
     saveDocumentCopyPsd: psHelpers?.saveDocumentCopyPsd,
     saveDocumentCopyJpeg: psHelpers?.saveDocumentCopyJpeg,
     findDocumentById: psHelpers?.findDocumentById,
@@ -568,6 +576,8 @@ async function runSavePage(options = {}) {
 module.exports = {
   BASE_FOLDER_TOKEN_KEY,
   PREFIX_STORAGE_KEY,
+  OUTPUT_MODE_STORAGE_KEY,
+  OUTPUT_MODES,
   SERIAL_REGEX,
   INVALID_FILENAME_CHARS,
   sanitizePrefix,
@@ -575,12 +585,14 @@ module.exports = {
   extractAlbumSerial,
   getNextPageNumber,
   buildPageBaseName,
+  normalizeOutputMode,
   buildSavePageToast,
   getStoredValue,
   setStoredValue,
   removeStoredValue,
   isMissingEntry,
   getOrCreateSubfolder,
+  getOrCreateSubfolderIfNeeded,
   getFolderFileNames,
   entryExists,
   resolveSafeFileEntries,

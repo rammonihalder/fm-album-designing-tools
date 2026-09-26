@@ -1,5 +1,11 @@
 const { classifyDimensions } = require("../orientation");
 const { matchPhotosToPlaceholders } = require("../matcher");
+const {
+  TOKEN_KEYS,
+  restoreFolderFromToken,
+  saveFolderToken,
+  getParentFolder
+} = require("../folderMemory");
 
 const AUTO_FILL_OPTIONS = Object.freeze({
   coverFit: true,
@@ -47,13 +53,24 @@ function getDefaultDependencies() {
   const { getSelectedLayersTopToBottom } = require("../layers");
   const { selectImageFiles, moveUsedFiles } = require("../files");
   const { inspectImageFiles, readBounds, runPlacement } = require("../photoshop");
+  let storage = null;
+  let localFileSystem = null;
+  try {
+    const uxp = require("uxp");
+    localFileSystem = uxp?.storage?.localFileSystem;
+  } catch (_) {}
+  try {
+    storage = typeof localStorage !== "undefined" ? localStorage : null;
+  } catch (_) {}
   return {
     getSelectedLayersTopToBottom,
     inspectImageFiles,
     moveUsedFiles,
     readBounds,
     runPlacement,
-    selectImageFiles
+    selectImageFiles,
+    storage,
+    localFileSystem
   };
 }
 
@@ -112,10 +129,29 @@ async function executeAutoPhotoFill(ui, dependencies) {
       return { outcome: "invalid-placeholders", placeholderFailures };
     }
 
-    const selectedFiles = await dependencies.selectImageFiles();
-    if (!selectedFiles.length) {
+    const storage = dependencies.storage || (typeof localStorage !== "undefined" ? localStorage : null);
+    const localFileSystem = dependencies.localFileSystem || null;
+
+    let restoredFolder = null;
+    if (localFileSystem && storage) {
+      try {
+        restoredFolder = await restoreFolderFromToken(TOKEN_KEYS.AUTO_PHOTO_FILL, localFileSystem, storage);
+      } catch (_) {}
+    }
+
+    const selectedFiles = await dependencies.selectImageFiles({ initialLocation: restoredFolder });
+    if (!selectedFiles || !selectedFiles.length) {
       setStatus("Cancelled.");
       return { outcome: "cancelled" };
+    }
+
+    if (localFileSystem && storage && selectedFiles.length > 0) {
+      try {
+        const parentFolder = await getParentFolder(selectedFiles[0], localFileSystem);
+        if (parentFolder) {
+          await saveFolderToken(TOKEN_KEYS.AUTO_PHOTO_FILL, parentFolder, localFileSystem, storage);
+        }
+      } catch (_) {}
     }
 
     setStatus(`Analyzing ${selectedFiles.length} ${selectedFiles.length === 1 ? "photo" : "photos"}...`);

@@ -10,65 +10,135 @@
   <main class="panel">
     <header class="header">
       <div>
-        <div class="eyebrow">MM</div>
-        <h1>MM Album Design Tools</h1>
+        <div class="eyebrow header-brand-prefix">MEMORY MAKER</div>
+        <h1>Album Design Tools</h1>
       </div>
-      <span class="version">v0.7.0</span>
+      <span class="version">v1.0.0</span>
     </header>
 
-    <section class="tools-section" aria-label="Album Design Tools">
-      <button id="openPsdBtn" class="btn primary full" data-tool="open-psd">
-        OPEN PSD
-      </button>
-      <button id="autoPhotoFillBtn" class="btn primary full" data-tool="auto-photo-fill">
-        AUTO PHOTO FILL
-      </button>
-      <button id="swapPhotosBtn" class="btn primary full" data-tool="swap-photos">
-        SWAP PHOTOS
-      </button>
-      <button id="savePageBtn" class="btn primary full" data-tool="save-page">
-        SAVE PAGE
-      </button>
-      <button id="saveEditedPhotosBtn" class="btn primary full" data-tool="save-edited-photos">
-        SAVE EDITED PHOTOS
-      </button>
-      <button id="removePhotosBtn" class="btn primary full" data-tool="remove-photos">
-        REMOVE PHOTOS
-      </button>
+    <section class="tool-section" aria-label="Album Design Tools">
+      <!-- Row 1: OPEN PSD, AUTO PHOTO FILL -->
+      <div class="tool-row">
+        <div id="openPsdBtn" class="tool-action" role="button" tabindex="0" data-tool="open-psd">
+          <span class="tool-icon-slot">
+            <img class="tool-icon" src="assets/icons/open-psd.png" alt="" draggable="false" />
+          </span>
+          <span class="tool-label">OPEN PSD</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+        <div id="autoPhotoFillBtn" class="tool-action" role="button" tabindex="0" data-tool="auto-photo-fill">
+          <span class="tool-icon-slot">
+            <img class="tool-icon" src="assets/icons/auto-photo-fill.png" alt="" draggable="false" />
+          </span>
+          <span class="tool-label">AUTO PHOTO FILL</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+      </div>
+
+      <!-- Row 2: SWAP PHOTOS, FLIP PHOTO -->
+      <div class="tool-row">
+        <div id="swapPhotosBtn" class="tool-action" role="button" tabindex="0" data-tool="swap-photos">
+          <span class="tool-icon-slot">
+            <img class="tool-icon" src="assets/icons/swap-photos.png" alt="" draggable="false" />
+          </span>
+          <span class="tool-label">SWAP PHOTOS</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+        <div id="flipPhotoBtn" class="tool-action" role="button" tabindex="0" data-tool="flip-photo">
+          <span class="tool-icon-slot">
+            <img class="tool-icon" src="assets/icons/flip-photo.png" alt="" draggable="false" />
+          </span>
+          <span class="tool-label">FLIP PHOTO</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+      </div>
+
+      <!-- Row 3: SAVE PAGE, SAVE EDITED PHOTOS -->
+      <div class="tool-row">
+        <div id="savePageBtn" class="tool-action" role="button" tabindex="0" data-tool="save-page">
+          <span class="tool-icon-slot">
+            <img class="tool-icon" src="assets/icons/save-page.png" alt="" draggable="false" />
+          </span>
+          <span class="tool-label">SAVE PAGE</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+        <div id="saveEditedPhotosBtn" class="tool-action" role="button" tabindex="0" data-tool="save-edited-photos">
+          <span class="tool-icon-slot">
+            <img class="tool-icon" src="assets/icons/save-edited-photos.png" alt="" draggable="false" />
+          </span>
+          <span class="tool-label">SAVE EDITED PHOTOS</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+      </div>
+
+      <!-- Row 4: SAVE PSD CATEGORY, REMOVE PHOTOS -->
+      <div class="tool-row">
+        <div id="savePsdCategoryBtn" class="tool-action" role="button" tabindex="0" data-tool="save-psd-category">
+          <span class="tool-icon-slot">
+            <img class="tool-icon" src="assets/icons/save-psd-category.png" alt="" draggable="false" />
+          </span>
+          <span class="tool-label">SAVE PSD CATEGORY</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+        <div id="removePhotosBtn" class="tool-action tool-action-destructive" role="button" tabindex="0" data-tool="remove-photos">
+          <span class="tool-icon-slot">
+            <img class="tool-icon" src="assets/icons/remove-photos.png" alt="" draggable="false" />
+          </span>
+          <span class="tool-label">REMOVE PHOTOS</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+      </div>
     </section>
 
     <div id="statusText" class="status-text" aria-live="polite" hidden></div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <div class="plugin-footer">
+      <div class="footer-divider"></div>
+      <div class="footer-credit">Developed by Rammoni Halder</div>
+    </div>
   </main>
 
+  <dialog id="folderBrowserDialog" hidden>
+    <div class="folder-browser-content">
+      <h2>SELECT SAVE FOLDER</h2>
+      <p class="folder-browser-helper">Choose where this tool should save</p>
+      <label class="folder-browser-section-label">CURRENT FOLDER</label>
+      <div id="folderBrowserCurrent" class="folder-browser-path"></div>
+      <div id="folderBrowserSelectBtn" class="folder-confirm-primary" role="button" tabindex="0">SELECT THIS FOLDER</div>
+      <div id="folderBrowserOtherBtn" class="folder-confirm-secondary" role="button" tabindex="0">CHOOSE OTHER LOCATION</div>
+      <div id="folderBrowserCancelBtn" class="folder-confirm-cancel" role="button" tabindex="0">CANCEL</div>
+    </div>
+  </dialog>
+
+  <!-- Save Page Prefix Dialog (Existing) -->
   <dialog id="savePageDialog">
     <div class="save-page-dialog-content">
-      <label for="savePagePrefixInput">
-        Prefix (optional)
-      </label>
+      <label for="savePagePrefixInput">PREFIX (OPTIONAL)</label>
       <input
         id="savePagePrefixInput"
         type="text"
         placeholder="e.g. Riya"
         autocomplete="off"
       />
+      <label>SAVE FORMAT</label>
+      <div class="save-format-segmented" role="group" aria-label="Save Format">
+        <div id="savePageFormatPsd" class="save-format-option" data-mode="psd" role="button" tabindex="0" aria-pressed="false">PSD ONLY</div>
+        <div id="savePageFormatJpeg" class="save-format-option" data-mode="jpeg" role="button" tabindex="0" aria-pressed="false">JPEG ONLY</div>
+        <div id="savePageFormatBoth" class="save-format-option" data-mode="both" role="button" tabindex="0" aria-pressed="true">BOTH</div>
+      </div>
       <div
         id="savePagePrefixError"
         hidden
       >
         Invalid prefix
       </div>
-      <div class="save-page-dialog-actions">
-        <button id="savePageDialogSaveBtn" class="btn primary" type="button">
-          SAVE
-        </button>
-        <button id="savePageDialogCancelBtn" class="btn" type="button">
-          CANCEL
-        </button>
-      </div>
+      <div id="savePageDialogSaveBtn" class="save-page-primary" role="button" tabindex="0">SAVE</div>
+      <div id="savePageDialogCancelBtn" class="save-page-cancel" role="button" tabindex="0">CANCEL</div>
     </div>
   </dialog>
 
+  <!-- Save Edited Photos Device Dialog (Existing) -->
   <dialog id="editedPhotosDeviceDialog">
     <div class="device-dialog-content">
       <div class="device-dialog-header">
@@ -85,6 +155,114 @@
         <button id="editedPhotosDeviceCancelBtn" class="btn full" type="button">
           CANCEL
         </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Save PSD Category Device Name Dialog -->
+  <dialog id="savePsdCategoryDeviceDialog">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h2>Set Device Name</h2>
+        <p class="dialog-subtext">Select Device:</p>
+      </div>
+      <div class="dialog-actions-vertical">
+        <button id="savePsdCategoryDeviceLtBtn" class="btn primary full" type="button">LT (Laptop)</button>
+        <button id="savePsdCategoryDevicePcBtn" class="btn primary full" type="button">PC (Desktop)</button>
+        <button id="savePsdCategoryDeviceCustomBtn" class="btn full" type="button">Custom</button>
+      </div>
+      <div id="savePsdCategoryDeviceCustomSection" class="custom-device-section" hidden>
+        <label for="savePsdCategoryDeviceCustomInput">Custom Name:</label>
+        <input id="savePsdCategoryDeviceCustomInput" type="text" placeholder="e.g. STUDIO1" maxlength="20" autocomplete="off" />
+        <button id="savePsdCategoryDeviceSaveBtn" class="btn primary full" type="button">SAVE DEVICE</button>
+      </div>
+      <div class="dialog-footer">
+        <button id="savePsdCategoryDeviceCancelBtn" class="btn btn-cancel full" type="button">CANCEL</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Save PSD Category Options Dialog -->
+  <dialog id="savePsdCategoryMainDialog">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h2>Memory Maker - Save PSD</h2>
+      </div>
+      <div class="dialog-form-group">
+        <label for="savePsdCategoryDropdown">Select Category:</label>
+        <select id="savePsdCategoryDropdown" class="form-select">
+          <option value="3 PHOTOS PSD">3 PHOTOS PSD</option>
+          <option value="4 PHOTOS PSD">4 PHOTOS PSD</option>
+          <option value="5 PHOTOS PSD">5 PHOTOS PSD</option>
+          <option value="6 PHOTOS PSD">6 PHOTOS PSD</option>
+          <option value="7 PHOTOS PSD">7 PHOTOS PSD</option>
+          <option value="8 PHOTOS PSD">8 PHOTOS PSD</option>
+          <option value="9 PHOTOS PSD">9 PHOTOS PSD</option>
+          <option value="10 PHOTOS PSD">10 PHOTOS PSD</option>
+          <option value="11 PHOTOS PSD">11 PHOTOS PSD</option>
+          <option value="12 PHOTOS PSD">12 PHOTOS PSD</option>
+          <option value="INSTA POST">INSTA POST</option>
+          <option value="RICE CEREMONY">RICE CEREMONY</option>
+        </select>
+      </div>
+      <div class="dialog-form-group">
+        <label for="savePsdCustomNameInput">Custom Name:</label>
+        <input id="savePsdCustomNameInput" type="text" placeholder="e.g. Bride" maxlength="30" autocomplete="off" />
+      </div>
+      <div class="dialog-form-group checkbox-group">
+        <label class="checkbox-label" for="savePsdDeleteCheckbox">
+          <input id="savePsdDeleteCheckbox" type="checkbox" />
+          <span>Delete original PSD after save</span>
+        </label>
+        <div id="savePsdDeleteWarning" class="delete-warning-text" hidden>
+          Original file will be permanently deleted!
+        </div>
+      </div>
+      <div class="dialog-actions-row">
+        <button id="savePsdSaveBtn" class="btn primary" type="button">SAVE</button>
+        <button id="savePsdCancelBtn" class="btn btn-cancel" type="button">CANCEL</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Orientation Check Dialog -->
+  <dialog id="savePsdOrientationDialog">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h2>Orientation Check</h2>
+        <p class="dialog-subtext">Edit if needed:</p>
+      </div>
+      <div class="dialog-orientation-grid">
+        <div class="orientation-item">
+          <label for="savePsdLandscapeInput">Landscape:</label>
+          <input id="savePsdLandscapeInput" type="number" min="0" value="0" />
+        </div>
+        <div class="orientation-item">
+          <label for="savePsdPortraitInput">Portrait:</label>
+          <input id="savePsdPortraitInput" type="number" min="0" value="0" />
+        </div>
+        <div class="orientation-item">
+          <label for="savePsdSquareInput">Square:</label>
+          <input id="savePsdSquareInput" type="number" min="0" value="0" />
+        </div>
+      </div>
+      <div class="dialog-actions-row">
+        <button id="savePsdOrientationContinueBtn" class="btn primary" type="button">CONTINUE</button>
+        <button id="savePsdOrientationCancelBtn" class="btn btn-cancel" type="button">CANCEL</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Delete Original PSD Confirmation Dialog -->
+  <dialog id="savePsdDeleteConfirmDialog">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h2 class="text-danger">Delete Original PSD</h2>
+        <p class="dialog-subtext text-warning-strong">Are you sure you want to DELETE the original PSD?</p>
+      </div>
+      <div class="dialog-actions-vertical">
+        <button id="savePsdDeleteConfirmBtn" class="btn btn-destructive full" type="button">DELETE ORIGINAL</button>
+        <button id="savePsdDeleteCancelBtn" class="btn full" type="button">CANCEL DELETE</button>
       </div>
     </div>
   </dialog>
