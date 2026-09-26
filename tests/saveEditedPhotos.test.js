@@ -77,8 +77,15 @@ function createMockStorage(initial = {}) {
 function createMainHarness({ runSaveEditedPhotosOutcome = { outcome: "success", successCount: 1, failedCount: 0 } } = {}) {
   const elements = new Map();
   const ids = [
-    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "savePageBtn", "saveEditedPhotosBtn", "removePhotosBtn", "statusText", "toast",
+    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "flipPhotoBtn", "savePageBtn", "saveEditedPhotosBtn", "savePsdCategoryBtn", "removePhotosBtn", "statusText", "toast",
     "savePageDialog", "savePagePrefixInput", "savePagePrefixError", "savePageDialogSaveBtn", "savePageDialogCancelBtn",
+    "savePageFolderDialog", "savePageLastFolderPath", "savePageUseFolderBtn", "savePageChangeFolderBtn", "savePageFolderCancelBtn",
+    "saveEditedFolderDialog", "saveEditedLastFolderPath", "saveEditedUseFolderBtn", "saveEditedChangeFolderBtn", "saveEditedFolderCancelBtn",
+    "savePsdCategoryFolderDialog", "savePsdCategoryLastFolderPath", "savePsdCategoryUseFolderBtn", "savePsdCategoryChangeFolderBtn", "savePsdCategoryFolderCancelBtn",
+    "savePsdCategoryDeviceDialog", "deviceLtBtn", "devicePcBtn", "deviceCustomBtn", "customDeviceInputContainer", "customDeviceInput", "savePsdCategoryDeviceSaveBtn", "savePsdCategoryDeviceCancelBtn",
+    "savePsdCategoryDialog", "savePsdCategorySelect", "savePsdCustomNameInput", "savePsdDeleteOriginalCheckbox", "savePsdDeleteWarning", "savePsdDialogSaveBtn", "savePsdDialogCancelBtn",
+    "savePsdOrientationDialog", "orientationLandscapeInput", "orientationPortraitInput", "orientationSquareInput", "orientationContinueBtn", "orientationCancelBtn",
+    "savePsdDeleteConfirmDialog", "savePsdConfirmDeleteBtn", "savePsdCancelDeleteBtn",
     "editedPhotosDeviceDialog", "editedPhotosDeviceLaptopBtn", "editedPhotosDeviceDesktopBtn", "editedPhotosDeviceCancelBtn"
   ];
   for (const id of ids) {
@@ -119,6 +126,9 @@ function createMainHarness({ runSaveEditedPhotosOutcome = { outcome: "success", 
       if (name === "./src/tools/swapPhotos") {
         return { runSwapPhotos: async () => ({ success: true }) };
       }
+      if (name === "./src/tools/flipPhoto") {
+        return { runFlipPhoto: async () => ({ outcome: "success", flippedCount: 1, skippedCount: 0 }) };
+      }
       if (name === "./src/tools/savePage") {
         return {
           runSavePage: async () => ({ outcome: "success" }),
@@ -130,6 +140,11 @@ function createMainHarness({ runSaveEditedPhotosOutcome = { outcome: "success", 
         return {
           runSaveEditedPhotos: async () => runSaveEditedPhotosOutcome,
           buildSaveEditedPhotosToast
+        };
+      }
+      if (name === "./src/tools/savePsdCategory") {
+        return {
+          runSavePsdCategory: async () => ({ outcome: "success", fileName: "MMR 3 PHOTOS 01 PC.psd" })
         };
       }
       if (name === "./src/tools/removePhotos") {
@@ -185,14 +200,14 @@ test("2. Exact button order: OPEN PSD -> AUTO PHOTO FILL -> SWAP PHOTOS -> SAVE 
   assert.ok(savePos < saveEditedPos, "savePageBtn must be before saveEditedPhotosBtn");
 });
 
-test("3. Visible version is v0.7.0 in index.html", () => {
+test("3. Visible version is v1.0.0 in index.html", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v0.7.0"), "index.html must display v0.7.0");
+  assert.ok(html.includes("v1.0.0"), "index.html must display v1.0.0");
 });
 
-test("4. Manifest version = 0.7.0", () => {
+test("4. Manifest version = 1.0.0", () => {
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "0.7.0", "manifest.json version must be 0.7.0");
+  assert.equal(manifest.version, "1.0.0", "manifest.json version must be 1.0.0");
 });
 
 test("5. Plugin ID unchanged", () => {
@@ -804,10 +819,11 @@ test("18. Valid token is checked on subsequent run", async () => {
   const psb = { id: 2, name: "temp.psb" };
   const app = { activeDocument: mainDoc, documents: [mainDoc] };
 
-  await executeSaveEditedPhotos({
+  const result = await executeSaveEditedPhotos({
     app,
     localFileSystem: localFS,
     storage,
+    browseFolder: async ({ initialFolder }) => ({ folder: initialFolder }),
     getActiveDocument: () => mainDoc,
     getSelectedLayers: () => [smart],
     getAllLayers: () => [smart],
@@ -823,6 +839,7 @@ test("18. Valid token is checked on subsequent run", async () => {
   });
 
   assert.equal(tokenRetrieved, true);
+  assert.equal(result.outcome, "success");
 });
 
 test("19. Invalid token is cleared safely", async () => {

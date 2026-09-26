@@ -1,201 +1,134 @@
-# MM Album Design Tools v0.7.0
+# MM Album Design Tools v1.0.0
 
-A compact Photoshop UXP panel for album-design production utilities. The panel includes:
+A polished Photoshop UXP panel for album-design production workflows. The plugin ID remains `in.memorymaker.albumplacer`.
 
-1. **Open PSD**
-2. **Auto Photo Fill**
-3. **Swap Photos**
-4. **Save Page**
-5. **Save Edited Photos**
-6. **Remove Photos**
+## 8 Action Grid
 
-The existing plugin ID remains `in.memorymaker.albumplacer`, so installations of Memory Maker Album Placer upgrade to this product name instead of creating a second plugin.
+The panel presents an 8-button responsive 2-column grid with clean line icons and a dedicated narrow single-column fallback:
 
-## Remove Photos
+1. **OPEN PSD**
+2. **AUTO PHOTO FILL**
+3. **SWAP PHOTOS**
+4. **FLIP PHOTO**
+5. **SAVE PAGE**
+6. **SAVE EDITED PHOTOS**
+7. **SAVE PSD CATEGORY**
+8. **REMOVE PHOTOS** (destructive styling: dark red)
 
-1. Open an album page document in Photoshop.
-2. Click **REMOVE PHOTOS**.
-3. The plugin recursively scans the entire active document hierarchy (traversing nested groups at any depth).
-4. Deletes only layers that satisfy ALL THREE conditions:
-   - **Smart Object**: Must be a Smart Object layer.
-   - **Clipping Mask**: Must be clipped to the layer below (`grouped === true` / `isClippingMask`).
-   - **Name Match**: Name must contain any of `IMG`, `DSC`, `PHOTO`, `.JPG`, or `.JPEG` (case-insensitive substring match).
-5. All three criteria are required: non-clipped Smart Objects, pixel layers, text layers, and non-matching layers are safely preserved.
-6. Group containers are never deleted—only their matching child layers are removed.
-7. Works across the whole active document regardless of selection or visibility (hidden matching layers are also deleted).
-8. Executed inside a single undoable history state (`Remove Photos`) inside modal scope.
-9. Reports result via toast: `1 photo removed`, `<n> photos removed`, `No matching photos found`, or `<n> removed • <m> failed`.
+---
 
-## Save Edited Photos
+## What's New in v1.0.0
 
-1. Open an album page document in Photoshop.
-2. Select one or more Smart Object layers (non-Smart-Object layers like text, background, adjustments, or groups are safely skipped).
-3. Click **SAVE EDITED PHOTOS**.
-4. On first use on a computer, a floating modal asks whether this computer is **Laptop (LT)** or **Desktop (DT)**. This choice is remembered locally in plugin storage.
-5. Select the destination folder in the UXP folder picker (the plugin remembers this folder for future runs using a persistent token).
-6. Each selected Smart Object is processed sequentially:
-   - Opens the Smart Object contents (`placedLayerEditContents`) as a temporary document.
-   - Determines the lowest available positive integer for the filename pattern `Memory Maker <number> LT.jpg` or `Memory Maker <number> DT.jpg`. Numbering is shared globally across both LT and DT files in the destination folder (filling gaps without overwriting).
-   - Saves a maximum-quality JPEG (Quality 12) directly into the destination folder.
-   - Closes the opened Smart Object document without saving changes.
-   - Reactivates the main album document.
-7. Restores the original layer selection upon completion (even after partial failure).
-8. Working document remains open and intact (never flattened or modified).
-9. Reports completion via toast: `1 edited photo saved`, `<n> edited photos saved`, or `<n> saved • <m> failed`.
+### 1. Branded Responsive Panel UI
+- **Branding Header:** Displays `MEMORY MAKER` in brand green with expanded letter-spacing, bold white `Album Design Tools`, and muted `v1.0.0` aligned top-right.
+- **Responsive 2-Column Grid:** 2 columns × 4 rows in standard panel widths, automatically collapsing into a single column on narrow docked panels without text clipping or button overlap.
+- **Button Styling:** Explicit Memory Maker green on non-destructive buttons, dark red on `REMOVE PHOTOS`.
+- **Line Icons:** Lightweight inline SVG line icons embedded directly into each button.
+- **Developer Footer:** Subtle divider and credit `Developed by Rammoni Halder`.
 
-## Save Page
+### 2. Per-Tool Folder Memory
+Each tool independently remembers its own folder location using UXP persistent tokens:
+- **OPEN PSD:** Next file picker opens at that tool's previous PSD folder (`mm_open_psd_last_folder_token`).
+- **AUTO PHOTO FILL:** Next photo picker opens at that tool's previous photo folder (`mm_auto_photo_fill_last_folder_token`).
+- **SAVE PAGE:** Normal activation opens the compact confirmation dialog at its exact remembered base folder (`mm_save_page_last_folder_token`). A valid token under the former `mm_save_page_base_folder_token` key is migrated once; the old key is removed only after the canonical token is stored successfully.
+- **SAVE EDITED PHOTOS:** Normal activation opens the confirmation dialog at its exact remembered destination (`mm_save_edited_photos_folder_token`).
+- **SAVE PSD CATEGORY:** Normal activation opens the confirmation dialog at its exact remembered base folder (`mm_save_psd_category_base_folder_token`).
+- **Shift+Click**, **Shift+Enter**, and **Shift+Space** use a valid remembered folder directly, skipping all folder UI. First use or a stale token opens the native picker; that selection is used immediately.
+- The browser lists child folders alphabetically. Click a folder or activate it with Enter/Space to enter; **BACK** visits only folders traversed in the current session. **CHOOSE OTHER LOCATION** opens the native picker and resets the browser root if a folder is chosen. Cancelling that picker returns to the same browser location.
+- **SELECT THIS FOLDER** confirms the remembered Entry without rewriting its token. **CHOOSE OTHER LOCATION** replaces only that tool's token after successful selection; native-picker cancellation restores the confirmation dialog and preserves the prior destination. **CANCEL** aborts the operation. If token creation fails, the selected Entry is still used for this operation and the prior token is retained.
+- If a remembered folder is moved, deleted, or inaccessible, the stale token is safely cleared without affecting any other tool.
 
-1. Open an album page document in Photoshop.
-2. Click **SAVE PAGE**.
-3. Select the base destination folder in the UXP folder picker (e.g. `D:\WORKING ALBUM\RIYA WEDDING`).
-4. The plugin automatically creates or reuses child folders:
-   - `PSD`
-   - `JPEG`
-5. An optional prefix form temporarily appears in the panel:
-   - Prefilled with the last remembered prefix (e.g. `Riya`).
-   - Validates against invalid filename characters (`< > : " / \ | ? *`).
-   - Replaces any whitespace with underscores (e.g. `Wedding Album` -> `Wedding_Album`).
-6. Global serial scanning across both `PSD` and `JPEG` folders:
-   - Matches all files ending with `MMRLT<number>.(psd|jpg|jpeg)` regardless of prefix.
-   - Calculates next serial as `max + 1` (starts at `1` if empty).
-   - Resolves target filename: `<prefix>_MMRLT<number>` (or `MMRLT<number>` if prefix is empty).
-7. Collision protection ensures no existing files are ever overwritten.
-8. Re-resolves target document by captured document ID:
-   - Saves a PSD copy (`saveAs.psd` with `asCopy = true`, color profile, and alpha channels).
-   - Saves a JPEG copy (`saveAs.jpg` with `asCopy = true`, quality 12).
-   - Working document remains open and intact (never flattened or rebound).
-9. Reports completion via toast: `Saved: <filename>` (e.g. `Saved: Riya_MMRLT8`).
+### 3. FLIP PHOTO Tool
+- Horizontally mirrors selected photo layers (Smart Objects or normal pixel photo layers) around each layer's **own center**.
+- Multiple selected layers are flipped independently—never treated as a combined transform group.
+- Unsupported layers (groups, text, adjustment layers) are safely skipped.
+- Preserves layer stack position, clipping masks, effects, Smart Object status, opacity, and blend mode.
+- Restores original layer selection and wraps operations into an undoable history step (`Flip Photos`).
 
-## Open PSD
+### 4. SAVE PSD CATEGORY Tool
+Natively ported from legacy JSX (`SAVE_PSD_CATEGORYV 5.0.JSX`) to modular UXP:
+- **Document & Selection:** Requires an active document and selected placeholder layers.
+- **Categories (12):**
+  - `3 PHOTOS PSD` through `12 PHOTOS PSD`
+  - `INSTA POST`
+  - `RICE CEREMONY`
+- **Auto Category Detection:** Automatically preselects `<count> PHOTOS PSD` when 3 to 12 layers are selected.
+- **Device Suffix:** Independent device selection dialog (`LT`, `PC`, or `Custom`), remembered under `mm_save_psd_category_device_name`.
+- **Orientation Detection & Check:** Calculates layer aspect ratios (Landscape `L`, Portrait `P`, Square `S`), presents an editable confirmation dialog, and prepends non-zero counts in `L_P_S` order (e.g. `2L_1P_`).
+- **Category Subfolder & Clean Category:** Saves into `<base>/<category>/` and cleans ` PSD` from category text in filenames (e.g. `MMR 3 PHOTOS`).
+- **Max+1 Numbering (Legacy Regex Bug Fixed):** Robust sequence scanner recognizes filenames with prefixes, clean category, sequence number, and device suffix (e.g. `2L_1P_Bride_MMR 3 PHOTOS 01 PC.psd`) without restarting at 01 when prefixes or devices change.
+- **PSD Layered Copy:** Saves a complete PSD copy with layers preserved.
+- **Safe Optional Original Deletion:** If enabled, after the category PSD is verified saved, prompts with an explicit confirmation dialog before deleting only the original source PSD. Guarded against unsaved documents, target-matches-source collisions, and failed saves.
 
-1. Click **OPEN PSD**.
-2. Select one or more album PSD files in the UXP file picker.
-3. Each selected PSD is processed sequentially:
-   - Opens the PSD document in Photoshop and activates it.
-   - Resets rename counter to `01` for the document.
-   - Runs Smart Rename: eligible layers containing vendor keywords (`studio`, `digital`, `color`, `lab`, `graphics`, `album`, `photo`, `photography`, `creation`) or duplicated sibling names are renamed to `NN MMR | 7001514367` in bottom-to-top traversal order.
-   - Hidden layers, background layers, text layers, clipped photo layers, and group containers are safely skipped.
-   - Nested groups are recursed into while preserving a single document-wide counter.
-   - Size & DPI normalization:
-     - Physical **36×12** inches (e.g. `7200 × 2400 @ 200`, `10800 × 3600 @ 300`, `5400 × 1800 @ 150`): normalized to exactly `10800 × 3600 px` @ 300 DPI.
-     - Physical **18×12** inches (e.g. `3600 × 2400 @ 200`, `5400 × 3600 @ 300`, `2700 × 1800 @ 150`): normalized to exactly `5400 × 3600 px` @ 300 DPI (never enlarged to 36×12).
-     - Unsupported physical sizes: normalized to standard `10800 × 3600 px` @ 300 DPI fallback.
-     - Documents already at target dimensions at 300 DPI skip unnecessary resampling.
-   - Guides: all existing guides are removed, and new standard album guides are added relative to actual final canvas size (center fold at `width / 2`, safe margins at 150 px, bleeds at 100 px).
-   - All PSD files remain open for editing.
-   - No automatic save, overwrite, or close.
+---
 
+## Stable Tools Overview
 
-## Auto Photo Fill
+### OPEN PSD
+- Opens one or multiple album PSD files sequentially.
+- Resets rename counter to `01` per document.
+- Smart Rename: Normalizes vendor layers matching keywords to `NN MMR | 7001514367`.
+- Standardizes DPI and canvas dimensions (36×12 and 18×12 standard spreads).
+- Re-establishes clean standard album guides.
 
-1. Open an album PSD in Photoshop.
-2. Select the placeholder layers to fill.
-3. Click **AUTO PHOTO FILL**.
-4. Choose multiple source photos.
-5. The plugin reads placeholder and photo dimensions, prefers matching orientations, and force-fills remaining slots in stable order.
-6. Square, round, and near-square placeholders are treated as flexible and may accept either orientation.
-7. Matched photos are placed as embedded Smart Objects, cover-fitted, centered, clipped, and renamed.
-8. Only successfully placed source photos are moved into an `Album Used` folder inside each photo's original source directory.
-9. Extra, unreadable, or failed photos remain untouched in their source location.
+### AUTO PHOTO FILL
+- Reads selected placeholder dimensions and source photo dimensions.
+- Deterministic orientation matching (portrait, landscape, flexible) with stable fallback.
+- Places photos as embedded Smart Objects, cover-fitted, centered, and clipped.
+- Moves used source photos to `Album Used` in their original folder.
 
-## Swap Photos
+### SWAP PHOTOS
+- Directly swaps contents of exactly 2 or 3 selected Smart Object photo layers.
+- Direct 2-way swap: `A <-> B`.
+- Cyclic 3-way swap: `A <- C, B <- A, C <- B`.
+- Preserves layout positions, clipping masks, effects, and layer hierarchy.
 
-1. Select exactly 2 or 3 Smart Object photo layers in the active document.
-2. Click **SWAP PHOTOS**.
-3. **2 photos:** Direct content swap between the two Smart Objects:
-   - Layer 1 <- Content of Layer 2
-   - Layer 2 <- Content of Layer 1
-4. **3 photos:** Deterministic cyclic content swap in top-to-bottom layer order:
-   - Layer 1 <- Content of Layer 3
-   - Layer 2 <- Content of Layer 1
-   - Layer 3 <- Content of Layer 2
-5. Smart Object layers stay in their exact stack positions with clipping masks, transforms, effects, and placeholder relationships intact (content-based swap via `placedLayerExportContents` and `placedLayerReplaceContents`).
-6. All contents are exported to temporary PSB files before any replacement begins, preventing data loss.
-7. In-document operation only: does not touch source photo folders, picker, or `Album Used`.
-8. Collapses into a single undo step ("MM Swap Photos") with automatic pre-swap rollback on error.
+### SAVE PAGE
+- Saves PSD and JPEG copies into `PSD/` and `JPEG/` subfolders inside the chosen base folder.
+- Supports optional sanitized custom prefix (e.g. `Riya_MMRLT1`).
+- Offers remembered `PSD ONLY`, `JPEG ONLY`, or `BOTH` output format selection (`mm_save_page_output_mode`, default `both`).
+- Scans `MMRLT` serial numbers globally across both PSD and JPEG folders for every format, with collision-safe target creation.
+- JPEG exported at maximum Quality 12.
 
+### SAVE EDITED PHOTOS
+- Iterates selected Smart Objects, opens PSB contents sequentially, and exports Quality 12 JPEGs into the destination folder.
+- Uses shared sequence numbering with device suffix (`LT` / `DT`).
+- Closes PSBs without saving changes and restores the original album selection.
 
+### REMOVE PHOTOS
+- Recursively deletes child layers matching:
+  1. Smart Object
+  2. Clipped to layer below
+  3. Name substring match (`IMG`, `DSC`, `PHOTO`, `.JPG`, `.JPEG`)
+- Non-matching layers, pixel layers, text, and group containers are safely preserved.
 
-## v0.2.3 filesystem fix
+---
 
-The old movement path used `getNativePath()` correctly, but pre-encoded the parent with `encodeURIComponent` before calling UXP's `getEntryWithUrl`. The reported `%2520` means an already encoded `%20` was encoded again. There is no second encoding call in this repository's movement path: the evidence points to UXP's resolver boundary. The regression fixture models that reported host behavior; it does not replace a Photoshop runtime test.
+## Project Structure
 
-Movement still uses **Entry APIs**, under the unchanged `fullAccess` permission. Each successfully placed picker entry goes through `localFileSystem.getNativePath()`, native parent derivation, raw UXP `file:/` path resolution, source reacquisition via `parent.getEntry(filename)`, folder creation/reuse, and `moveTo(..., { newName, overwrite: false })`. Only the separator is normalized for UXP. No encoded string or picker `Entry.url` supplies a disk path. No browser URL object is used in production.
+- `manifest.json` — Photoshop UXP plugin manifest (`v1.0.0`)
+- `index.html` / `style.css` — 2-column responsive layout, inline SVG icons, dialog modals
+- `main.js` — Panel event handling, button locking, dialog flow orchestration
+- `src/folderMemory.js` — Independent per-tool persistent folder token storage and restoration
+- `src/tools/openPsd.js` — Open PSD workflow with folder memory
+- `src/tools/autoPhotoFill.js` — Auto Photo Fill workflow with folder memory
+- `src/tools/swapPhotos.js` — Smart Object content swap
+- `src/tools/flipPhoto.js` — Horizontal flip around layer center
+- `src/tools/savePage.js` — Save Page PSD/JPEG copies with folder memory
+- `src/tools/saveEditedPhotos.js` — Save Edited Photos with folder memory
+- `src/tools/savePsdCategory.js` — Save PSD Category with auto-count, orientation, and folder memory
+- `src/tools/removePhotos.js` — Document-wide clipped photo removal
+- `src/ui/toast.js` — Toast notifications
+- `tests/` — Comprehensive Node test suite
 
-For example, the native source `G:\WORKING ALBUM\SAVE EDITED PHOTOS\ANAMIKA\Memory Maker 1 DT.jpg` gives native parent `G:\WORKING ALBUM\SAVE EDITED PHOTOS\ANAMIKA`. The resolver receives raw path text `file:/G:/WORKING ALBUM/SAVE EDITED PHOTOS/ANAMIKA`, leaving encoding to UXP. The canonical diagnostic URL is `file:///G:/WORKING%20ALBUM/SAVE%20EDITED%20PHOTOS/ANAMIKA`; it is never fed back into the resolver. The old failing URL was `file:///G:/WORKING%2520ALBUM/SAVE%2520EDITED%2520PHOTOS/ANAMIKA`.
+---
 
-This distinction matters: manually encoding even a three-slash browser URL and feeding it to the same host resolver would retain the risk of double encoding. The diagnostic formatter encodes raw segments exactly once. Movement preserves raw spaces, `#`, `%`, `&`, parentheses, and Unicode/Bengali folder and file names, including a literal `%20` name (which must not be decoded into a space). Drive-root parents retain their slash. Local drive and POSIX paths remain accepted; UNC/device paths remain unsupported.
+## Running Automated Tests
 
-`Album Used` is automatically created only when the lookup reports a missing entry. An existing folder is reused and cached per native parent during the run; an existing file with that name is an error. Each source uses its own parent. Destinations such as `photo.final.jpg`, `photo.final_2.jpg`, and `photo.final_3.jpg` preserve the basename and extension; overwriting is disabled even if a competing writer creates the selected name after the collision check. A failed move retains the source and the successful Photoshop placement, and processing continues. There is no copy/delete fallback or placement rollback.
-
-The Entry strategy preserves writable source reacquisition and the documented no-overwrite move option. Adobe's native `fs` supports `mkdir`, `lstat`, and `rename`, but its documented `rename` signature has no no-overwrite option; checking for a name before native rename would leave an overwrite race. References: [Adobe UXP fs](https://developer.adobe.com/photoshop/uxp/2022/uxp-api/reference-js/modules/fs/fs), [Entry.moveTo](https://developer.adobe.com/photoshop/uxp/2022/uxp-api/reference-js/modules/uxp/persistent-file-storage/entry), and [filesystem path schemes and permissions](https://developer.adobe.com/uxp/guides/how-to/recipes/filesystem-operations/).
-
-Failures retain the original error object and include a diagnostic category: `PATH / NOT FOUND`, `PERMISSION`, `LOCK / IN USE`, or `FILESYSTEM` when unknown. Recognized codes/names take precedence over message heuristics. Permission, lock, and unknown lookup failures are not treated as missing folders or free filenames. The panel shows the failure count and at most three concise details; the developer console records every failure with source native path, parent, Album Used path, chosen destination when available, resolver input, canonical URL, operation, and original error name/code/message. Some hosts report locks only as permission failures; the plugin cannot infer information the host does not expose.
-
-The completion modal has been removed because it rendered as blank host chrome in Photoshop. Completion, warnings, and errors appear in the existing dark panel result section. The result is revealed and scrolled/focused where supported; a new run hides the previous result. Status remains `Complete.` after processing.
-
-## Orientation rules
-
-- Ratio below `0.90`: portrait
-- Ratio above `1.10`: landscape
-- Ratio from `0.90` through `1.10`: flexible
-
-Exact portrait and landscape matches are assigned before flexible placeholders. Square photos prefer flexible placeholders. Any photos and placeholders still remaining are paired in their original stable order, so orientation mismatch alone never leaves a usable slot empty.
-
-When the number of usable photos equals the number of readable selected placeholders, all placeholders are filled unless a technical placement failure occurs. A forced mismatch still uses the existing aspect-ratio-preserving cover fit and clipping behavior.
-
-## Project structure
-
-- `manifest.json` — Photoshop UXP plugin definition
-- `index.html` / `style.css` — responsive multi-tool panel shell
-- `main.js` — panel bootstrap, tool-button wiring, and toast presentation
-- `src/tools/openPsd.js` — Open PSD orchestration, smart rename, size classification, and guide generation
-- `src/tools/autoPhotoFill.js` — Auto Photo Fill orchestration and completion summaries
-- `src/tools/swapPhotos.js` — Swap Photos orchestration, target resolution, and cyclic swaps
-- `src/tools/savePage.js` — Save Page orchestration, serial scanning, subfolder management, and PSD/JPEG saving
-- `src/ui/toast.js` — temporary panel toast management
-- `src/orientation.js` — pure dimension/orientation classification
-- `src/matcher.js` — pure deterministic matching engine
-- `src/documentOwnership.js` — guards temporary-document ownership during dimension inspection
-- `src/layers.js` — selected-layer retrieval in top-to-bottom order
-- `src/photoshop.js` — image inspection and Smart Object placement engine
-- `src/files.js` — multiple-image picker and collision-safe `Album Used` movement
-- `tests/` — Node tests for layout, matching, classification, workflow, file movement, swap logic, toasts, and Photoshop-boundary contracts
-
-## Test in Photoshop
-
-1. Open **UXP Developer Tool**.
-2. Add this folder's `manifest.json` and click **Load**.
-3. In Photoshop choose **Plugins > MM Album Design Tools**.
-4. Open an album PSD and select placeholder layers.
-5. Click **AUTO PHOTO FILL** and choose source photos.
-6. Verify the visible panel completion result (no popup), placed Smart Objects, cover-fit, clipping, layer names, and `Album Used` contents.
-
-### Manual v0.2.3 retest checklist
-
-Use disposable copies of source photos for these movement tests. Reload the plugin and confirm the panel shows v0.2.3.
-
-- **A — Create:** Start with `D:\TEST ALBUM\PHOTOS` and no `Album Used`. Run Auto Photo Fill. Expect automatic creation of `D:\TEST ALBUM\PHOTOS\Album Used` and movement of successfully placed sources.
-- **B — Reuse:** Run again with that folder present. Expect reuse, with no `Album Used 2` or `Album Used_2`.
-- **C — Spaces:** Use `D:\MY WEDDING ALBUM\EDITED PHOTOS`. Expect movement without a `%2520` path error.
-- **D — Original failure:** Use `G:\WORKING ALBUM\SAVE EDITED PHOTOS\ANAMIKA`. Expect folder creation/reuse and movement without `Could not find an entry of file:///...%2520...`.
-- **E — Extras:** Select six readable photos for four placeholders. Expect four placements and four moved sources; two extras stay in the source directory.
-- **F — Collision:** Put `photo.jpg` in the destination first, then place another source named `photo.jpg`. Expect `photo_2.jpg` and unchanged original destination contents; repeat with `_2` present to check `_3`.
-- **G — Bengali and special characters:** Use Bengali folder and file names, then paths with `#`, `%`, `&`, and parentheses. Expect creation/movement where Windows/UXP permits them. Also check a literal `%20` folder remains distinct from a space.
-- **H — Permissions:** Use a protected/read-only source or destination. Expect placement and source contents preserved, a categorized permission failure, and continued processing of other accessible photos. Check console operation/code details.
-- **I — Lock:** If practical, lock a source file with another application. Expect no source deletion or placement rollback, and a reported move error; a lock label requires a lock-specific host error.
-- **J — Working workflow:** Verify normal matching, cover-fit, embedded Smart Objects, clipping, layer naming, forced orientation fallback, skipped counts, JPG/JPEG/PNG multiselect, and in-panel completion. Successfully force-filled sources must move too.
-
-Photoshop runtime validation is still required. Node fixtures model UXP's encoding and Entry operations; browser layout tests do not run Photoshop. Host-specific raw path parsing, actual permissions/locks, Unicode handling, and removable/network-backed drive availability remain runtime checks.
-
-## Automated tests
-
-Run from this folder:
+Run all unit tests:
 
 ```powershell
-node --test tests/*.test.js
+node --test
 ```
 
-The layout test requires an installed Chrome or Edge browser.
-
-Photoshop owns the outer UXP panel window. The panel keeps one vertical scroller, suppresses horizontal overflow, and uses normal document flow at narrow, docked, floating, and wide sizes.
+All 363 automated unit tests pass across all tool suites and layout probes.

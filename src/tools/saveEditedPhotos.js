@@ -11,7 +11,12 @@ const {
   executeSaveEditedPhotosModal
 } = require("../photoshop");
 
-const FOLDER_TOKEN_KEY = "mm_save_edited_photos_folder_token";
+const {
+  TOKEN_KEYS,
+  resolveRememberedFolder
+} = require("../folderMemory");
+
+const FOLDER_TOKEN_KEY = TOKEN_KEYS.SAVE_EDITED_PHOTOS;
 const DEVICE_STORAGE_KEY = "mm_edited_photos_device_type";
 const FILENAME_REGEX = /^Memory Maker (\d+) (LT|DT)\.jpe?g$/i;
 
@@ -296,30 +301,15 @@ async function executeSaveEditedPhotos(dependencies = {}, options = {}) {
   // 5. Stage: select-folder
   let destFolder = null;
   try {
-    if (typeof selectFolder === "function") {
-      destFolder = await selectFolder();
-    } else if (localFileSystem && typeof localFileSystem.getFolder === "function") {
-      const savedToken = getStoredValue(FOLDER_TOKEN_KEY, storage);
-      if (savedToken && typeof localFileSystem.getEntryForPersistentToken === "function") {
-        try {
-          await localFileSystem.getEntryForPersistentToken(savedToken);
-        } catch (_) {
-          removeStoredValue(FOLDER_TOKEN_KEY, storage);
-        }
-      }
-
-      destFolder = await localFileSystem.getFolder();
-      if (destFolder && typeof localFileSystem.createPersistentToken === "function") {
-        try {
-          const token = await localFileSystem.createPersistentToken(destFolder);
-          setStoredValue(FOLDER_TOKEN_KEY, token, storage);
-        } catch (tokErr) {
-          console.warn("[SAVE EDITED PHOTOS] Could not create persistent token for folder:", tokErr);
-        }
-      }
-    } else {
-      throw new Error("Folder selection API is not available.");
-    }
+    destFolder = await resolveRememberedFolder({
+      tokenKey: FOLDER_TOKEN_KEY,
+      localFileSystem,
+      storage,
+      selectFolder,
+      browseFolder: dependencies.browseFolder || options.browseFolder,
+      tool: "SAVE EDITED PHOTOS",
+      useRememberedDirectly: options.useRememberedDirectly === true
+    });
   } catch (folderError) {
     logDiagnostic({
       stage: "select-folder",
@@ -602,7 +592,8 @@ async function runSaveEditedPhotos(options = {}) {
       localFileSystem: uxpStorage?.localFileSystem,
       storage: typeof localStorage !== "undefined" ? localStorage : null,
       ...options
-    }
+    },
+    options
   );
 }
 

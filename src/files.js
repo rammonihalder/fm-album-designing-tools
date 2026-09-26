@@ -2,11 +2,15 @@ const { storage } = require("uxp");
 const fs = storage.localFileSystem;
 const SUPPORTED_IMAGE_TYPES = Object.freeze(["jpg", "jpeg", "png"]);
 
-async function selectImageFiles() {
-  const result = await fs.getFileForOpening({
+async function selectImageFiles(options = {}) {
+  const pickerOptions = {
     allowMultiple: true,
     types: Array.from(SUPPORTED_IMAGE_TYPES)
-  });
+  };
+  if (options && options.initialLocation) {
+    pickerOptions.initialLocation = options.initialLocation;
+  }
+  const result = await fs.getFileForOpening(pickerOptions);
   if (!result) return [];
   return Array.isArray(result) ? result : [result];
 }

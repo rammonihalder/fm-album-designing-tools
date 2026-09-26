@@ -94,8 +94,15 @@ function createMockStorage(initial = {}) {
 function createMainHarness({ defaultPrefix = "", runSavePageOutcome = { outcome: "success", fileName: "MMRLT1" } } = {}) {
   const elements = new Map();
   const ids = [
-    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "savePageBtn", "saveEditedPhotosBtn", "removePhotosBtn", "statusText", "toast",
-    "savePageDialog", "savePagePrefixInput", "savePagePrefixError", "savePageDialogSaveBtn", "savePageDialogCancelBtn"
+    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "flipPhotoBtn", "savePageBtn", "saveEditedPhotosBtn", "savePsdCategoryBtn", "removePhotosBtn", "statusText", "toast",
+    "savePageDialog", "savePagePrefixInput", "savePageFormatPsd", "savePageFormatJpeg", "savePageFormatBoth", "savePagePrefixError", "savePageDialogSaveBtn", "savePageDialogCancelBtn",
+    "savePageFolderDialog", "savePageLastFolderPath", "savePageUseFolderBtn", "savePageChangeFolderBtn", "savePageFolderCancelBtn",
+    "saveEditedFolderDialog", "saveEditedLastFolderPath", "saveEditedUseFolderBtn", "saveEditedChangeFolderBtn", "saveEditedFolderCancelBtn",
+    "savePsdCategoryFolderDialog", "savePsdCategoryLastFolderPath", "savePsdCategoryUseFolderBtn", "savePsdCategoryChangeFolderBtn", "savePsdCategoryFolderCancelBtn",
+    "savePsdCategoryDeviceDialog", "deviceLtBtn", "devicePcBtn", "deviceCustomBtn", "customDeviceInputContainer", "customDeviceInput", "savePsdCategoryDeviceSaveBtn", "savePsdCategoryDeviceCancelBtn",
+    "savePsdCategoryDialog", "savePsdCategorySelect", "savePsdCustomNameInput", "savePsdDeleteOriginalCheckbox", "savePsdDeleteWarning", "savePsdDialogSaveBtn", "savePsdDialogCancelBtn",
+    "savePsdOrientationDialog", "orientationLandscapeInput", "orientationPortraitInput", "orientationSquareInput", "orientationContinueBtn", "orientationCancelBtn",
+    "savePsdDeleteConfirmDialog", "savePsdConfirmDeleteBtn", "savePsdCancelDeleteBtn"
   ];
   for (const id of ids) {
     elements.set(id, {
@@ -106,9 +113,13 @@ function createMainHarness({ defaultPrefix = "", runSavePageOutcome = { outcome:
       hidden: id === "savePagePrefixError",
       disabled: false,
       value: "",
+      attributes: {},
+      classList: { toggle() {} },
       listeners: {},
       addEventListener(event, handler) { this.listeners[event] = handler; },
       removeEventListener(event, handler) { delete this.listeners[event]; },
+      setAttribute(key, value) { this.attributes[key] = value; },
+      getAttribute(key) { return this.attributes[key] ?? (key === "data-mode" ? ({ savePageFormatPsd: "psd", savePageFormatJpeg: "jpeg", savePageFormatBoth: "both" }[id] || null) : null); },
       focus() { this.focused = true; },
       close(reason) {
         this.closedWith = reason;
@@ -154,6 +165,11 @@ function createMainHarness({ defaultPrefix = "", runSavePageOutcome = { outcome:
           runSwapPhotos: async () => ({ success: true })
         };
       }
+      if (name === "./src/tools/flipPhoto") {
+        return {
+          runFlipPhoto: async () => ({ outcome: "success", flippedCount: 1, skippedCount: 0 })
+        };
+      }
       if (name === "./src/tools/savePage") {
         const actual = require("../src/tools/savePage");
         return {
@@ -171,6 +187,11 @@ function createMainHarness({ defaultPrefix = "", runSavePageOutcome = { outcome:
         return {
           runSaveEditedPhotos: async () => ({ outcome: "success", successCount: 1, failedCount: 0 }),
           buildSaveEditedPhotosToast: () => ({ message: "1 edited photo saved", type: "success" })
+        };
+      }
+      if (name === "./src/tools/savePsdCategory") {
+        return {
+          runSavePsdCategory: async () => ({ outcome: "success", fileName: "MMR 3 PHOTOS 01 PC.psd" })
         };
       }
       if (name === "./src/tools/removePhotos") {
@@ -224,12 +245,12 @@ test("2. Exact button order: OPEN PSD -> AUTO PHOTO FILL -> SWAP PHOTOS -> SAVE 
   assert.ok(swapPos < savePos, "swapPhotosBtn must be before savePageBtn");
 });
 
-test("3. Visible version is v0.7.0 in index.html and manifest.json", () => {
+test("3. Visible version is v1.0.0 in index.html and manifest.json", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v0.7.0"), "index.html must display v0.7.0");
+  assert.ok(html.includes("v1.0.0"), "index.html must display v1.0.0");
 
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "0.7.0", "manifest.json version must be 0.7.0");
+  assert.equal(manifest.version, "1.0.0", "manifest.json version must be 1.0.0");
   assert.equal(manifest.id, "in.memorymaker.albumplacer", "plugin ID must remain in.memorymaker.albumplacer");
 });
 
@@ -237,18 +258,20 @@ test("3. Visible version is v0.7.0 in index.html and manifest.json", () => {
 // TESTS — FLOATING PREFIX MODAL DIALOG UI
 // ==========================================
 
-test("UI 1. Resting panel contains exactly 6 tool buttons", () => {
+test("UI 1. Resting panel contains exactly 8 tool actions", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
   const panelMatch = html.match(/<main[^>]*class="[^"]*panel[^"]*"[^>]*>([\s\S]*?)<\/main>/i);
   assert.ok(panelMatch, "main.panel must exist in index.html");
   const panelContent = panelMatch[1];
-  const buttonMatches = panelContent.match(/<button/gi) || [];
-  assert.equal(buttonMatches.length, 6, "Resting panel must contain exactly 6 buttons");
+  const actionMatches = panelContent.match(/class="tool-action[^"]*"/gi) || [];
+  assert.equal(actionMatches.length, 8, "Resting panel must contain exactly 8 tool actions");
   assert.ok(panelContent.includes('id="openPsdBtn"'));
   assert.ok(panelContent.includes('id="autoPhotoFillBtn"'));
   assert.ok(panelContent.includes('id="swapPhotosBtn"'));
+  assert.ok(panelContent.includes('id="flipPhotoBtn"'));
   assert.ok(panelContent.includes('id="savePageBtn"'));
   assert.ok(panelContent.includes('id="saveEditedPhotosBtn"'));
+  assert.ok(panelContent.includes('id="savePsdCategoryBtn"'));
   assert.ok(panelContent.includes('id="removePhotosBtn"'));
 });
 
@@ -314,7 +337,29 @@ test("UI 4 & 5. Dialog uses uxpShowModal with title 'Save Page', resize 'none', 
   assert.equal(modalOptions.title, "Save Page");
   assert.equal(modalOptions.resize, "none");
   assert.equal(modalOptions.size.width, 340);
-  assert.equal(modalOptions.size.height, 200);
+  assert.equal(modalOptions.size.height, 240);
+});
+
+test("UI format selector exposes PSD ONLY, JPEG ONLY, BOTH and returns confirmed choice", async () => {
+  const h = createMainHarness();
+  const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
+  assert.match(html, /Save Format/);
+  for (const label of ["PSD ONLY", "JPEG ONLY", "BOTH"]) assert.match(html, new RegExp(label));
+  const mode = h.elements.get("savePageFormatJpeg");
+  const save = h.elements.get("savePageDialogSaveBtn");
+  const promise = h.sandbox.promptForPrefix();
+  mode.listeners.click({ currentTarget: mode });
+  save.listeners.click();
+  assert.equal((await promise).outputMode, "jpeg");
+  assert.equal(html.includes('id="savePageOutputMode"'), false);
+  assert.match(html, /class="save-page-primary"/);
+  assert.match(html, /class="save-page-cancel"/);
+  const css = fs.readFileSync(path.resolve(__dirname, "../style.css"), "utf8");
+  assert.match(css, /\.save-page-dialog-content[\s\S]*padding:\s*14px/);
+  assert.match(css, /\.save-format-segmented[\s\S]*width:\s*100%/);
+  assert.match(css, /\.save-page-primary[\s\S]*width:\s*100%/);
+  assert.match(css, /\.save-page-cancel[\s\S]*margin:\s*10px auto/);
+  assert.equal(/\.save-page-dialog-actions\s*\{\s*display:\s*flex/.test(css), false);
 });
 
 test("UI 6. Prefix field loads remembered value", async () => {
@@ -951,6 +996,49 @@ test("resolveSafeFileEntries handles prefix collisions without overwriting exist
   const safe = await resolveSafeFileEntries(psdFolder, jpegFolder, "Riya");
   assert.equal(safe.serial, 6);
   assert.equal(safe.baseName, "Riya_MMRLT6");
+});
+
+test("output modes save only requested formats and BOTH shares one serial", async () => {
+  async function run(mode, existingPsd = [], existingJpeg = []) {
+    const base = createMockFolder("Album");
+    const psd = await base.createFolder("PSD");
+    const jpeg = await base.createFolder("JPEG");
+    for (const name of existingPsd) await psd.createFile(name);
+    for (const name of existingJpeg) await jpeg.createFile(name);
+    const calls = [];
+    const result = await executeSavePage({
+      app: { activeDocument: { id: 1, name: "Page.psd" } },
+      localFileSystem: {}, storage: createMockStorage(), selectFolder: async () => base,
+      promptForPrefix: async () => ({ cancelled: false, prefix: "Bride", outputMode: mode }),
+      findDocumentById: () => ({ id: 1, name: "Page.psd" }), executeModal: async fn => fn(),
+      saveDocumentCopyPsd: async (_doc, entry) => calls.push(["psd", entry.name]),
+      saveDocumentCopyJpeg: async (_doc, entry, options) => calls.push(["jpeg", entry.name, options.quality])
+    });
+    return { result, calls };
+  }
+  const psdOnly = await run("psd", ["MMRLT05.psd"], ["MMRLT09.jpg"]);
+  assert.deepEqual(psdOnly.calls, [["psd", "Bride_MMRLT10.psd"]]);
+  const jpegOnly = await run("jpeg", ["MMRLT05.psd"], ["MMRLT09.jpg"]);
+  assert.deepEqual(jpegOnly.calls, [["jpeg", "Bride_MMRLT10.jpg", 12]]);
+  const both = await run("both", ["MMRLT05.psd"], ["MMRLT09.jpg"]);
+  assert.deepEqual(both.calls, [["psd", "Bride_MMRLT10.psd"], ["jpeg", "Bride_MMRLT10.jpg", 12]]);
+});
+
+test("global scan and collision protection advance across PSD and JPEG namespaces", async () => {
+  const base = createMockFolder("Album");
+  const psd = await base.createFolder("PSD");
+  const jpeg = await base.createFolder("JPEG");
+  await psd.createFile("Bride_MMRLT10.psd");
+  await jpeg.createFile("Groom_MMRLT12.jpg");
+  const calls = [];
+  const result = await executeSavePage({
+    app: { activeDocument: { id: 1, name: "Page.psd" } }, localFileSystem: {}, storage: createMockStorage(), selectFolder: async () => base,
+    promptForPrefix: async () => ({ cancelled: false, prefix: "Groom", outputMode: "both" }),
+    findDocumentById: () => ({ id: 1 }), executeModal: async fn => fn(),
+    saveDocumentCopyPsd: async (_d, e) => calls.push(e.name), saveDocumentCopyJpeg: async (_d, e) => calls.push(e.name)
+  });
+  assert.equal(result.serial, 13);
+  assert.deepEqual(calls, ["Groom_MMRLT13.psd", "Groom_MMRLT13.jpg"]);
 });
 
 // ==========================================

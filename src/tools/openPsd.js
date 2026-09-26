@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  TOKEN_KEYS,
+  restoreFolderFromToken,
+  saveFolderToken,
+  getParentFolder
+} = require("../folderMemory");
+
 const KEYWORDS = Object.freeze([
   "studio",
   "digital",
@@ -250,7 +257,17 @@ async function executeOpenPsd(dependencies = {}, options = {}) {
     throw new Error("Missing required selectPsdFiles dependency.");
   }
 
-  const fileEntries = await selectPsdFiles();
+  const storage = dependencies.storage || (typeof localStorage !== "undefined" ? localStorage : null);
+  const localFileSystem = dependencies.localFileSystem || null;
+
+  let restoredFolder = null;
+  if (localFileSystem && storage) {
+    try {
+      restoredFolder = await restoreFolderFromToken(TOKEN_KEYS.OPEN_PSD, localFileSystem, storage);
+    } catch (_) {}
+  }
+
+  const fileEntries = await selectPsdFiles({ initialLocation: restoredFolder });
   if (!fileEntries || !fileEntries.length) {
     return {
       outcome: "cancelled",
@@ -258,6 +275,15 @@ async function executeOpenPsd(dependencies = {}, options = {}) {
       failureCount: 0,
       totalCount: 0
     };
+  }
+
+  if (localFileSystem && storage && fileEntries.length > 0) {
+    try {
+      const parentFolder = await getParentFolder(fileEntries[0], localFileSystem);
+      if (parentFolder) {
+        await saveFolderToken(TOKEN_KEYS.OPEN_PSD, parentFolder, localFileSystem, storage);
+      }
+    } catch (_) {}
   }
 
   const total = fileEntries.length;
@@ -490,11 +516,17 @@ function getDefaultDependencies() {
   } catch (_) {}
 
   return {
-    selectPsdFiles: async () => {
-      const result = await fs.getFileForOpening({
+    storage: typeof localStorage !== "undefined" ? localStorage : null,
+    localFileSystem: fs,
+    selectPsdFiles: async (pickerOptions = {}) => {
+      const opts = {
         types: ["psd"],
         allowMultiple: true
-      });
+      };
+      if (pickerOptions && pickerOptions.initialLocation) {
+        opts.initialLocation = pickerOptions.initialLocation;
+      }
+      const result = await fs.getFileForOpening(opts);
       if (!result) return null;
       const files = Array.isArray(result) ? result : [result];
       return files.length > 0 ? files : null;
