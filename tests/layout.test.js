@@ -566,7 +566,7 @@ test("panel contract: satisfies all 14 layout and interaction specifications", (
 
 test("icon integration: satisfies all PNG icon asset, markup, and styling requirements", () => {
   const html = fs.readFileSync(path.join(projectRoot, "index.html"), "utf8");
-  const css = fs.readFileSync(path.join(projectRoot, "style.css"), "utf8");
+  const css = fs.readFileSync(path.join(projectRoot, "style.css"), "utf8").replace(/\r\n/g, "\n");
 
   // 1. all 8 icon files exist
   const expectedIconMap = {
