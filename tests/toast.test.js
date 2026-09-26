@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { createToastManager } = require("../src/ui/toast");
-const { buildAutoPhotoFillToast, buildOpenPsdToast, buildSavePageToast, buildSaveEditedPhotosToast } = require("../main");
+const { buildAutoPhotoFillToast, buildOpenPsdToast, buildSavePageToast, buildSaveEditedPhotosToast, buildRemovePhotosToast } = require("../main");
 const { executeSwapPhotos } = require("../src/tools/swapPhotos");
 
 function createMockToastElement() {
@@ -318,4 +318,42 @@ test("11. Save Edited Photos uses toast summary", () => {
   assert.equal(res9.message, "Edited photo export failed");
   assert.equal(res9.type, "error");
 });
+
+test("12. Remove Photos uses toast summary", () => {
+  // Case A: no document
+  const res1 = buildRemovePhotosToast({ outcome: "no-document" });
+  assert.equal(res1.message, "Open a document first");
+  assert.equal(res1.type, "warning");
+
+  // Case B: no matches
+  const res2 = buildRemovePhotosToast({ outcome: "no-matches" });
+  assert.equal(res2.message, "No matching photos found");
+  assert.equal(res2.type, "info");
+
+  // Case C: full success (1 photo)
+  const res3 = buildRemovePhotosToast({ outcome: "success", removedCount: 1, failedCount: 0 });
+  assert.equal(res3.message, "1 photo removed");
+  assert.equal(res3.type, "success");
+
+  // Case D: full success (3 photos)
+  const res4 = buildRemovePhotosToast({ outcome: "success", removedCount: 3, failedCount: 0 });
+  assert.equal(res4.message, "3 photos removed");
+  assert.equal(res4.type, "success");
+
+  // Case E: partial success
+  const res5 = buildRemovePhotosToast({ outcome: "partial", removedCount: 3, failedCount: 1 });
+  assert.equal(res5.message, "3 removed • 1 failed");
+  assert.equal(res5.type, "warning");
+
+  // Case F: all deletes failed
+  const res6 = buildRemovePhotosToast({ outcome: "failed", removedCount: 0, failedCount: 2 });
+  assert.equal(res6.message, "Photo removal failed");
+  assert.equal(res6.type, "error");
+
+  // Case G: unexpected error
+  const res7 = buildRemovePhotosToast({ outcome: "error" });
+  assert.equal(res7.message, "Photo removal failed");
+  assert.equal(res7.type, "error");
+});
+
 

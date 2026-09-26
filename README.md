@@ -1,4 +1,4 @@
-# MM Album Design Tools v0.6.0
+# MM Album Design Tools v0.7.0
 
 A compact Photoshop UXP panel for album-design production utilities. The panel includes:
 
@@ -7,8 +7,24 @@ A compact Photoshop UXP panel for album-design production utilities. The panel i
 3. **Swap Photos**
 4. **Save Page**
 5. **Save Edited Photos**
+6. **Remove Photos**
 
 The existing plugin ID remains `in.memorymaker.albumplacer`, so installations of Memory Maker Album Placer upgrade to this product name instead of creating a second plugin.
+
+## Remove Photos
+
+1. Open an album page document in Photoshop.
+2. Click **REMOVE PHOTOS**.
+3. The plugin recursively scans the entire active document hierarchy (traversing nested groups at any depth).
+4. Deletes only layers that satisfy ALL THREE conditions:
+   - **Smart Object**: Must be a Smart Object layer.
+   - **Clipping Mask**: Must be clipped to the layer below (`grouped === true` / `isClippingMask`).
+   - **Name Match**: Name must contain any of `IMG`, `DSC`, `PHOTO`, `.JPG`, or `.JPEG` (case-insensitive substring match).
+5. All three criteria are required: non-clipped Smart Objects, pixel layers, text layers, and non-matching layers are safely preserved.
+6. Group containers are never deleted—only their matching child layers are removed.
+7. Works across the whole active document regardless of selection or visibility (hidden matching layers are also deleted).
+8. Executed inside a single undoable history state (`Remove Photos`) inside modal scope.
+9. Reports result via toast: `1 photo removed`, `<n> photos removed`, `No matching photos found`, or `<n> removed • <m> failed`.
 
 ## Save Edited Photos
 
