@@ -1,6 +1,9 @@
-# MM Album Design Tools v0.2.3
+# MM Album Design Tools v0.3.0
 
-A compact Photoshop UXP panel for album-design production utilities. The first included tool is **Auto Photo Fill**.
+A compact Photoshop UXP panel for album-design production utilities. The panel includes:
+
+1. **Auto Photo Fill**
+2. **Swap Photos**
 
 The existing plugin ID remains `in.memorymaker.albumplacer`, so installations of Memory Maker Album Placer upgrade to this product name instead of creating a second plugin.
 
@@ -15,6 +18,24 @@ The existing plugin ID remains `in.memorymaker.albumplacer`, so installations of
 7. Matched photos are placed as embedded Smart Objects, cover-fitted, centered, clipped, and renamed.
 8. Only successfully placed source photos are moved into an `Album Used` folder inside each photo's original source directory.
 9. Extra, unreadable, or failed photos remain untouched in their source location.
+
+## Swap Photos
+
+1. Select exactly 2 or 3 Smart Object photo layers in the active document.
+2. Click **SWAP PHOTOS**.
+3. **2 photos:** Direct content swap between the two Smart Objects:
+   - Layer 1 <- Content of Layer 2
+   - Layer 2 <- Content of Layer 1
+4. **3 photos:** Deterministic cyclic content swap in top-to-bottom layer order:
+   - Layer 1 <- Content of Layer 3
+   - Layer 2 <- Content of Layer 1
+   - Layer 3 <- Content of Layer 2
+5. Smart Object layers stay in their exact stack positions with clipping masks, transforms, effects, and placeholder relationships intact (content-based swap via `placedLayerExportContents` and `placedLayerReplaceContents`).
+6. All contents are exported to temporary PSB files before any replacement begins, preventing data loss.
+7. In-document operation only: does not touch source photo folders, picker, or `Album Used`.
+8. Collapses into a single undo step ("MM Swap Photos") with automatic pre-swap rollback on error.
+
+
 
 ## v0.2.3 filesystem fix
 
@@ -48,7 +69,9 @@ When the number of usable photos equals the number of readable selected placehol
 
 - `manifest.json` — Photoshop UXP plugin definition
 - `index.html` / `style.css` — responsive multi-tool panel shell
-- `main.js` — panel bootstrap, global status, panel results, and tool-button wiring
+- `main.js` — panel bootstrap, tool-button wiring, and toast presentation
+- `src/tools/swapPhotos.js` — Swap Photos orchestration, target resolution, and cyclic swaps
+- `src/ui/toast.js` — temporary panel toast management
 - `src/tools/autoPhotoFill.js` — Auto Photo Fill orchestration and completion summaries
 - `src/orientation.js` — pure dimension/orientation classification
 - `src/matcher.js` — pure deterministic matching engine
@@ -56,7 +79,7 @@ When the number of usable photos equals the number of readable selected placehol
 - `src/layers.js` — selected-layer retrieval in top-to-bottom order
 - `src/photoshop.js` — image inspection and Smart Object placement engine
 - `src/files.js` — multiple-image picker and collision-safe `Album Used` movement
-- `tests/` — Node tests for layout, matching, classification, workflow, file movement, and Photoshop-boundary contracts
+- `tests/` — Node tests for layout, matching, classification, workflow, file movement, swap logic, toasts, and Photoshop-boundary contracts
 
 ## Test in Photoshop
 

@@ -13,34 +13,20 @@
         <div class="eyebrow">MM</div>
         <h1>MM Album Design Tools</h1>
       </div>
-      <span class="version">v0.2.3</span>
+      <span class="version">v0.3.0</span>
     </header>
 
-    <section class="tools-section" aria-labelledby="albumToolsTitle">
-      <div id="albumToolsTitle" class="section-label">ALBUM TOOLS</div>
-
-      <article class="card tool-card">
-        <h2>Auto Photo Fill</h2>
-        <p class="tool-description">
-          Prefer orientation matches, then fill every remaining selected placeholder.
-        </p>
-        <button id="autoPhotoFillBtn" class="btn primary full" data-tool="auto-photo-fill">
-          AUTO PHOTO FILL
-        </button>
-      </article>
-
-      <p class="future-note">More album-design tools will be added here later.</p>
+    <section class="tools-section" aria-label="Album Design Tools">
+      <button id="autoPhotoFillBtn" class="btn primary full" data-tool="auto-photo-fill">
+        AUTO PHOTO FILL
+      </button>
+      <button id="swapPhotosBtn" class="btn primary full" data-tool="swap-photos">
+        SWAP PHOTOS
+      </button>
     </section>
 
-    <section class="status-panel" aria-live="polite">
-      <div class="status-label">Status</div>
-      <div id="statusText" class="status-text">Ready.</div>
-    </section>
-
-    <section id="resultPanel" class="result-panel" aria-live="polite" tabindex="-1" hidden>
-      <div id="resultPanelTitle" class="result-panel-title">Result</div>
-      <div id="resultPanelMessage" class="result-panel-message"></div>
-    </section>
+    <div id="statusText" class="status-text" aria-live="polite" hidden></div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </main>
 
   <script src="main.js"></script>

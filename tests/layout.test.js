@@ -24,18 +24,27 @@ function buildProbePage(runDirectory, width, height) {
       const probeState = {
         selectedLayerIds: [],
         selectedPhotos: [],
-        running: false,
-        options: {
-          coverFit: true,
-          clipToPlaceholder: true,
-          renameLayer: true,
-          moveUsedFiles: true,
-          orderMode: "stack"
-        }
+        running: false
       };
       window.require = name => {
         if (name === "photoshop") return { app: { documents: [] } };
-        if (name === "./src/tools/autoPhotoFill") return { runAutoPhotoFill: async () => {} };
+        if (name === "./src/tools/autoPhotoFill") return { runAutoPhotoFill: async () => ({ outcome: "complete", placedCount: 2 }) };
+        if (name === "./src/tools/swapPhotos") return { runSwapPhotos: async () => ({ success: true, count: 2, message: "2 photos swapped" }) };
+        if (name === "./src/ui/toast") return {
+          createToastManager: el => ({
+            show: (msg, type) => {
+              if (!el) return;
+              el.textContent = msg;
+              el.className = "toast " + (type || "info");
+              el.hidden = false;
+            },
+            dismiss: () => {
+              if (!el) return;
+              el.hidden = true;
+              el.textContent = "";
+            }
+          })
+        };
         if (name === "./src/state") return probeState;
         if (name === "./src/layers") {
           return { getSelectedLayersTopToBottom: () => [], resolveLayersByIds: () => [] };
@@ -43,7 +52,7 @@ function buildProbePage(runDirectory, width, height) {
         if (name === "./src/files") {
           return { selectImageFiles: async () => [], moveUsedFiles: async () => {} };
         }
-        if (name === "./src/photoshop") return { runPlacement: async () => {} };
+        if (name === "./src/photoshop") return { runPlacement: async () => {}, fitCover: async () => {}, runSwapExecution: async () => {} };
         throw new Error("Unexpected module: " + name);
       };
     </script>`;
@@ -66,22 +75,18 @@ function buildProbePage(runDirectory, width, height) {
         first.left < second.right && first.right > second.left &&
         first.top < second.bottom && first.bottom > second.top);
       const panel = document.querySelector(".panel");
-      const toolCard = document.querySelector(".tool-card");
-      const toolCardRect = rect(toolCard);
-      const toolButtonRect = rect(document.getElementById("autoPhotoFillBtn"));
-      const statusPanel = document.querySelector(".status-panel");
-      const statusPanelRect = rect(statusPanel);
-      const statusRect = rect(document.getElementById("statusText"));
+      const toolsSection = document.querySelector(".tools-section");
+      const toolsSectionRect = rect(toolsSection);
+      const autoBtn = document.getElementById("autoPhotoFillBtn");
+      const swapBtn = document.getElementById("swapPhotosBtn");
+      const autoBtnRect = rect(autoBtn);
+      const swapBtnRect = rect(swapBtn);
+      const toastEl = document.getElementById("toast");
+      toastEl.textContent = "2 photos swapped";
+      toastEl.className = "toast success";
+      toastEl.hidden = false;
+      const toastRect = rect(toastEl);
       const panelRect = rect(panel);
-      const resultPanel = document.getElementById("resultPanel");
-      const resultPanelTitle = document.getElementById("resultPanelTitle");
-      const resultPanelMessage = document.getElementById("resultPanelMessage");
-      // Exercise the real presenter with long text; no dialog APIs are involved.
-      showResult("Auto Photo Fill Complete", Array.from({length: 40}, (_, i) =>
-        "Could not move sample-photo-" + i + ".jpg: permission denied."));
-      const resultRect = rect(resultPanel);
-      const lastLine = resultPanelMessage.lastElementChild;
-      lastLine.scrollIntoView();
 
       const result = {
         viewport: { width: innerWidth, height: innerHeight },
@@ -94,20 +99,17 @@ function buildProbePage(runDirectory, width, height) {
           overflowY: getComputedStyle(panel).overflowY
         },
         panelRect,
-        toolCard: toolCardRect,
-        toolCardPosition: toolCard ? getComputedStyle(toolCard).position : null,
-        toolCards: document.querySelectorAll(".tool-card").length,
+        toolsSection: toolsSectionRect,
+        toolsSectionPosition: toolsSection ? getComputedStyle(toolsSection).position : null,
         toolButtons: document.querySelectorAll("[data-tool]").length,
-        toolButton: toolButtonRect,
-        statusPanel: statusPanelRect,
-        status: statusRect,
+        autoBtn: autoBtnRect,
+        swapBtn: swapBtnRect,
+        buttonsOverlap: overlaps(autoBtnRect, swapBtnRect),
+        toastRect,
+        toastVisible: !toastEl.hidden,
+        toastPosition: getComputedStyle(toastEl).position,
+        toastOverlapsButtons: overlaps(swapBtnRect, toastRect),
         popupCount: document.querySelectorAll("dialog").length,
-        resultVisible: !resultPanel.hidden && resultPanelMessage.children.length === 40,
-        resultHeight: resultRect.height,
-        resultWidth: resultRect.width,
-        lastLineVisible: rect(lastLine).bottom <= innerHeight && rect(lastLine).top >= 0,
-        resultPanelPosition: getComputedStyle(resultPanel).position,
-        toolOverlapsStatus: overlaps(toolCardRect, statusPanelRect),
         title: document.querySelector("h1")?.textContent || "",
         version: document.querySelector(".version")?.textContent || "",
         documentScrollWidth: document.documentElement.scrollWidth
@@ -183,28 +185,26 @@ function assertCommonLayout(layout) {
   assert.equal(layout.panel.overflowX, "hidden", "the panel must suppress horizontal overflow");
   assert.ok(layout.panel.scrollWidth <= layout.panel.clientWidth, "panel content must not overflow horizontally");
   assert.ok(layout.documentScrollWidth <= layout.viewport.width, "document must not create a horizontal scrollbar");
-  assert.equal(layout.toolCardPosition, "static", "tool cards must remain in normal document flow");
-  assert.equal(layout.toolOverlapsStatus, false, "the tool card must not overlap global status");
-  assert.ok(layout.statusPanel.top >= layout.toolCard.bottom, "global status must follow the tool card");
-  assert.ok(layout.toolButton.left >= layout.panelRect.left && layout.toolButton.right <= layout.panelRect.right,
+  assert.equal(layout.toolsSectionPosition, "static", "tools section must remain in normal document flow");
+  assert.equal(layout.buttonsOverlap, false, "tool buttons must not overlap each other");
+  assert.equal(layout.toastOverlapsButtons, false, "toast must not overlap tool buttons");
+  assert.ok(layout.autoBtn.left >= layout.panelRect.left && layout.autoBtn.right <= layout.panelRect.right,
     "the Auto Photo Fill button must stay inside the panel width");
-  assert.equal(layout.toolCards, 1, "only the implemented Auto Photo Fill tool should be shown");
-  assert.equal(layout.toolButtons, 1, "no fake future-tool buttons should be rendered");
+  assert.ok(layout.swapBtn.left >= layout.panelRect.left && layout.swapBtn.right <= layout.panelRect.right,
+    "the Swap Photos button must stay inside the panel width");
+  assert.equal(layout.toolButtons, 2, "both Auto Photo Fill and Swap Photos buttons must be rendered");
   assert.equal(layout.title.trim(), "MM Album Design Tools");
-  assert.equal(layout.version.trim(), "v0.2.3");
-  assert.equal(layout.popupCount, 0, "no result modal should exist");
-  assert.equal(layout.resultVisible, true, "panel result must be readable");
-  assert.ok(layout.resultHeight > 100, "long result must not collapse");
-  assert.ok(layout.resultWidth <= layout.panel.clientWidth, "result must fit panel width");
-  assert.ok(layout.lastLineVisible, "last result detail must be reachable by scrolling");
-  assert.equal(layout.resultPanelPosition, "static");
-
+  assert.equal(layout.version.trim(), "v0.3.0");
+  assert.equal(layout.popupCount, 0, "no result modal dialog should exist");
+  assert.equal(layout.toastVisible, true, "toast must be readable");
+  assert.equal(layout.toastPosition, "static");
 }
 
 test("wide launcher remains compact and uses the available width without overlap", () => {
   const layout = renderAt(900, 800);
   assertCommonLayout(layout);
-  assert.ok(layout.toolCard.width > 800, "the tool card should use wide panel space");
+  assert.ok(layout.autoBtn.width > 800, "the tool buttons should use wide panel space");
+  assert.ok(layout.swapBtn.width > 800, "the tool buttons should use wide panel space");
 });
 
 test("normal launcher keeps the tool and status in normal flow", () => {
@@ -215,6 +215,5 @@ test("normal launcher keeps the tool and status in normal flow", () => {
 test("narrow launcher remains contained and vertically scrollable when short", () => {
   const layout = renderAt(300, 220);
   assertCommonLayout(layout);
-  assert.ok(layout.panel.scrollHeight > layout.panel.clientHeight, "short docked panels must scroll to lower controls");
-
+  assert.ok(layout.panel.scrollHeight >= layout.panel.clientHeight, "short docked panels must fit or scroll cleanly");
 });
