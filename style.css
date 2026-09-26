@@ -1,0 +1,166 @@
+:root {
+  --bg: #1d1d1d;
+  --surface: #282828;
+  --surface-2: #303030;
+  --border: #404040;
+  --text: #f3f3f3;
+  --muted: #a9a9a9;
+  --accent: #2ea36a;
+  --accent-hover: #36b979;
+  --danger: #e46a6a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+}
+
+/*
+ * Photoshop can dock a UXP panel at a height smaller than its content.
+ * Keep the host panel fixed and make our own content area scrollable so
+ * every control remains reachable even in a short docked panel.
+ */
+.panel {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.panel::-webkit-scrollbar { width: 9px; }
+.panel::-webkit-scrollbar-track { background: #1a1a1a; }
+.panel::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 999px;
+  border: 2px solid #1a1a1a;
+}
+.panel::-webkit-scrollbar-thumb:hover { background: #707070; }
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+}
+
+h1 {
+  margin: 3px 0 0;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.version {
+  color: var(--muted);
+  font-size: 11px;
+  padding-top: 4px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.section-label {
+  margin: 0 0 6px 2px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+}
+
+.tool-card { position: static; }
+
+.tool-card h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.tool-description {
+  margin: 6px 0 10px;
+  color: var(--muted);
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+.btn {
+  border: 0;
+  border-radius: 5px;
+  min-height: 30px;
+  padding: 6px 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.btn.full { width: 100%; }
+.btn.secondary { background: var(--surface-2); color: var(--text); border: 1px solid #4a4a4a; }
+.btn.secondary:hover { background: #393939; }
+.btn.primary { background: var(--accent); color: #fff; min-height: 36px; letter-spacing: .25px; }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn:disabled { opacity: .45; cursor: default; }
+
+.future-note {
+  margin: 0 2px 10px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.status-panel {
+  position: static;
+  border-top: 1px solid var(--border);
+  padding: 9px 2px 2px;
+}
+
+.status-label { color: var(--text); font-size: 11px; font-weight: 650; }
+.status-text { margin-top: 3px; color: var(--muted); min-height: 18px; line-height: 1.35; overflow-wrap: break-word; }
+.status-text.error { color: var(--danger); }
+.status-text.success { color: #74d69c; }
+
+.result-panel {
+  position: static;
+  margin-top: 10px;
+  padding: 10px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.result-panel[hidden] { display: none; }
+.result-panel-title { font-size: 12px; font-weight: 650; }
+.result-panel-message { margin-top: 6px; color: var(--muted); line-height: 1.4; }
+.result-panel-message p { margin: 0 0 5px; overflow-wrap: break-word; }
+
+@media (max-width: 300px) {
+  .panel { padding: 8px; }
+  h1 { font-size: 17px; }
+}
