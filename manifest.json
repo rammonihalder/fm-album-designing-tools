@@ -43,7 +43,15 @@
       "maximumSize": {
         "width": 1200,
         "height": 1600
-      }
+      },
+      "icons": [
+        {
+          "width": 23,
+          "height": 23,
+          "path": "assets/panel-icons/panel-icon.png",
+          "scale": [1, 2]
+        }
+      ]
     }
   ],
   "requiredPermissions": {
