@@ -12,7 +12,7 @@ function harness({ count = 6, placeholders = 5, moveFails = false } = {}) {
   let outcome;
 
   const ids = [
-    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "savePageBtn", "saveEditedPhotosBtn", "statusText", "toast",
+    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "savePageBtn", "saveEditedPhotosBtn", "removePhotosBtn", "statusText", "toast",
     "savePageDialog", "savePagePrefixInput", "savePagePrefixError", "savePageDialogSaveBtn", "savePageDialogCancelBtn",
     "resultPanel", "resultPanelTitle", "resultPanelMessage",
     "resultDialog", "resultDialogTitle", "resultDialogMessage", "resultDialogOk"
@@ -89,6 +89,12 @@ function harness({ count = 6, placeholders = 5, moveFails = false } = {}) {
         return {
           runSaveEditedPhotos: async () => ({ outcome: "success", successCount: 1, failedCount: 0 }),
           buildSaveEditedPhotosToast: () => ({ message: "1 edited photo saved", type: "success" })
+        };
+      }
+      if (name === "./src/tools/removePhotos") {
+        return {
+          runRemovePhotos: async () => ({ outcome: "success", removedCount: 1, failedCount: 0 }),
+          buildRemovePhotosToast: () => ({ message: "1 photo removed", type: "success" })
         };
       }
       if (name === "./src/ui/toast") {

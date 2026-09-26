@@ -77,7 +77,7 @@ function createMockStorage(initial = {}) {
 function createMainHarness({ runSaveEditedPhotosOutcome = { outcome: "success", successCount: 1, failedCount: 0 } } = {}) {
   const elements = new Map();
   const ids = [
-    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "savePageBtn", "saveEditedPhotosBtn", "statusText", "toast",
+    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "savePageBtn", "saveEditedPhotosBtn", "removePhotosBtn", "statusText", "toast",
     "savePageDialog", "savePagePrefixInput", "savePagePrefixError", "savePageDialogSaveBtn", "savePageDialogCancelBtn",
     "editedPhotosDeviceDialog", "editedPhotosDeviceLaptopBtn", "editedPhotosDeviceDesktopBtn", "editedPhotosDeviceCancelBtn"
   ];
@@ -132,6 +132,12 @@ function createMainHarness({ runSaveEditedPhotosOutcome = { outcome: "success", 
           buildSaveEditedPhotosToast
         };
       }
+      if (name === "./src/tools/removePhotos") {
+        return {
+          runRemovePhotos: async () => ({ outcome: "success", removedCount: 1, failedCount: 0 }),
+          buildRemovePhotosToast: () => ({ message: "1 photo removed", type: "success" })
+        };
+      }
       if (name === "./src/ui/toast") {
         return require("../src/ui/toast");
       }
@@ -179,14 +185,14 @@ test("2. Exact button order: OPEN PSD -> AUTO PHOTO FILL -> SWAP PHOTOS -> SAVE 
   assert.ok(savePos < saveEditedPos, "savePageBtn must be before saveEditedPhotosBtn");
 });
 
-test("3. Visible version is v0.6.0 in index.html", () => {
+test("3. Visible version is v0.7.0 in index.html", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v0.6.0"), "index.html must display v0.6.0");
+  assert.ok(html.includes("v0.7.0"), "index.html must display v0.7.0");
 });
 
-test("4. Manifest version = 0.6.0", () => {
+test("4. Manifest version = 0.7.0", () => {
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "0.6.0", "manifest.json version must be 0.6.0");
+  assert.equal(manifest.version, "0.7.0", "manifest.json version must be 0.7.0");
 });
 
 test("5. Plugin ID unchanged", () => {

@@ -760,6 +760,54 @@ async function executeSaveEditedPhotosModal(operationFn, commandName = "MM Save 
   return operationFn();
 }
 
+function flattenDocLayers(layers, output = []) {
+  if (!layers) return output;
+  for (const layer of layers) {
+    output.push(layer);
+    if (layer.layers && layer.layers.length) {
+      flattenDocLayers(layer.layers, output);
+    }
+  }
+  return output;
+}
+
+async function deleteLayerById(layerId, doc) {
+  if (!layerId) return;
+
+  if (doc && doc.layers) {
+    const all = flattenDocLayers(doc.layers, []);
+    const match = all.find(l => l.id === layerId);
+    if (match && typeof match.delete === "function") {
+      await match.delete();
+      return;
+    }
+  }
+
+  if (action && typeof action.batchPlay === "function") {
+    await action.batchPlay([
+      {
+        _obj: "delete",
+        _target: [
+          {
+            _ref: "layer",
+            _id: layerId
+          }
+        ],
+        _options: { dialogOptions: "dontDisplay" }
+      }
+    ], {});
+  }
+}
+
+async function executeRemovePhotosModal(operationFn, commandName = "MM Remove Photos") {
+  if (core && typeof core.executeAsModal === "function") {
+    return core.executeAsModal(async executionContext => {
+      return operationFn(executionContext);
+    }, { commandName });
+  }
+  return operationFn();
+}
+
 module.exports = {
   inspectImageFiles,
   runPlacement,
@@ -772,10 +820,12 @@ module.exports = {
   replaceSmartObjectContents,
   openSmartObjectContents,
   closeDocumentWithoutSaving,
+  deleteLayerById,
   executeSwapModal,
   executeOpenPsdModal,
   executeSavePageModal,
   executeSaveEditedPhotosModal,
+  executeRemovePhotosModal,
   getDocumentMetrics,
   normalizeDocumentToPixels,
   normalizeAlbumSize,

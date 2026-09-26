@@ -5,6 +5,7 @@ const { runAutoPhotoFill } = require("./src/tools/autoPhotoFill");
 const { runSwapPhotos } = require("./src/tools/swapPhotos");
 const { runSavePage, buildSavePageToast, isValidPrefix } = require("./src/tools/savePage");
 const { runSaveEditedPhotos, buildSaveEditedPhotosToast } = require("./src/tools/saveEditedPhotos");
+const { runRemovePhotos, buildRemovePhotosToast } = require("./src/tools/removePhotos");
 const { createToastManager } = require("./src/ui/toast");
 
 const $ = id => (typeof document !== "undefined" && typeof document.getElementById === "function" ? document.getElementById(id) : null);
@@ -15,6 +16,7 @@ const ui = {
   swapPhotosBtn: $("swapPhotosBtn"),
   savePageBtn: $("savePageBtn"),
   saveEditedPhotosBtn: $("saveEditedPhotosBtn"),
+  removePhotosBtn: $("removePhotosBtn"),
   savePageDialog: $("savePageDialog"),
   prefixInput: $("savePagePrefixInput"),
   prefixError: $("savePagePrefixError"),
@@ -37,6 +39,7 @@ function setButtonsDisabled(disabled) {
   if (ui.swapPhotosBtn) ui.swapPhotosBtn.disabled = disabled;
   if (ui.savePageBtn) ui.savePageBtn.disabled = disabled;
   if (ui.saveEditedPhotosBtn) ui.saveEditedPhotosBtn.disabled = disabled;
+  if (ui.removePhotosBtn) ui.removePhotosBtn.disabled = disabled;
 }
 
 function setStatus(message) {
@@ -396,6 +399,27 @@ async function handleSaveEditedPhotos() {
   }
 }
 
+async function handleRemovePhotos() {
+  if (running) return;
+  running = true;
+  setButtonsDisabled(true);
+  toast.dismiss();
+
+  try {
+    const result = await runRemovePhotos();
+    const summary = buildRemovePhotosToast(result);
+    toast.show(summary.message, summary.type);
+    return result;
+  } catch (error) {
+    console.error("Remove Photos error:", error);
+    toast.show("Photo removal failed", "error");
+    return { outcome: "error", error };
+  } finally {
+    running = false;
+    setButtonsDisabled(false);
+  }
+}
+
 if (ui.openPsdBtn && typeof ui.openPsdBtn.addEventListener === "function") {
   ui.openPsdBtn.addEventListener("click", handleOpenPsd);
 }
@@ -411,6 +435,9 @@ if (ui.savePageBtn && typeof ui.savePageBtn.addEventListener === "function") {
 if (ui.saveEditedPhotosBtn && typeof ui.saveEditedPhotosBtn.addEventListener === "function") {
   ui.saveEditedPhotosBtn.addEventListener("click", handleSaveEditedPhotos);
 }
+if (ui.removePhotosBtn && typeof ui.removePhotosBtn.addEventListener === "function") {
+  ui.removePhotosBtn.addEventListener("click", handleRemovePhotos);
+}
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
@@ -418,11 +445,13 @@ if (typeof module !== "undefined" && module.exports) {
     buildOpenPsdToast,
     buildSavePageToast,
     buildSaveEditedPhotosToast,
+    buildRemovePhotosToast,
     handleOpenPsd,
     handleAutoPhotoFill,
     handleSwapPhotos,
     handleSavePage,
     handleSaveEditedPhotos,
+    handleRemovePhotos,
     promptForPrefix,
     promptForDeviceType,
     setButtonsDisabled,
