@@ -29,6 +29,7 @@ function resolveLayersByIds(ids) {
 }
 
 module.exports = {
+  flattenLayers,
   getSelectedLayersTopToBottom,
   resolveLayersByIds
 };

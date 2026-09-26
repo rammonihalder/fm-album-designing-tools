@@ -113,3 +113,150 @@ test("a rollback failure is attached to the original placement error", async () 
     console.warn = originalWarn;
   }
 });
+
+test("exportSmartObjectContents invokes batchPlay placedLayerExportContents with session token", async () => {
+  const batchPlayCalls = [];
+  const originalLoad = Module._load;
+  const modulePath = require.resolve("../src/photoshop");
+
+  Module._load = function mockLoad(request, parent, isMain) {
+    if (request === "photoshop") {
+      return {
+        app: { activeDocument: { activeLayers: [] } },
+        action: {
+          batchPlay: async (descriptors, options) => {
+            batchPlayCalls.push({ descriptors, options });
+            return [{ _obj: "success", executionStatus: "success" }];
+          }
+        },
+        core: { executeAsModal: async fn => fn({}) },
+        constants: {
+          ElementPlacement: { PLACEBEFORE: "placeBefore" },
+          AnchorPosition: { MIDDLECENTER: "middleCenter" }
+        }
+      };
+    }
+
+    if (request === "uxp") {
+      return {
+        storage: {
+          localFileSystem: { createSessionToken: async entry => `token-${entry.name}` }
+        }
+      };
+    }
+
+    return originalLoad(request, parent, isMain);
+  };
+
+  delete require.cache[modulePath];
+  try {
+    const { exportSmartObjectContents } = require(modulePath);
+    const mockLayer = { id: 42, name: "Smart 42" };
+    const mockFile = { name: "test-export.psb" };
+
+    await exportSmartObjectContents(mockLayer, mockFile);
+
+    assert.equal(batchPlayCalls.length, 2); // 1 select + 1 placedLayerExportContents
+    const exportCall = batchPlayCalls[1].descriptors[0];
+    assert.equal(exportCall._obj, "placedLayerExportContents");
+    assert.equal(exportCall._target[0]._id, 42);
+    assert.equal(exportCall.null._path, "token-test-export.psb");
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[modulePath];
+  }
+});
+
+test("replaceSmartObjectContents invokes batchPlay placedLayerReplaceContents with session token", async () => {
+  const batchPlayCalls = [];
+  const originalLoad = Module._load;
+  const modulePath = require.resolve("../src/photoshop");
+
+  Module._load = function mockLoad(request, parent, isMain) {
+    if (request === "photoshop") {
+      return {
+        app: { activeDocument: { activeLayers: [] } },
+        action: {
+          batchPlay: async (descriptors, options) => {
+            batchPlayCalls.push({ descriptors, options });
+            return [{ _obj: "success", executionStatus: "success" }];
+          }
+        },
+        core: { executeAsModal: async fn => fn({}) },
+        constants: {
+          ElementPlacement: { PLACEBEFORE: "placeBefore" },
+          AnchorPosition: { MIDDLECENTER: "middleCenter" }
+        }
+      };
+    }
+
+    if (request === "uxp") {
+      return {
+        storage: {
+          localFileSystem: { createSessionToken: async entry => `token-${entry.name}` }
+        }
+      };
+    }
+
+    return originalLoad(request, parent, isMain);
+  };
+
+  delete require.cache[modulePath];
+  try {
+    const { replaceSmartObjectContents } = require(modulePath);
+    const mockLayer = { id: 99, name: "Smart 99" };
+    const mockFile = { name: "test-replace.psb" };
+
+    await replaceSmartObjectContents(mockLayer, mockFile);
+
+    assert.equal(batchPlayCalls.length, 2); // 1 select + 1 placedLayerReplaceContents
+    const replaceCall = batchPlayCalls[1].descriptors[0];
+    assert.equal(replaceCall._obj, "placedLayerReplaceContents");
+    assert.equal(replaceCall._target[0]._id, 99);
+    assert.equal(replaceCall.null._path, "token-test-replace.psb");
+    assert.equal(replaceCall._isCommand, true);
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[modulePath];
+  }
+});
+
+test("exportSmartObjectContents throws if batchPlay reports failure", async () => {
+  const originalLoad = Module._load;
+  const modulePath = require.resolve("../src/photoshop");
+
+  Module._load = function mockLoad(request, parent, isMain) {
+    if (request === "photoshop") {
+      return {
+        app: { activeDocument: { activeLayers: [] } },
+        action: {
+          batchPlay: async (descriptors) => {
+            if (descriptors[0]._obj === "placedLayerExportContents") {
+              return [{ _obj: "error", message: "Smart Object data unavailable" }];
+            }
+            return [];
+          }
+        },
+        core: {},
+        constants: {}
+      };
+    }
+    if (request === "uxp") {
+      return { storage: { localFileSystem: { createSessionToken: async () => "token" } } };
+    }
+    return originalLoad(request, parent, isMain);
+  };
+
+  delete require.cache[modulePath];
+  try {
+    const { exportSmartObjectContents } = require(modulePath);
+    await assert.rejects(
+      exportSmartObjectContents({ id: 10, name: "Bad SO" }, { name: "test.psb" }),
+      /Smart Object data unavailable/
+    );
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[modulePath];
+  }
+});
+

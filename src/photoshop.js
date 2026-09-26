@@ -205,9 +205,118 @@ async function runPlacement(items, options, onProgress) {
   }, { commandName: "MM Album Design Tools - Auto Photo Fill" });
 }
 
+async function selectLayerById(layerId) {
+  if (!layerId) return;
+  return action.batchPlay([
+    {
+      _obj: "select",
+      _target: [
+        {
+          _ref: "layer",
+          _id: layerId
+        }
+      ],
+      makeVisible: false,
+      _options: { dialogOptions: "dontDisplay" }
+    }
+  ], {});
+}
+
+async function exportSmartObjectContents(layer, tempFile) {
+  if (!layer || !layer.id) {
+    throw new Error("Invalid layer provided for Smart Object export.");
+  }
+  if (!tempFile) {
+    throw new Error(`No temporary file provided for layer "${layer.name || layer.id}".`);
+  }
+
+  const token = tempFile.token || (localFileSystem && localFileSystem.createSessionToken ? await localFileSystem.createSessionToken(tempFile) : String(tempFile.name || tempFile));
+
+  await selectLayerById(layer.id);
+
+  const result = await action.batchPlay([
+    {
+      _obj: "placedLayerExportContents",
+      _target: [
+        {
+          _ref: "layer",
+          _id: layer.id
+        }
+      ],
+      null: {
+        _path: token,
+        _kind: "local"
+      },
+      _options: { dialogOptions: "dontDisplay" }
+    }
+  ], {});
+
+  if (Array.isArray(result) && result.length > 0) {
+    const first = result[0];
+    if (first && (first._obj === "error" || (first.executionStatus && first.executionStatus !== "success" && first.executionStatus !== 0))) {
+      throw new Error(first.message || `Export Smart Object contents failed for "${layer.name || layer.id}"`);
+    }
+  }
+
+  return result;
+}
+
+async function replaceSmartObjectContents(layer, tempFile) {
+  if (!layer || !layer.id) {
+    throw new Error("Invalid layer provided for Smart Object replacement.");
+  }
+  if (!tempFile) {
+    throw new Error(`No temporary file provided for layer "${layer.name || layer.id}".`);
+  }
+
+  const token = tempFile.token || (localFileSystem && localFileSystem.createSessionToken ? await localFileSystem.createSessionToken(tempFile) : String(tempFile.name || tempFile));
+
+  await selectLayerById(layer.id);
+
+  const result = await action.batchPlay([
+    {
+      _obj: "placedLayerReplaceContents",
+      _target: [
+        {
+          _ref: "layer",
+          _id: layer.id
+        }
+      ],
+      null: {
+        _path: token,
+        _kind: "local"
+      },
+      _isCommand: true,
+      _options: { dialogOptions: "dontDisplay" }
+    }
+  ], {});
+
+  if (Array.isArray(result) && result.length > 0) {
+    const first = result[0];
+    if (first && (first._obj === "error" || (first.executionStatus && first.executionStatus !== "success" && first.executionStatus !== 0))) {
+      throw new Error(first.message || `Replace Smart Object contents failed for "${layer.name || layer.id}"`);
+    }
+  }
+
+  return result;
+}
+
+async function executeSwapModal(operationFn) {
+  return core.executeAsModal(async executionContext => {
+    return operationFn(executionContext);
+  }, { commandName: "MM Swap Photos" });
+}
+
 module.exports = {
   inspectImageFiles,
   runPlacement,
   readBounds,
-  placePhotoOnPlaceholder
+  placePhotoOnPlaceholder,
+  fitCover,
+  selectLayerById,
+  exportSmartObjectContents,
+  replaceSmartObjectContents,
+  executeSwapModal
 };
+
+
