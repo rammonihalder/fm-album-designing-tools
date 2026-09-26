@@ -297,3 +297,24 @@ for (const dismissal of [
     assert.deepEqual(warnings, []);
   });
 }
+
+test("move diagnostics are concise, categorized, and capped in the panel", async () => {
+  const sources = Array.from({ length: 6 }, (_, i) => file(`photo-${i}.jpg`, 800, 1200));
+  const harness = makeHarness({
+    getSelectedLayersTopToBottom: () => sources.map((_, i) => layer(i, 800, 1200)),
+    selectImageFiles: async () => sources,
+    moveUsedFiles: async () => ({ moved: [], failed: sources.map(source => ({
+      file: source,
+      error: Object.assign(new Error("Access denied " + "detail ".repeat(100)), { code: "EACCES" }),
+      diagnostic: { category: "PERMISSION", operation: "move source" }
+    })) })
+  });
+  const result = await executeAutoPhotoFill(harness.ui, harness.dependencies);
+  assert.equal(result.placedCount, 6);
+  const lines = harness.calls.dialogs[0].lines;
+  assert.ok(lines.includes("6 source photos could not be moved to Album Used."));
+  const details = lines.filter(line => line.startsWith("Could not move"));
+  assert.equal(details.length, 3);
+  assert.ok(details.every(line => line.includes("PERMISSION") && line.includes("EACCES") && line.length < 350));
+  assert.ok(lines.some(line => line.includes("3 more") && line.includes("console")));
+});

@@ -196,9 +196,16 @@ async function executeAutoPhotoFill(ui, dependencies) {
     placeholderFailures.forEach(entry => {
       lines.push(`Could not use placeholder ${entry.layer.name || entry.layer.id}: ${errorMessage(entry.error)}`);
     });
-    moveResult.failed.forEach(entry => {
-      lines.push(`Could not move ${entry.file.name}: ${errorMessage(entry.error)}`);
+    moveResult.failed.slice(0, 3).forEach(entry => {
+      const category = entry.diagnostic ? `[${entry.diagnostic.category}] ` : "";
+      const code = entry.error && entry.error.code ? `${entry.error.code}: ` : "";
+      const detail = (code + errorMessage(entry.error)).replace(/\s+/g, " ");
+      const concise = detail.length > 240 ? detail.slice(0, 237) + "..." : detail;
+      lines.push(`Could not move ${entry.file.name}: ${category}${concise}`);
     });
+    if (moveResult.failed.length > 3) {
+      lines.push(`${moveResult.failed.length - 3} more move failures; details are in the developer console.`);
+    }
 
     const hasFailures = failedPhotos.length > 0 ||
       placeholderFailures.length > 0 ||

@@ -2,7 +2,7 @@
   "manifestVersion": 5,
   "id": "in.memorymaker.albumplacer",
   "name": "MM Album Design Tools",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "main": "index.html",
   "host": {
     "app": "PS",

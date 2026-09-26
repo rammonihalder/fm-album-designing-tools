@@ -1,4 +1,4 @@
-# MM Album Design Tools v0.2.2
+# MM Album Design Tools v0.2.3
 
 A compact Photoshop UXP panel for album-design production utilities. The first included tool is **Auto Photo Fill**.
 
@@ -16,11 +16,21 @@ The existing plugin ID remains `in.memorymaker.albumplacer`, so installations of
 8. Only successfully placed source photos are moved into an `Album Used` folder inside each photo's original source directory.
 9. Extra, unreadable, or failed photos remain untouched in their source location.
 
-## v0.2.2 runtime fixes
+## v0.2.3 filesystem fix
 
-Disk movement obtains each source path with `localFileSystem.getNativePath()`. It encodes the absolute native parent path as a `file:/` URL, resolves a writable folder under the existing `fullAccess` permission, and reacquires the source file through that folder. Picker `Entry.url` is never used for disk movement. Spaces, `#`, `%`, and Unicode path segments are encoded separately; Windows drive roots retain their slash. Local drive and POSIX paths are supported; UNC/device paths are rejected with a reported move failure.
+The old movement path used `getNativePath()` correctly, but pre-encoded the parent with `encodeURIComponent` before calling UXP's `getEntryWithUrl`. The reported `%2520` means an already encoded `%20` was encoded again. There is no second encoding call in this repository's movement path: the evidence points to UXP's resolver boundary. The regression fixture models that reported host behavior; it does not replace a Photoshop runtime test.
 
-`Album Used` is created or reused per source folder. Filenames are preserved where available; collisions use `_2`, `_3`, and so on with overwriting disabled. Movement failure keeps the successful Photoshop placement and is reported in the result.
+Movement still uses **Entry APIs**, under the unchanged `fullAccess` permission. Each successfully placed picker entry goes through `localFileSystem.getNativePath()`, native parent derivation, raw UXP `file:/` path resolution, source reacquisition via `parent.getEntry(filename)`, folder creation/reuse, and `moveTo(..., { newName, overwrite: false })`. Only the separator is normalized for UXP. No encoded string or picker `Entry.url` supplies a disk path. No browser URL object is used in production.
+
+For example, the native source `G:\WORKING ALBUM\SAVE EDITED PHOTOS\ANAMIKA\Memory Maker 1 DT.jpg` gives native parent `G:\WORKING ALBUM\SAVE EDITED PHOTOS\ANAMIKA`. The resolver receives raw path text `file:/G:/WORKING ALBUM/SAVE EDITED PHOTOS/ANAMIKA`, leaving encoding to UXP. The canonical diagnostic URL is `file:///G:/WORKING%20ALBUM/SAVE%20EDITED%20PHOTOS/ANAMIKA`; it is never fed back into the resolver. The old failing URL was `file:///G:/WORKING%2520ALBUM/SAVE%2520EDITED%2520PHOTOS/ANAMIKA`.
+
+This distinction matters: manually encoding even a three-slash browser URL and feeding it to the same host resolver would retain the risk of double encoding. The diagnostic formatter encodes raw segments exactly once. Movement preserves raw spaces, `#`, `%`, `&`, parentheses, and Unicode/Bengali folder and file names, including a literal `%20` name (which must not be decoded into a space). Drive-root parents retain their slash. Local drive and POSIX paths remain accepted; UNC/device paths remain unsupported.
+
+`Album Used` is automatically created only when the lookup reports a missing entry. An existing folder is reused and cached per native parent during the run; an existing file with that name is an error. Each source uses its own parent. Destinations such as `photo.final.jpg`, `photo.final_2.jpg`, and `photo.final_3.jpg` preserve the basename and extension; overwriting is disabled even if a competing writer creates the selected name after the collision check. A failed move retains the source and the successful Photoshop placement, and processing continues. There is no copy/delete fallback or placement rollback.
+
+The Entry strategy preserves writable source reacquisition and the documented no-overwrite move option. Adobe's native `fs` supports `mkdir`, `lstat`, and `rename`, but its documented `rename` signature has no no-overwrite option; checking for a name before native rename would leave an overwrite race. References: [Adobe UXP fs](https://developer.adobe.com/photoshop/uxp/2022/uxp-api/reference-js/modules/fs/fs), [Entry.moveTo](https://developer.adobe.com/photoshop/uxp/2022/uxp-api/reference-js/modules/uxp/persistent-file-storage/entry), and [filesystem path schemes and permissions](https://developer.adobe.com/uxp/guides/how-to/recipes/filesystem-operations/).
+
+Failures retain the original error object and include a diagnostic category: `PATH / NOT FOUND`, `PERMISSION`, `LOCK / IN USE`, or `FILESYSTEM` when unknown. Recognized codes/names take precedence over message heuristics. Permission, lock, and unknown lookup failures are not treated as missing folders or free filenames. The panel shows the failure count and at most three concise details; the developer console records every failure with source native path, parent, Album Used path, chosen destination when available, resolver input, canonical URL, operation, and original error name/code/message. Some hosts report locks only as permission failures; the plugin cannot infer information the host does not expose.
 
 The completion modal has been removed because it rendered as blank host chrome in Photoshop. Completion, warnings, and errors appear in the existing dark panel result section. The result is revealed and scrolled/focused where supported; a new run hides the previous result. Status remains `Complete.` after processing.
 
@@ -56,6 +66,23 @@ When the number of usable photos equals the number of readable selected placehol
 4. Open an album PSD and select placeholder layers.
 5. Click **AUTO PHOTO FILL** and choose source photos.
 6. Verify the visible panel completion result (no popup), placed Smart Objects, cover-fit, clipping, layer names, and `Album Used` contents.
+
+### Manual v0.2.3 retest checklist
+
+Use disposable copies of source photos for these movement tests. Reload the plugin and confirm the panel shows v0.2.3.
+
+- **A — Create:** Start with `D:\TEST ALBUM\PHOTOS` and no `Album Used`. Run Auto Photo Fill. Expect automatic creation of `D:\TEST ALBUM\PHOTOS\Album Used` and movement of successfully placed sources.
+- **B — Reuse:** Run again with that folder present. Expect reuse, with no `Album Used 2` or `Album Used_2`.
+- **C — Spaces:** Use `D:\MY WEDDING ALBUM\EDITED PHOTOS`. Expect movement without a `%2520` path error.
+- **D — Original failure:** Use `G:\WORKING ALBUM\SAVE EDITED PHOTOS\ANAMIKA`. Expect folder creation/reuse and movement without `Could not find an entry of file:///...%2520...`.
+- **E — Extras:** Select six readable photos for four placeholders. Expect four placements and four moved sources; two extras stay in the source directory.
+- **F — Collision:** Put `photo.jpg` in the destination first, then place another source named `photo.jpg`. Expect `photo_2.jpg` and unchanged original destination contents; repeat with `_2` present to check `_3`.
+- **G — Bengali and special characters:** Use Bengali folder and file names, then paths with `#`, `%`, `&`, and parentheses. Expect creation/movement where Windows/UXP permits them. Also check a literal `%20` folder remains distinct from a space.
+- **H — Permissions:** Use a protected/read-only source or destination. Expect placement and source contents preserved, a categorized permission failure, and continued processing of other accessible photos. Check console operation/code details.
+- **I — Lock:** If practical, lock a source file with another application. Expect no source deletion or placement rollback, and a reported move error; a lock label requires a lock-specific host error.
+- **J — Working workflow:** Verify normal matching, cover-fit, embedded Smart Objects, clipping, layer naming, forced orientation fallback, skipped counts, JPG/JPEG/PNG multiselect, and in-panel completion. Successfully force-filled sources must move too.
+
+Photoshop runtime validation is still required. Node fixtures model UXP's encoding and Entry operations; browser layout tests do not run Photoshop. Host-specific raw path parsing, actual permissions/locks, Unicode handling, and removable/network-backed drive availability remain runtime checks.
 
 ## Automated tests
 

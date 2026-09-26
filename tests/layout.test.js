@@ -191,7 +191,7 @@ function assertCommonLayout(layout) {
   assert.equal(layout.toolCards, 1, "only the implemented Auto Photo Fill tool should be shown");
   assert.equal(layout.toolButtons, 1, "no fake future-tool buttons should be rendered");
   assert.equal(layout.title.trim(), "MM Album Design Tools");
-  assert.equal(layout.version.trim(), "v0.2.2");
+  assert.equal(layout.version.trim(), "v0.2.3");
   assert.equal(layout.popupCount, 0, "no result modal should exist");
   assert.equal(layout.resultVisible, true, "panel result must be readable");
   assert.ok(layout.resultHeight > 100, "long result must not collapse");
