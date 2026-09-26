@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { createToastManager } = require("../src/ui/toast");
-const { buildAutoPhotoFillToast } = require("../main");
+const { buildAutoPhotoFillToast, buildOpenPsdToast } = require("../main");
 const { executeSwapPhotos } = require("../src/tools/swapPhotos");
 
 function createMockToastElement() {
@@ -195,6 +195,34 @@ test("7. no completion dialog exists", () => {
 test("8. no permanent result block remains if it is no longer required", () => {
   const htmlPath = path.resolve(__dirname, "../index.html");
   const html = fs.readFileSync(htmlPath, "utf8");
-  assert.equal(/id="resultPanel"/i.test(html), false, "resultPanel section should not exist in v0.3.0 index.html");
-  assert.equal(/resultPanelMessage/i.test(html), false, "resultPanelMessage should not exist in v0.3.0 index.html");
+  assert.equal(/id="resultPanel"/i.test(html), false, "resultPanel section should not exist in index.html");
+  assert.equal(/resultPanelMessage/i.test(html), false, "resultPanelMessage should not exist in index.html");
 });
+
+test("9. Open PSD uses toast summary", () => {
+  // Case A: 1 PSD opened
+  const res1 = buildOpenPsdToast({ outcome: "success", successCount: 1, failureCount: 0 });
+  assert.equal(res1.message, "1 PSD opened");
+  assert.equal(res1.type, "success");
+
+  // Case B: 3 PSDs opened
+  const res2 = buildOpenPsdToast({ outcome: "success", successCount: 3, failureCount: 0 });
+  assert.equal(res2.message, "3 PSDs opened");
+  assert.equal(res2.type, "success");
+
+  // Case C: partial failure
+  const res3 = buildOpenPsdToast({ outcome: "partial", successCount: 2, failureCount: 1 });
+  assert.equal(res3.message, "2 PSDs opened • 1 failed");
+  assert.equal(res3.type, "warning");
+
+  // Case D: all failed
+  const res4 = buildOpenPsdToast({ outcome: "error", successCount: 0, failureCount: 2 });
+  assert.equal(res4.message, "Open PSD failed");
+  assert.equal(res4.type, "error");
+
+  // Case E: cancelled
+  const res5 = buildOpenPsdToast({ outcome: "cancelled" });
+  assert.equal(res5.message, "Cancelled");
+  assert.equal(res5.type, "info");
+});
+

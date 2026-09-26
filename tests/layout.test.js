@@ -28,6 +28,7 @@ function buildProbePage(runDirectory, width, height) {
       };
       window.require = name => {
         if (name === "photoshop") return { app: { documents: [] } };
+        if (name === "./src/tools/openPsd") return { runOpenPsd: async () => ({ outcome: "success", successCount: 1, failureCount: 0 }) };
         if (name === "./src/tools/autoPhotoFill") return { runAutoPhotoFill: async () => ({ outcome: "complete", placedCount: 2 }) };
         if (name === "./src/tools/swapPhotos") return { runSwapPhotos: async () => ({ success: true, count: 2, message: "2 photos swapped" }) };
         if (name === "./src/ui/toast") return {
@@ -77,8 +78,10 @@ function buildProbePage(runDirectory, width, height) {
       const panel = document.querySelector(".panel");
       const toolsSection = document.querySelector(".tools-section");
       const toolsSectionRect = rect(toolsSection);
+      const openBtn = document.getElementById("openPsdBtn");
       const autoBtn = document.getElementById("autoPhotoFillBtn");
       const swapBtn = document.getElementById("swapPhotosBtn");
+      const openBtnRect = rect(openBtn);
       const autoBtnRect = rect(autoBtn);
       const swapBtnRect = rect(swapBtn);
       const toastEl = document.getElementById("toast");
@@ -102,13 +105,16 @@ function buildProbePage(runDirectory, width, height) {
         toolsSection: toolsSectionRect,
         toolsSectionPosition: toolsSection ? getComputedStyle(toolsSection).position : null,
         toolButtons: document.querySelectorAll("[data-tool]").length,
+        openBtn: openBtnRect,
         autoBtn: autoBtnRect,
         swapBtn: swapBtnRect,
-        buttonsOverlap: overlaps(autoBtnRect, swapBtnRect),
+        openBeforeAuto: Boolean(openBtnRect && autoBtnRect && openBtnRect.bottom <= autoBtnRect.top),
+        autoBeforeSwap: Boolean(autoBtnRect && swapBtnRect && autoBtnRect.bottom <= swapBtnRect.top),
+        buttonsOverlap: overlaps(openBtnRect, autoBtnRect) || overlaps(autoBtnRect, swapBtnRect) || overlaps(openBtnRect, swapBtnRect),
         toastRect,
         toastVisible: !toastEl.hidden,
         toastPosition: getComputedStyle(toastEl).position,
-        toastOverlapsButtons: overlaps(swapBtnRect, toastRect),
+        toastOverlapsButtons: overlaps(swapBtnRect, toastRect) || overlaps(openBtnRect, toastRect),
         popupCount: document.querySelectorAll("dialog").length,
         title: document.querySelector("h1")?.textContent || "",
         version: document.querySelector(".version")?.textContent || "",
@@ -187,14 +193,18 @@ function assertCommonLayout(layout) {
   assert.ok(layout.documentScrollWidth <= layout.viewport.width, "document must not create a horizontal scrollbar");
   assert.equal(layout.toolsSectionPosition, "static", "tools section must remain in normal document flow");
   assert.equal(layout.buttonsOverlap, false, "tool buttons must not overlap each other");
+  assert.equal(layout.openBeforeAuto, true, "OPEN PSD must appear before AUTO PHOTO FILL");
+  assert.equal(layout.autoBeforeSwap, true, "AUTO PHOTO FILL must appear before SWAP PHOTOS");
   assert.equal(layout.toastOverlapsButtons, false, "toast must not overlap tool buttons");
+  assert.ok(layout.openBtn.left >= layout.panelRect.left && layout.openBtn.right <= layout.panelRect.right,
+    "the Open PSD button must stay inside the panel width");
   assert.ok(layout.autoBtn.left >= layout.panelRect.left && layout.autoBtn.right <= layout.panelRect.right,
     "the Auto Photo Fill button must stay inside the panel width");
   assert.ok(layout.swapBtn.left >= layout.panelRect.left && layout.swapBtn.right <= layout.panelRect.right,
     "the Swap Photos button must stay inside the panel width");
-  assert.equal(layout.toolButtons, 2, "both Auto Photo Fill and Swap Photos buttons must be rendered");
+  assert.equal(layout.toolButtons, 3, "Open PSD, Auto Photo Fill, and Swap Photos buttons must all be rendered");
   assert.equal(layout.title.trim(), "MM Album Design Tools");
-  assert.equal(layout.version.trim(), "v0.3.0");
+  assert.equal(layout.version.trim(), "v0.4.0");
   assert.equal(layout.popupCount, 0, "no result modal dialog should exist");
   assert.equal(layout.toastVisible, true, "toast must be readable");
   assert.equal(layout.toastPosition, "static");
@@ -203,6 +213,7 @@ function assertCommonLayout(layout) {
 test("wide launcher remains compact and uses the available width without overlap", () => {
   const layout = renderAt(900, 800);
   assertCommonLayout(layout);
+  assert.ok(layout.openBtn.width > 800, "the tool buttons should use wide panel space");
   assert.ok(layout.autoBtn.width > 800, "the tool buttons should use wide panel space");
   assert.ok(layout.swapBtn.width > 800, "the tool buttons should use wide panel space");
 });

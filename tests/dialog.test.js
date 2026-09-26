@@ -12,7 +12,7 @@ function harness({ count = 6, placeholders = 5, moveFails = false } = {}) {
   let outcome;
 
   const ids = [
-    "autoPhotoFillBtn", "swapPhotosBtn", "statusText", "toast",
+    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "statusText", "toast",
     "resultPanel", "resultPanelTitle", "resultPanelMessage",
     "resultDialog", "resultDialogTitle", "resultDialogMessage", "resultDialogOk"
   ];
@@ -58,6 +58,12 @@ function harness({ count = 6, placeholders = 5, moveFails = false } = {}) {
       createElement: () => ({ textContent: "" })
     },
     require: name => {
+      if (name === "./src/tools/openPsd") {
+        return {
+          runOpenPsd: async () => ({ outcome: "success", successCount: 1, failureCount: 0 }),
+          buildOpenPsdToast: () => ({ message: "1 PSD opened", type: "success" })
+        };
+      }
       if (name === "./src/tools/autoPhotoFill") {
         return {
           runAutoPhotoFill: async ui => {
