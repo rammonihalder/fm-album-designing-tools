@@ -223,6 +223,7 @@ async function runPlacement(items, options, onProgress) {
 
 async function selectLayerById(layerId) {
   if (!layerId) return;
+  if (!action || typeof action.batchPlay !== "function") return;
   return action.batchPlay([
     {
       _obj: "select",
@@ -678,6 +679,87 @@ async function executeSavePageModal(operationFn, commandName = "MM Save Page") {
   return operationFn();
 }
 
+async function openSmartObjectContents(layer) {
+  if (layer && layer.id) {
+    await selectLayerById(layer.id);
+  }
+  if (action && typeof action.batchPlay === "function") {
+    const descriptors = [
+      {
+        _obj: "placedLayerEditContents",
+        _options: { dialogOptions: "dontDisplay" }
+      }
+    ];
+    return action.batchPlay(descriptors, {});
+  }
+}
+
+async function closeDocumentWithoutSaving(doc) {
+  if (!doc) return;
+  try {
+    if (typeof doc.closeWithoutSaving === "function") {
+      await doc.closeWithoutSaving();
+      return;
+    }
+  } catch (_) {}
+
+  try {
+    const saveOption = constants?.SaveOptions?.DONOTSAVECHANGES;
+    if (typeof doc.close === "function") {
+      await doc.close(saveOption);
+      return;
+    }
+  } catch (_) {}
+
+  if (action && typeof action.batchPlay === "function") {
+    const docTarget = doc.id ? [{ _ref: "document", _id: doc.id }] : undefined;
+    await action.batchPlay([
+      {
+        _obj: "close",
+        _target: docTarget,
+        saving: {
+          _enum: "yesNo",
+          _value: "no"
+        },
+        _options: { dialogOptions: "dontDisplay" }
+      }
+    ], {});
+  }
+}
+
+async function selectLayersByIds(layerIds) {
+  if (!layerIds || !layerIds.length) return;
+  if (action && typeof action.batchPlay === "function") {
+    const descriptors = layerIds.map((id, index) => {
+      if (index === 0) {
+        return {
+          _obj: "select",
+          _target: [{ _ref: "layer", _id: id }],
+          makeVisible: false,
+          _options: { dialogOptions: "dontDisplay" }
+        };
+      }
+      return {
+        _obj: "select",
+        _target: [{ _ref: "layer", _id: id }],
+        selectionModifier: { _enum: "selectionModifierType", _value: "addToSelection" },
+        makeVisible: false,
+        _options: { dialogOptions: "dontDisplay" }
+      };
+    });
+    return action.batchPlay(descriptors, {});
+  }
+}
+
+async function executeSaveEditedPhotosModal(operationFn, commandName = "MM Save Edited Photos") {
+  if (core && typeof core.executeAsModal === "function") {
+    return core.executeAsModal(async executionContext => {
+      return operationFn(executionContext);
+    }, { commandName });
+  }
+  return operationFn();
+}
+
 module.exports = {
   inspectImageFiles,
   runPlacement,
@@ -685,11 +767,15 @@ module.exports = {
   placePhotoOnPlaceholder,
   fitCover,
   selectLayerById,
+  selectLayersByIds,
   exportSmartObjectContents,
   replaceSmartObjectContents,
+  openSmartObjectContents,
+  closeDocumentWithoutSaving,
   executeSwapModal,
   executeOpenPsdModal,
   executeSavePageModal,
+  executeSaveEditedPhotosModal,
   getDocumentMetrics,
   normalizeDocumentToPixels,
   normalizeAlbumSize,

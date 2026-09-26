@@ -13,7 +13,7 @@
         <div class="eyebrow">MM</div>
         <h1>MM Album Design Tools</h1>
       </div>
-      <span class="version">v0.5.0</span>
+      <span class="version">v0.6.0</span>
     </header>
 
     <section class="tools-section" aria-label="Album Design Tools">
@@ -28,6 +28,9 @@
       </button>
       <button id="savePageBtn" class="btn primary full" data-tool="save-page">
         SAVE PAGE
+      </button>
+      <button id="saveEditedPhotosBtn" class="btn primary full" data-tool="save-edited-photos">
+        SAVE EDITED PHOTOS
       </button>
     </section>
 
@@ -57,6 +60,26 @@
           SAVE
         </button>
         <button id="savePageDialogCancelBtn" class="btn" type="button">
+          CANCEL
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="editedPhotosDeviceDialog">
+    <div class="device-dialog-content">
+      <div class="device-dialog-header">
+        <h2>Computer Type</h2>
+        <p>This computer is:</p>
+      </div>
+      <div class="device-dialog-actions">
+        <button id="editedPhotosDeviceLaptopBtn" class="btn primary full" type="button">
+          LAPTOP - LT
+        </button>
+        <button id="editedPhotosDeviceDesktopBtn" class="btn primary full" type="button">
+          DESKTOP - DT
+        </button>
+        <button id="editedPhotosDeviceCancelBtn" class="btn full" type="button">
           CANCEL
         </button>
       </div>

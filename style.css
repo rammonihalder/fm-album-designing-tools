@@ -245,6 +245,48 @@ dialog#savePageDialog::backdrop {
   padding: 6px 12px;
 }
 
+dialog#editedPhotosDeviceDialog {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  box-sizing: border-box;
+  font-family: inherit;
+  width: 320px;
+  max-width: 90vw;
+}
+
+dialog#editedPhotosDeviceDialog::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.device-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.device-dialog-header h2 {
+  font-size: 14px;
+  font-weight: 650;
+  margin: 0 0 4px 0;
+  color: var(--text);
+}
+
+.device-dialog-header p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.device-dialog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 @media (max-width: 300px) {
   .panel { padding: 8px; }
   h1 { font-size: 17px; }

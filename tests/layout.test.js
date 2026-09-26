@@ -87,10 +87,12 @@ function buildProbePage(runDirectory, width, height) {
       const autoBtn = document.getElementById("autoPhotoFillBtn");
       const swapBtn = document.getElementById("swapPhotosBtn");
       const saveBtn = document.getElementById("savePageBtn");
+      const saveEditedBtn = document.getElementById("saveEditedPhotosBtn");
       const openBtnRect = rect(openBtn);
       const autoBtnRect = rect(autoBtn);
       const swapBtnRect = rect(swapBtn);
       const saveBtnRect = rect(saveBtn);
+      const saveEditedBtnRect = rect(saveEditedBtn);
       const toastEl = document.getElementById("toast");
       toastEl.textContent = "2 photos swapped";
       toastEl.className = "toast success";
@@ -116,14 +118,16 @@ function buildProbePage(runDirectory, width, height) {
         autoBtn: autoBtnRect,
         swapBtn: swapBtnRect,
         saveBtn: saveBtnRect,
+        saveEditedBtn: saveEditedBtnRect,
         openBeforeAuto: Boolean(openBtnRect && autoBtnRect && openBtnRect.bottom <= autoBtnRect.top),
         autoBeforeSwap: Boolean(autoBtnRect && swapBtnRect && autoBtnRect.bottom <= swapBtnRect.top),
         swapBeforeSave: Boolean(swapBtnRect && saveBtnRect && swapBtnRect.bottom <= saveBtnRect.top),
-        buttonsOverlap: overlaps(openBtnRect, autoBtnRect) || overlaps(autoBtnRect, swapBtnRect) || overlaps(openBtnRect, swapBtnRect) || overlaps(swapBtnRect, saveBtnRect) || overlaps(openBtnRect, saveBtnRect) || overlaps(autoBtnRect, saveBtnRect),
+        saveBeforeSaveEdited: Boolean(saveBtnRect && saveEditedBtnRect && saveBtnRect.bottom <= saveEditedBtnRect.top),
+        buttonsOverlap: overlaps(openBtnRect, autoBtnRect) || overlaps(autoBtnRect, swapBtnRect) || overlaps(openBtnRect, swapBtnRect) || overlaps(swapBtnRect, saveBtnRect) || overlaps(openBtnRect, saveBtnRect) || overlaps(autoBtnRect, saveBtnRect) || overlaps(saveBtnRect, saveEditedBtnRect) || overlaps(openBtnRect, saveEditedBtnRect),
         toastRect,
         toastVisible: !toastEl.hidden,
         toastPosition: getComputedStyle(toastEl).position,
-        toastOverlapsButtons: overlaps(saveBtnRect, toastRect) || overlaps(swapBtnRect, toastRect) || overlaps(openBtnRect, toastRect),
+        toastOverlapsButtons: overlaps(saveEditedBtnRect, toastRect) || overlaps(saveBtnRect, toastRect) || overlaps(swapBtnRect, toastRect) || overlaps(openBtnRect, toastRect),
         popupCount: document.querySelectorAll("dialog#resultDialog, dialog[open]").length,
         title: document.querySelector("h1")?.textContent || "",
         version: document.querySelector(".version")?.textContent || "",
@@ -205,6 +209,7 @@ function assertCommonLayout(layout) {
   assert.equal(layout.openBeforeAuto, true, "OPEN PSD must appear before AUTO PHOTO FILL");
   assert.equal(layout.autoBeforeSwap, true, "AUTO PHOTO FILL must appear before SWAP PHOTOS");
   assert.equal(layout.swapBeforeSave, true, "SWAP PHOTOS must appear before SAVE PAGE");
+  assert.equal(layout.saveBeforeSaveEdited, true, "SAVE PAGE must appear before SAVE EDITED PHOTOS");
   assert.equal(layout.toastOverlapsButtons, false, "toast must not overlap tool buttons");
   assert.ok(layout.openBtn.left >= layout.panelRect.left && layout.openBtn.right <= layout.panelRect.right,
     "the Open PSD button must stay inside the panel width");
@@ -214,9 +219,11 @@ function assertCommonLayout(layout) {
     "the Swap Photos button must stay inside the panel width");
   assert.ok(layout.saveBtn.left >= layout.panelRect.left && layout.saveBtn.right <= layout.panelRect.right,
     "the Save Page button must stay inside the panel width");
-  assert.equal(layout.toolButtons, 4, "Open PSD, Auto Photo Fill, Swap Photos, and Save Page buttons must all be rendered");
+  assert.ok(layout.saveEditedBtn.left >= layout.panelRect.left && layout.saveEditedBtn.right <= layout.panelRect.right,
+    "the Save Edited Photos button must stay inside the panel width");
+  assert.equal(layout.toolButtons, 5, "Open PSD, Auto Photo Fill, Swap Photos, Save Page, and Save Edited Photos buttons must all be rendered");
   assert.equal(layout.title.trim(), "MM Album Design Tools");
-  assert.equal(layout.version.trim(), "v0.5.0");
+  assert.equal(layout.version.trim(), "v0.6.0");
   assert.equal(layout.popupCount, 0, "no result modal dialog should exist");
   assert.equal(layout.toastVisible, true, "toast must be readable");
   assert.equal(layout.toastPosition, "static");
@@ -229,6 +236,7 @@ test("wide launcher remains compact and uses the available width without overlap
   assert.ok(layout.autoBtn.width > 800, "the tool buttons should use wide panel space");
   assert.ok(layout.swapBtn.width > 800, "the tool buttons should use wide panel space");
   assert.ok(layout.saveBtn.width > 800, "the tool buttons should use wide panel space");
+  assert.ok(layout.saveEditedBtn.width > 800, "the tool buttons should use wide panel space");
 });
 
 test("normal launcher keeps the tool and status in normal flow", () => {

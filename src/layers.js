@@ -1,4 +1,8 @@
-const { app } = require("photoshop");
+let app = null;
+try {
+  const photoshop = require("photoshop");
+  app = photoshop?.app;
+} catch (_) {}
 
 function flattenLayers(layers, output) {
   output = output || [];

@@ -4,6 +4,7 @@ const { runOpenPsd, buildOpenPsdToast } = require("./src/tools/openPsd");
 const { runAutoPhotoFill } = require("./src/tools/autoPhotoFill");
 const { runSwapPhotos } = require("./src/tools/swapPhotos");
 const { runSavePage, buildSavePageToast, isValidPrefix } = require("./src/tools/savePage");
+const { runSaveEditedPhotos, buildSaveEditedPhotosToast } = require("./src/tools/saveEditedPhotos");
 const { createToastManager } = require("./src/ui/toast");
 
 const $ = id => (typeof document !== "undefined" && typeof document.getElementById === "function" ? document.getElementById(id) : null);
@@ -13,11 +14,16 @@ const ui = {
   autoPhotoFillBtn: $("autoPhotoFillBtn"),
   swapPhotosBtn: $("swapPhotosBtn"),
   savePageBtn: $("savePageBtn"),
+  saveEditedPhotosBtn: $("saveEditedPhotosBtn"),
   savePageDialog: $("savePageDialog"),
   prefixInput: $("savePagePrefixInput"),
   prefixError: $("savePagePrefixError"),
   dialogSaveBtn: $("savePageDialogSaveBtn"),
   dialogCancelBtn: $("savePageDialogCancelBtn"),
+  deviceDialog: $("editedPhotosDeviceDialog"),
+  deviceLaptopBtn: $("editedPhotosDeviceLaptopBtn"),
+  deviceDesktopBtn: $("editedPhotosDeviceDesktopBtn"),
+  deviceCancelBtn: $("editedPhotosDeviceCancelBtn"),
   statusText: $("statusText"),
   toast: $("toast")
 };
@@ -30,6 +36,7 @@ function setButtonsDisabled(disabled) {
   if (ui.autoPhotoFillBtn) ui.autoPhotoFillBtn.disabled = disabled;
   if (ui.swapPhotosBtn) ui.swapPhotosBtn.disabled = disabled;
   if (ui.savePageBtn) ui.savePageBtn.disabled = disabled;
+  if (ui.saveEditedPhotosBtn) ui.saveEditedPhotosBtn.disabled = disabled;
 }
 
 function setStatus(message) {
@@ -291,6 +298,104 @@ async function handleSavePage() {
   }
 }
 
+async function promptForDeviceType() {
+  const dialog = ui.deviceDialog;
+  if (!dialog) {
+    return { cancelled: true };
+  }
+
+  return new Promise(async resolve => {
+    let chosenDevice = null;
+    let isCancelled = false;
+
+    function onLaptopClick() {
+      chosenDevice = "LT";
+      if (typeof dialog.close === "function") {
+        dialog.close("LT");
+      }
+    }
+
+    function onDesktopClick() {
+      chosenDevice = "DT";
+      if (typeof dialog.close === "function") {
+        dialog.close("DT");
+      }
+    }
+
+    function onCancelClick() {
+      isCancelled = true;
+      if (typeof dialog.close === "function") {
+        dialog.close("cancel");
+      }
+    }
+
+    function onKeyDown(e) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancelClick();
+      }
+    }
+
+    ui.deviceLaptopBtn?.addEventListener("click", onLaptopClick);
+    ui.deviceDesktopBtn?.addEventListener("click", onDesktopClick);
+    ui.deviceCancelBtn?.addEventListener("click", onCancelClick);
+    dialog.addEventListener("keydown", onKeyDown);
+
+    try {
+      let closeReason;
+      if (typeof dialog.uxpShowModal === "function") {
+        closeReason = await dialog.uxpShowModal({
+          title: "Computer Type",
+          resize: "none",
+          size: {
+            width: 320,
+            height: 200
+          }
+        });
+      } else if (typeof dialog.showModal === "function") {
+        closeReason = await dialog.showModal();
+      }
+
+      const res = chosenDevice || (closeReason === "LT" || closeReason === "DT" ? closeReason : null);
+      if (!isCancelled && res && (res === "LT" || res === "DT")) {
+        resolve({ cancelled: false, deviceType: res });
+      } else {
+        resolve({ cancelled: true });
+      }
+    } catch (err) {
+      resolve({ cancelled: true, error: err });
+    } finally {
+      ui.deviceLaptopBtn?.removeEventListener("click", onLaptopClick);
+      ui.deviceDesktopBtn?.removeEventListener("click", onDesktopClick);
+      ui.deviceCancelBtn?.removeEventListener("click", onCancelClick);
+      dialog.removeEventListener("keydown", onKeyDown);
+    }
+  });
+}
+
+async function handleSaveEditedPhotos() {
+  if (running) return;
+  running = true;
+  setButtonsDisabled(true);
+  toast.dismiss();
+
+  try {
+    const result = await runSaveEditedPhotos({
+      promptForDeviceType
+    });
+    const summary = buildSaveEditedPhotosToast(result);
+    toast.show(summary.message, summary.type);
+    return result;
+  } catch (error) {
+    console.error("Save Edited Photos error:", error);
+    toast.show("Edited photo export failed", "error");
+    return { outcome: "error", error };
+  } finally {
+    running = false;
+    setButtonsDisabled(false);
+  }
+}
+
 if (ui.openPsdBtn && typeof ui.openPsdBtn.addEventListener === "function") {
   ui.openPsdBtn.addEventListener("click", handleOpenPsd);
 }
@@ -303,17 +408,23 @@ if (ui.swapPhotosBtn && typeof ui.swapPhotosBtn.addEventListener === "function")
 if (ui.savePageBtn && typeof ui.savePageBtn.addEventListener === "function") {
   ui.savePageBtn.addEventListener("click", handleSavePage);
 }
+if (ui.saveEditedPhotosBtn && typeof ui.saveEditedPhotosBtn.addEventListener === "function") {
+  ui.saveEditedPhotosBtn.addEventListener("click", handleSaveEditedPhotos);
+}
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     buildAutoPhotoFillToast,
     buildOpenPsdToast,
     buildSavePageToast,
+    buildSaveEditedPhotosToast,
     handleOpenPsd,
     handleAutoPhotoFill,
     handleSwapPhotos,
     handleSavePage,
+    handleSaveEditedPhotos,
     promptForPrefix,
+    promptForDeviceType,
     setButtonsDisabled,
     toast,
     ui
