@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { createToastManager } = require("../src/ui/toast");
-const { buildAutoPhotoFillToast, buildOpenPsdToast } = require("../main");
+const { buildAutoPhotoFillToast, buildOpenPsdToast, buildSavePageToast } = require("../main");
 const { executeSwapPhotos } = require("../src/tools/swapPhotos");
 
 function createMockToastElement() {
@@ -188,7 +188,6 @@ test("6. Auto Photo Fill uses toast summary", () => {
 test("7. no completion dialog exists", () => {
   const htmlPath = path.resolve(__dirname, "../index.html");
   const html = fs.readFileSync(htmlPath, "utf8");
-  assert.equal(/<dialog/i.test(html), false, "no HTMLDialogElement should exist in index.html");
   assert.equal(/resultDialog/i.test(html), false, "no resultDialog ID should exist in index.html");
 });
 
@@ -224,5 +223,52 @@ test("9. Open PSD uses toast summary", () => {
   const res5 = buildOpenPsdToast({ outcome: "cancelled" });
   assert.equal(res5.message, "Cancelled");
   assert.equal(res5.type, "info");
+});
+
+test("10. Save Page uses toast summary", () => {
+  // Case A: no document
+  const res1 = buildSavePageToast({ outcome: "no-document" });
+  assert.equal(res1.message, "Open a PSD first");
+  assert.equal(res1.type, "warning");
+
+  // Case B: cancelled
+  const res2 = buildSavePageToast({ outcome: "cancelled" });
+  assert.equal(res2.message, "Cancelled");
+  assert.equal(res2.type, "info");
+
+  // Case C: invalid prefix
+  const res3 = buildSavePageToast({ outcome: "invalid-prefix" });
+  assert.equal(res3.message, "Invalid prefix");
+  assert.equal(res3.type, "error");
+
+  // Case D: document closed
+  const res4 = buildSavePageToast({ outcome: "document-closed" });
+  assert.equal(res4.message, "Document is no longer open");
+  assert.equal(res4.type, "error");
+
+  // Case E: psd failed
+  const res5 = buildSavePageToast({ outcome: "psd-failed" });
+  assert.equal(res5.message, "PSD save failed");
+  assert.equal(res5.type, "error");
+
+  // Case F: jpeg failed
+  const res6 = buildSavePageToast({ outcome: "jpeg-failed" });
+  assert.equal(res6.message, "PSD saved • JPEG failed");
+  assert.equal(res6.type, "warning");
+
+  // Case G: success with prefix
+  const res7 = buildSavePageToast({ outcome: "success", fileName: "Riya_MMRLT8" });
+  assert.equal(res7.message, "Saved: Riya_MMRLT8");
+  assert.equal(res7.type, "success");
+
+  // Case H: success without prefix
+  const res8 = buildSavePageToast({ outcome: "success", fileName: "MMRLT8" });
+  assert.equal(res8.message, "Saved: MMRLT8");
+  assert.equal(res8.type, "success");
+
+  // Case I: unexpected error
+  const res9 = buildSavePageToast({ outcome: "error" });
+  assert.equal(res9.message, "Save Page failed");
+  assert.equal(res9.type, "error");
 });
 

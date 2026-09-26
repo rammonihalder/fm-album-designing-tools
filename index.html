@@ -13,7 +13,7 @@
         <div class="eyebrow">MM</div>
         <h1>MM Album Design Tools</h1>
       </div>
-      <span class="version">v0.4.0</span>
+      <span class="version">v0.5.0</span>
     </header>
 
     <section class="tools-section" aria-label="Album Design Tools">
@@ -26,11 +26,42 @@
       <button id="swapPhotosBtn" class="btn primary full" data-tool="swap-photos">
         SWAP PHOTOS
       </button>
+      <button id="savePageBtn" class="btn primary full" data-tool="save-page">
+        SAVE PAGE
+      </button>
     </section>
 
     <div id="statusText" class="status-text" aria-live="polite" hidden></div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </main>
+
+  <dialog id="savePageDialog">
+    <div class="save-page-dialog-content">
+      <label for="savePagePrefixInput">
+        Prefix (optional)
+      </label>
+      <input
+        id="savePagePrefixInput"
+        type="text"
+        placeholder="e.g. Riya"
+        autocomplete="off"
+      />
+      <div
+        id="savePagePrefixError"
+        hidden
+      >
+        Invalid prefix
+      </div>
+      <div class="save-page-dialog-actions">
+        <button id="savePageDialogSaveBtn" class="btn primary" type="button">
+          SAVE
+        </button>
+        <button id="savePageDialogCancelBtn" class="btn" type="button">
+          CANCEL
+        </button>
+      </div>
+    </div>
+  </dialog>
 
   <script src="main.js"></script>
 </body>

@@ -62,18 +62,18 @@ test("3. AUTO PHOTO FILL appears BEFORE SWAP PHOTOS", () => {
   assert.ok(autoPos < swapPos, "autoPhotoFillBtn must appear before swapPhotosBtn");
 });
 
-test("4. Visible version is v0.4.0 in index.html and manifest.json", () => {
+test("4. Visible version is v0.5.0 in index.html and manifest.json", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v0.4.0"), "index.html must display v0.4.0");
+  assert.ok(html.includes("v0.5.0"), "index.html must display v0.5.0");
 
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "0.4.0", "manifest.json version must be 0.4.0");
+  assert.equal(manifest.version, "0.5.0", "manifest.json version must be 0.5.0");
   assert.equal(manifest.id, "in.memorymaker.albumplacer", "plugin ID must remain in.memorymaker.albumplacer");
 });
 
 test("5. Panel contains no long descriptive tool cards or permanent result panels", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.equal(/<dialog/i.test(html), false, "no HTML dialog allowed");
+  assert.equal(/id="resultDialog"/i.test(html), false, "no resultDialog allowed");
   assert.equal(/id="resultPanel"/i.test(html), false, "no resultPanel allowed");
   assert.equal(/card/i.test(html), false, "no descriptive card allowed");
 });

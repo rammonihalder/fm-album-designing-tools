@@ -1,12 +1,36 @@
-# MM Album Design Tools v0.4.0
+# MM Album Design Tools v0.5.0
 
 A compact Photoshop UXP panel for album-design production utilities. The panel includes:
 
 1. **Open PSD**
 2. **Auto Photo Fill**
 3. **Swap Photos**
+4. **Save Page**
 
 The existing plugin ID remains `in.memorymaker.albumplacer`, so installations of Memory Maker Album Placer upgrade to this product name instead of creating a second plugin.
+
+## Save Page
+
+1. Open an album page document in Photoshop.
+2. Click **SAVE PAGE**.
+3. Select the base destination folder in the UXP folder picker (e.g. `D:\WORKING ALBUM\RIYA WEDDING`).
+4. The plugin automatically creates or reuses child folders:
+   - `PSD`
+   - `JPEG`
+5. An optional prefix form temporarily appears in the panel:
+   - Prefilled with the last remembered prefix (e.g. `Riya`).
+   - Validates against invalid filename characters (`< > : " / \ | ? *`).
+   - Replaces any whitespace with underscores (e.g. `Wedding Album` -> `Wedding_Album`).
+6. Global serial scanning across both `PSD` and `JPEG` folders:
+   - Matches all files ending with `MMRLT<number>.(psd|jpg|jpeg)` regardless of prefix.
+   - Calculates next serial as `max + 1` (starts at `1` if empty).
+   - Resolves target filename: `<prefix>_MMRLT<number>` (or `MMRLT<number>` if prefix is empty).
+7. Collision protection ensures no existing files are ever overwritten.
+8. Re-resolves target document by captured document ID:
+   - Saves a PSD copy (`saveAs.psd` with `asCopy = true`, color profile, and alpha channels).
+   - Saves a JPEG copy (`saveAs.jpg` with `asCopy = true`, quality 12).
+   - Working document remains open and intact (never flattened or rebound).
+9. Reports completion via toast: `Saved: <filename>` (e.g. `Saved: Riya_MMRLT8`).
 
 ## Open PSD
 
@@ -92,9 +116,10 @@ When the number of usable photos equals the number of readable selected placehol
 - `index.html` / `style.css` — responsive multi-tool panel shell
 - `main.js` — panel bootstrap, tool-button wiring, and toast presentation
 - `src/tools/openPsd.js` — Open PSD orchestration, smart rename, size classification, and guide generation
-- `src/tools/swapPhotos.js` — Swap Photos orchestration, target resolution, and cyclic swaps
-- `src/ui/toast.js` — temporary panel toast management
 - `src/tools/autoPhotoFill.js` — Auto Photo Fill orchestration and completion summaries
+- `src/tools/swapPhotos.js` — Swap Photos orchestration, target resolution, and cyclic swaps
+- `src/tools/savePage.js` — Save Page orchestration, serial scanning, subfolder management, and PSD/JPEG saving
+- `src/ui/toast.js` — temporary panel toast management
 - `src/orientation.js` — pure dimension/orientation classification
 - `src/matcher.js` — pure deterministic matching engine
 - `src/documentOwnership.js` — guards temporary-document ownership during dimension inspection
