@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { createToastManager } = require("../src/ui/toast");
-const { buildAutoPhotoFillToast, buildOpenPsdToast, buildSavePageToast } = require("../main");
+const { buildAutoPhotoFillToast, buildOpenPsdToast, buildSavePageToast, buildSaveEditedPhotosToast } = require("../main");
 const { executeSwapPhotos } = require("../src/tools/swapPhotos");
 
 function createMockToastElement() {
@@ -269,6 +269,53 @@ test("10. Save Page uses toast summary", () => {
   // Case I: unexpected error
   const res9 = buildSavePageToast({ outcome: "error" });
   assert.equal(res9.message, "Save Page failed");
+  assert.equal(res9.type, "error");
+});
+
+test("11. Save Edited Photos uses toast summary", () => {
+  // Case A: no document
+  const res1 = buildSaveEditedPhotosToast({ outcome: "no-document" });
+  assert.equal(res1.message, "Open a document first");
+  assert.equal(res1.type, "warning");
+
+  // Case B: no smart objects
+  const res2 = buildSaveEditedPhotosToast({ outcome: "no-smart-objects" });
+  assert.equal(res2.message, "Select Smart Object layers");
+  assert.equal(res2.type, "warning");
+
+  // Case C: cancelled
+  const res3 = buildSaveEditedPhotosToast({ outcome: "cancelled" });
+  assert.equal(res3.message, "Cancelled");
+  assert.equal(res3.type, "info");
+
+  // Case D: document closed
+  const res4 = buildSaveEditedPhotosToast({ outcome: "document-closed" });
+  assert.equal(res4.message, "Document is no longer open");
+  assert.equal(res4.type, "error");
+
+  // Case E: full success (1 photo)
+  const res5 = buildSaveEditedPhotosToast({ outcome: "success", successCount: 1, failedCount: 0 });
+  assert.equal(res5.message, "1 edited photo saved");
+  assert.equal(res5.type, "success");
+
+  // Case F: full success (3 photos)
+  const res6 = buildSaveEditedPhotosToast({ outcome: "success", successCount: 3, failedCount: 0 });
+  assert.equal(res6.message, "3 edited photos saved");
+  assert.equal(res6.type, "success");
+
+  // Case G: partial success
+  const res7 = buildSaveEditedPhotosToast({ outcome: "success", successCount: 3, failedCount: 1 });
+  assert.equal(res7.message, "3 saved • 1 failed");
+  assert.equal(res7.type, "warning");
+
+  // Case H: no successful exports
+  const res8 = buildSaveEditedPhotosToast({ outcome: "failed", successCount: 0, failedCount: 1 });
+  assert.equal(res8.message, "Edited photo export failed");
+  assert.equal(res8.type, "error");
+
+  // Case I: unexpected error
+  const res9 = buildSaveEditedPhotosToast({ outcome: "error" });
+  assert.equal(res9.message, "Edited photo export failed");
   assert.equal(res9.type, "error");
 });
 

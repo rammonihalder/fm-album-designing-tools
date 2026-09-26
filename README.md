@@ -1,4 +1,4 @@
-# MM Album Design Tools v0.5.0
+# MM Album Design Tools v0.6.0
 
 A compact Photoshop UXP panel for album-design production utilities. The panel includes:
 
@@ -6,8 +6,26 @@ A compact Photoshop UXP panel for album-design production utilities. The panel i
 2. **Auto Photo Fill**
 3. **Swap Photos**
 4. **Save Page**
+5. **Save Edited Photos**
 
 The existing plugin ID remains `in.memorymaker.albumplacer`, so installations of Memory Maker Album Placer upgrade to this product name instead of creating a second plugin.
+
+## Save Edited Photos
+
+1. Open an album page document in Photoshop.
+2. Select one or more Smart Object layers (non-Smart-Object layers like text, background, adjustments, or groups are safely skipped).
+3. Click **SAVE EDITED PHOTOS**.
+4. On first use on a computer, a floating modal asks whether this computer is **Laptop (LT)** or **Desktop (DT)**. This choice is remembered locally in plugin storage.
+5. Select the destination folder in the UXP folder picker (the plugin remembers this folder for future runs using a persistent token).
+6. Each selected Smart Object is processed sequentially:
+   - Opens the Smart Object contents (`placedLayerEditContents`) as a temporary document.
+   - Determines the lowest available positive integer for the filename pattern `Memory Maker <number> LT.jpg` or `Memory Maker <number> DT.jpg`. Numbering is shared globally across both LT and DT files in the destination folder (filling gaps without overwriting).
+   - Saves a maximum-quality JPEG (Quality 12) directly into the destination folder.
+   - Closes the opened Smart Object document without saving changes.
+   - Reactivates the main album document.
+7. Restores the original layer selection upon completion (even after partial failure).
+8. Working document remains open and intact (never flattened or modified).
+9. Reports completion via toast: `1 edited photo saved`, `<n> edited photos saved`, or `<n> saved • <m> failed`.
 
 ## Save Page
 

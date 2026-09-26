@@ -12,7 +12,7 @@ function harness({ count = 6, placeholders = 5, moveFails = false } = {}) {
   let outcome;
 
   const ids = [
-    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "savePageBtn", "statusText", "toast",
+    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "savePageBtn", "saveEditedPhotosBtn", "statusText", "toast",
     "savePageDialog", "savePagePrefixInput", "savePagePrefixError", "savePageDialogSaveBtn", "savePageDialogCancelBtn",
     "resultPanel", "resultPanelTitle", "resultPanelMessage",
     "resultDialog", "resultDialogTitle", "resultDialogMessage", "resultDialogOk"
@@ -83,6 +83,12 @@ function harness({ count = 6, placeholders = 5, moveFails = false } = {}) {
           runSavePage: async () => ({ outcome: "success", fileName: "MMRLT1" }),
           buildSavePageToast: () => ({ message: "Saved: MMRLT1", type: "success" }),
           isValidPrefix: () => true
+        };
+      }
+      if (name === "./src/tools/saveEditedPhotos") {
+        return {
+          runSaveEditedPhotos: async () => ({ outcome: "success", successCount: 1, failedCount: 0 }),
+          buildSaveEditedPhotosToast: () => ({ message: "1 edited photo saved", type: "success" })
         };
       }
       if (name === "./src/ui/toast") {

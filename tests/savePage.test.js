@@ -94,7 +94,7 @@ function createMockStorage(initial = {}) {
 function createMainHarness({ defaultPrefix = "", runSavePageOutcome = { outcome: "success", fileName: "MMRLT1" } } = {}) {
   const elements = new Map();
   const ids = [
-    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "savePageBtn", "statusText", "toast",
+    "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "savePageBtn", "saveEditedPhotosBtn", "statusText", "toast",
     "savePageDialog", "savePagePrefixInput", "savePagePrefixError", "savePageDialogSaveBtn", "savePageDialogCancelBtn"
   ];
   for (const id of ids) {
@@ -167,6 +167,12 @@ function createMainHarness({ defaultPrefix = "", runSavePageOutcome = { outcome:
           }
         };
       }
+      if (name === "./src/tools/saveEditedPhotos") {
+        return {
+          runSaveEditedPhotos: async () => ({ outcome: "success", successCount: 1, failedCount: 0 }),
+          buildSaveEditedPhotosToast: () => ({ message: "1 edited photo saved", type: "success" })
+        };
+      }
       if (name === "./src/ui/toast") {
         return require("../src/ui/toast");
       }
@@ -212,12 +218,12 @@ test("2. Exact button order: OPEN PSD -> AUTO PHOTO FILL -> SWAP PHOTOS -> SAVE 
   assert.ok(swapPos < savePos, "swapPhotosBtn must be before savePageBtn");
 });
 
-test("3. Visible version is v0.5.0 in index.html and manifest.json", () => {
+test("3. Visible version is v0.6.0 in index.html and manifest.json", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v0.5.0"), "index.html must display v0.5.0");
+  assert.ok(html.includes("v0.6.0"), "index.html must display v0.6.0");
 
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "0.5.0", "manifest.json version must be 0.5.0");
+  assert.equal(manifest.version, "0.6.0", "manifest.json version must be 0.6.0");
   assert.equal(manifest.id, "in.memorymaker.albumplacer", "plugin ID must remain in.memorymaker.albumplacer");
 });
 
@@ -225,17 +231,18 @@ test("3. Visible version is v0.5.0 in index.html and manifest.json", () => {
 // TESTS — FLOATING PREFIX MODAL DIALOG UI
 // ==========================================
 
-test("UI 1. Resting panel contains exactly 4 tool buttons", () => {
+test("UI 1. Resting panel contains exactly 5 tool buttons", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
   const panelMatch = html.match(/<main[^>]*class="[^"]*panel[^"]*"[^>]*>([\s\S]*?)<\/main>/i);
   assert.ok(panelMatch, "main.panel must exist in index.html");
   const panelContent = panelMatch[1];
   const buttonMatches = panelContent.match(/<button/gi) || [];
-  assert.equal(buttonMatches.length, 4, "Resting panel must contain exactly 4 buttons");
+  assert.equal(buttonMatches.length, 5, "Resting panel must contain exactly 5 buttons");
   assert.ok(panelContent.includes('id="openPsdBtn"'));
   assert.ok(panelContent.includes('id="autoPhotoFillBtn"'));
   assert.ok(panelContent.includes('id="swapPhotosBtn"'));
   assert.ok(panelContent.includes('id="savePageBtn"'));
+  assert.ok(panelContent.includes('id="saveEditedPhotosBtn"'));
 });
 
 test("UI 2. No visible inline prefix area exists in normal panel layout", () => {
