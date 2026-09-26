@@ -1,5 +1,6 @@
 "use strict";
 
+const { runOpenPsd, buildOpenPsdToast } = require("./src/tools/openPsd");
 const { runAutoPhotoFill } = require("./src/tools/autoPhotoFill");
 const { runSwapPhotos } = require("./src/tools/swapPhotos");
 const { createToastManager } = require("./src/ui/toast");
@@ -7,6 +8,7 @@ const { createToastManager } = require("./src/ui/toast");
 const $ = id => (typeof document !== "undefined" && typeof document.getElementById === "function" ? document.getElementById(id) : null);
 
 const ui = {
+  openPsdBtn: $("openPsdBtn"),
   autoPhotoFillBtn: $("autoPhotoFillBtn"),
   swapPhotosBtn: $("swapPhotosBtn"),
   statusText: $("statusText"),
@@ -15,6 +17,12 @@ const ui = {
 
 const toast = createToastManager(ui.toast);
 let running = false;
+
+function setButtonsDisabled(disabled) {
+  if (ui.openPsdBtn) ui.openPsdBtn.disabled = disabled;
+  if (ui.autoPhotoFillBtn) ui.autoPhotoFillBtn.disabled = disabled;
+  if (ui.swapPhotosBtn) ui.swapPhotosBtn.disabled = disabled;
+}
 
 function setStatus(message) {
   if (!ui.statusText) return;
@@ -71,11 +79,37 @@ function buildAutoPhotoFillToast(result) {
   return { message, type };
 }
 
+async function handleOpenPsd() {
+  if (running) return;
+  running = true;
+  setButtonsDisabled(true);
+  toast.dismiss();
+
+  try {
+    const result = await runOpenPsd({
+      onProgress: (current, total) => {
+        setStatus(`Opening PSD ${current} of ${total}...`);
+      }
+    });
+    setStatus(null);
+    const summary = buildOpenPsdToast(result);
+    toast.show(summary.message, summary.type);
+    return result;
+  } catch (error) {
+    console.error("Open PSD error:", error);
+    setStatus(null);
+    toast.show("Open PSD failed", "error");
+    return { outcome: "error", successCount: 0, failureCount: 1, error };
+  } finally {
+    running = false;
+    setButtonsDisabled(false);
+  }
+}
+
 async function handleAutoPhotoFill() {
   if (running) return;
   running = true;
-  if (ui.autoPhotoFillBtn) ui.autoPhotoFillBtn.disabled = true;
-  if (ui.swapPhotosBtn) ui.swapPhotosBtn.disabled = true;
+  setButtonsDisabled(true);
   toast.dismiss();
 
   try {
@@ -94,16 +128,14 @@ async function handleAutoPhotoFill() {
     return { outcome: "error", error };
   } finally {
     running = false;
-    if (ui.autoPhotoFillBtn) ui.autoPhotoFillBtn.disabled = false;
-    if (ui.swapPhotosBtn) ui.swapPhotosBtn.disabled = false;
+    setButtonsDisabled(false);
   }
 }
 
 async function handleSwapPhotos() {
   if (running) return;
   running = true;
-  if (ui.autoPhotoFillBtn) ui.autoPhotoFillBtn.disabled = true;
-  if (ui.swapPhotosBtn) ui.swapPhotosBtn.disabled = true;
+  setButtonsDisabled(true);
   toast.dismiss();
   setStatus("Swapping photos...");
 
@@ -124,11 +156,13 @@ async function handleSwapPhotos() {
     return { success: false, outcome: "error", error, message: "Swap failed" };
   } finally {
     running = false;
-    if (ui.autoPhotoFillBtn) ui.autoPhotoFillBtn.disabled = false;
-    if (ui.swapPhotosBtn) ui.swapPhotosBtn.disabled = false;
+    setButtonsDisabled(false);
   }
 }
 
+if (ui.openPsdBtn && typeof ui.openPsdBtn.addEventListener === "function") {
+  ui.openPsdBtn.addEventListener("click", handleOpenPsd);
+}
 if (ui.autoPhotoFillBtn && typeof ui.autoPhotoFillBtn.addEventListener === "function") {
   ui.autoPhotoFillBtn.addEventListener("click", handleAutoPhotoFill);
 }
@@ -139,9 +173,13 @@ if (ui.swapPhotosBtn && typeof ui.swapPhotosBtn.addEventListener === "function")
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     buildAutoPhotoFillToast,
+    buildOpenPsdToast,
+    handleOpenPsd,
     handleAutoPhotoFill,
     handleSwapPhotos,
+    setButtonsDisabled,
     toast,
     ui
   };
 }
+

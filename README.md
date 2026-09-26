@@ -1,11 +1,32 @@
-# MM Album Design Tools v0.3.0
+# MM Album Design Tools v0.4.0
 
 A compact Photoshop UXP panel for album-design production utilities. The panel includes:
 
-1. **Auto Photo Fill**
-2. **Swap Photos**
+1. **Open PSD**
+2. **Auto Photo Fill**
+3. **Swap Photos**
 
 The existing plugin ID remains `in.memorymaker.albumplacer`, so installations of Memory Maker Album Placer upgrade to this product name instead of creating a second plugin.
+
+## Open PSD
+
+1. Click **OPEN PSD**.
+2. Select one or more album PSD files in the UXP file picker.
+3. Each selected PSD is processed sequentially:
+   - Opens the PSD document in Photoshop and activates it.
+   - Resets rename counter to `01` for the document.
+   - Runs Smart Rename: eligible layers containing vendor keywords (`studio`, `digital`, `color`, `lab`, `graphics`, `album`, `photo`, `photography`, `creation`) or duplicated sibling names are renamed to `NN MMR | 7001514367` in bottom-to-top traversal order.
+   - Hidden layers, background layers, text layers, clipped photo layers, and group containers are safely skipped.
+   - Nested groups are recursed into while preserving a single document-wide counter.
+   - Size & DPI normalization:
+     - Physical **36×12** inches (e.g. `7200 × 2400 @ 200`, `10800 × 3600 @ 300`, `5400 × 1800 @ 150`): normalized to exactly `10800 × 3600 px` @ 300 DPI.
+     - Physical **18×12** inches (e.g. `3600 × 2400 @ 200`, `5400 × 3600 @ 300`, `2700 × 1800 @ 150`): normalized to exactly `5400 × 3600 px` @ 300 DPI (never enlarged to 36×12).
+     - Unsupported physical sizes: normalized to standard `10800 × 3600 px` @ 300 DPI fallback.
+     - Documents already at target dimensions at 300 DPI skip unnecessary resampling.
+   - Guides: all existing guides are removed, and new standard album guides are added relative to actual final canvas size (center fold at `width / 2`, safe margins at 150 px, bleeds at 100 px).
+   - All PSD files remain open for editing.
+   - No automatic save, overwrite, or close.
+
 
 ## Auto Photo Fill
 
@@ -70,6 +91,7 @@ When the number of usable photos equals the number of readable selected placehol
 - `manifest.json` — Photoshop UXP plugin definition
 - `index.html` / `style.css` — responsive multi-tool panel shell
 - `main.js` — panel bootstrap, tool-button wiring, and toast presentation
+- `src/tools/openPsd.js` — Open PSD orchestration, smart rename, size classification, and guide generation
 - `src/tools/swapPhotos.js` — Swap Photos orchestration, target resolution, and cyclic swaps
 - `src/ui/toast.js` — temporary panel toast management
 - `src/tools/autoPhotoFill.js` — Auto Photo Fill orchestration and completion summaries
