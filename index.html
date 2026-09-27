@@ -267,6 +267,42 @@
     </div>
   </dialog>
 
+  <!-- License Status / Activation Dialog (Hidden Foundation for Phase 2) -->
+  <dialog id="licenseDialog" class="dialog-content license-dialog" hidden>
+    <div class="dialog-header">
+      <h2>License Activation</h2>
+      <p class="dialog-subtext">Memory Maker Album Design Tools</p>
+    </div>
+    <div class="dialog-form-group">
+      <label for="licenseKeyInput">License Key:</label>
+      <input
+        id="licenseKeyInput"
+        type="text"
+        placeholder="XXXX-XXXX-XXXX-XXXX"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    <div id="licenseStatusMessage" class="license-status-message" aria-live="polite">
+      Unactivated
+    </div>
+    <div id="licenseInfoArea" class="license-info-area">
+      <div class="license-info-row">
+        <span class="license-info-label">Status:</span>
+        <span id="licenseStateLabel" class="license-info-value">UNACTIVATED</span>
+      </div>
+      <div class="license-info-row">
+        <span class="license-info-label">Device:</span>
+        <span id="licenseDeviceLabel" class="license-info-value">Not bound</span>
+      </div>
+    </div>
+    <div class="dialog-actions-vertical">
+      <button id="licenseActivateBtn" class="btn primary full" type="button">ACTIVATE</button>
+      <button id="licenseDialogCloseBtn" class="btn btn-cancel full" type="button">CLOSE</button>
+    </div>
+  </dialog>
+
   <script src="main.js"></script>
 </body>
 </html>
+

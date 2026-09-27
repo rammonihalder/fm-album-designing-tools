@@ -118,8 +118,24 @@ Natively ported from legacy JSX (`SAVE_PSD_CATEGORYV 5.0.JSX`) to modular UXP:
 - `src/tools/saveEditedPhotos.js` — Save Edited Photos with folder memory
 - `src/tools/savePsdCategory.js` — Save PSD Category with auto-count, orientation, and folder memory
 - `src/tools/removePhotos.js` — Document-wide clipped photo removal
+- `src/licensing/` — Licensing architecture foundation (Phase 1, non-enforcing)
+  - `constants.js` — Central licensing keys, intervals, and schema version
+  - `licenseState.js` — Explicit states and pure normalization helpers
+  - `licenseStorage.js` — Fault-tolerant UXP secureStorage abstraction
+  - `licenseManager.js` — Central state machine and controller with dependency injection
 - `src/ui/toast.js` — Toast notifications
 - `tests/` — Comprehensive Node test suite
+
+---
+
+## Licensing Foundation
+
+- **Phase 1 Only:** Establishes an isolated plugin-side architectural foundation for future licensing capabilities.
+- **Secure Local Token Cache Architecture:** Built around UXP `secureStorage` as an encrypted local cache for future signed tokens rather than treating local storage as an authoritative license state.
+- **Licensing Is Not Yet Enforced:** The licensing manager operates in an unactivated baseline state without blocking or restricting any plugin actions.
+- **No Backend / Network Validation Yet:** No network permissions, backend URLs, or remote verification calls exist in this phase.
+- **Existing Tools Remain Operational:** All eight tools attach and execute normally with zero behavioral changes or performance overhead.
+- **Cryptographic Trust Boundary:** When Phase 2 introduces online activation, cryptographically verified server-issued signed tokens will serve as the sole authoritative trust boundary.
 
 ---
 
@@ -131,4 +147,5 @@ Run all unit tests:
 node --test
 ```
 
-All 363 automated unit tests pass across all tool suites and layout probes.
+All automated unit tests pass across all tool suites, licensing foundation tests, and layout probes.
+

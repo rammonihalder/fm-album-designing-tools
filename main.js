@@ -10,7 +10,20 @@ const { runSavePsdCategory, buildSavePsdCategoryToast } = require("./src/tools/s
 const { runRemovePhotos, buildRemovePhotosToast } = require("./src/tools/removePhotos");
 const { createToastManager } = require("./src/ui/toast");
 
+// Licensing Foundation (Phase 1 - Non-enforcing)
+let licenseManager = null;
+try {
+  const { getLicenseManager } = require("./src/licensing/licenseManager");
+  licenseManager = getLicenseManager();
+  licenseManager.initialize().catch(err => {
+    console.warn("[MM License] Startup initialization non-fatal error:", err?.message || err);
+  });
+} catch {
+  // Test sandboxes that strictly whitelist required modules (e.g. dialog.test.js, removePhotos.test.js)
+}
+
 const $ = id => (typeof document !== "undefined" && typeof document.getElementById === "function" ? document.getElementById(id) : null);
+
 
 const ui = {
   // Action buttons
@@ -76,6 +89,16 @@ const ui = {
   savePsdDeleteConfirmDialog: $("savePsdDeleteConfirmDialog"),
   savePsdDeleteConfirmBtn: $("savePsdDeleteConfirmBtn"),
   savePsdDeleteCancelBtn: $("savePsdDeleteCancelBtn"),
+
+  // License Dialog (Phase 1 Foundation)
+  licenseDialog: $("licenseDialog"),
+  licenseKeyInput: $("licenseKeyInput"),
+  licenseActivateBtn: $("licenseActivateBtn"),
+  licenseStatusMessage: $("licenseStatusMessage"),
+  licenseInfoArea: $("licenseInfoArea"),
+  licenseStateLabel: $("licenseStateLabel"),
+  licenseDeviceLabel: $("licenseDeviceLabel"),
+  licenseDialogCloseBtn: $("licenseDialogCloseBtn"),
 
   statusText: $("statusText"),
   toast: $("toast")
@@ -1086,6 +1109,7 @@ if (typeof module !== "undefined" && module.exports) {
     setButtonsDisabled,
     attachActionHandler,
     toast,
-    ui
+    ui,
+    licenseManager
   };
 }
