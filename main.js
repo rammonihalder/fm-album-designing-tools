@@ -70,6 +70,7 @@ const ui = {
   pngMaskBtn: $("pngMaskBtn"),
   pngTextBtn: $("pngTextBtn"),
   clipArtBtn: $("clipArtBtn"),
+  changeBackgroundBtn: $("changeBackgroundBtn"),
 
   // ADD FRAME root configuration dialog
   addFrameDialog: $("addFrameDialog"),
@@ -114,6 +115,14 @@ const ui = {
   saveAssetFolderBtn: $("saveAssetFolderBtn"),
   saveAssetSaveBtn: $("saveAssetSaveBtn"),
   saveAssetCancelBtn: $("saveAssetCancelBtn"),
+
+  // CHANGE BACKGROUND Dialog
+  changeBackgroundDialog: $("changeBackgroundDialog"),
+  changeBackgroundFolderPath: $("changeBackgroundFolderPath"),
+  changeBackgroundMessage: $("changeBackgroundMessage"),
+  changeBackgroundFolderBtn: $("changeBackgroundFolderBtn"),
+  changeBackgroundSelectBtn: $("changeBackgroundSelectBtn"),
+  changeBackgroundCancelBtn: $("changeBackgroundCancelBtn"),
 
   folderBrowserDialog: $("folderBrowserDialog"),
   folderBrowserCurrent: $("folderBrowserCurrent"),
@@ -214,7 +223,8 @@ console.log("[MM UI] buttons", {
   saveAsset: !!ui.saveAssetBtn,
   pngMask: !!ui.pngMaskBtn,
   pngText: !!ui.pngTextBtn,
-  clipArt: !!ui.clipArtBtn
+  clipArt: !!ui.clipArtBtn,
+  changeBackground: !!ui.changeBackgroundBtn
 });
 
 const requiredButtons = [
@@ -239,7 +249,8 @@ const requiredButtons = [
   ["saveAssetBtn", ui.saveAssetBtn],
   ["pngMaskBtn", ui.pngMaskBtn],
   ["pngTextBtn", ui.pngTextBtn],
-  ["clipArtBtn", ui.clipArtBtn]
+  ["clipArtBtn", ui.clipArtBtn],
+  ["changeBackgroundBtn", ui.changeBackgroundBtn]
 ];
 for (const [id, btn] of requiredButtons) {
   if (!btn) {
@@ -273,7 +284,8 @@ function setButtonsDisabled(disabled) {
     ui.saveAssetBtn,
     ui.pngMaskBtn,
     ui.pngTextBtn,
-    ui.clipArtBtn
+    ui.clipArtBtn,
+    ui.changeBackgroundBtn
   ];
   for (const btn of buttons) {
     if (!btn) continue;
@@ -1308,6 +1320,131 @@ async function handleSaveAsset() {
     setButtonsDisabled(false);
   }
 }
+
+async function promptForChangeBackgroundDialog({ folder = null, folderPath = "", message = "" } = {}) {
+  const dialog = ui.changeBackgroundDialog;
+  if (!dialog) return { action: "cancel" };
+  const hasFolder = Boolean(folder);
+
+  ui.changeBackgroundFolderPath.textContent = hasFolder ? folderPath || folder.nativePath || folder.name : "No background folder selected";
+  ui.changeBackgroundFolderPath.setAttribute("title", hasFolder ? ui.changeBackgroundFolderPath.textContent : "");
+  ui.changeBackgroundMessage.textContent = message;
+  ui.changeBackgroundMessage.hidden = !message;
+  ui.changeBackgroundFolderBtn.textContent = hasFolder ? "CHANGE FOLDER" : "SET FOLDER";
+  ui.changeBackgroundSelectBtn.disabled = !hasFolder;
+  ui.changeBackgroundSelectBtn.setAttribute("aria-disabled", String(!hasFolder));
+
+  const cleanup = [];
+  let closed = false, chosenAction = "cancel", resolveClose;
+  const closePromise = new Promise(resolve => { resolveClose = resolve; });
+
+  function listen(element, event, handler) {
+    element.addEventListener(event, handler);
+    cleanup.push(() => element.removeEventListener(event, handler));
+  }
+
+  function close(action) {
+    if (closed) return;
+    closed = true;
+    chosenAction = action;
+    try { dialog.close(action); } finally { resolveClose(); }
+  }
+
+  function bindButton(element, action) {
+    const activate = () => { if (!element.disabled) close(action); };
+    listen(element, "click", activate);
+    listen(element, "keydown", event => {
+      if (["Enter", " ", "Spacebar"].includes(event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+        activate();
+      }
+    });
+  }
+
+  bindButton(ui.changeBackgroundFolderBtn, hasFolder ? "change-folder" : "set-folder");
+  bindButton(ui.changeBackgroundSelectBtn, "select");
+  bindButton(ui.changeBackgroundCancelBtn, "cancel");
+
+  listen(dialog, "keydown", event => { if (event.key === "Escape") { event.preventDefault(); close("cancel"); } });
+  listen(dialog, "cancel", event => { event.preventDefault(); close("cancel"); });
+  listen(dialog, "close", () => { closed = true; resolveClose(); });
+
+  try {
+    dialog.hidden = false;
+    let shown;
+    if (typeof dialog.uxpShowModal === "function") {
+      shown = dialog.uxpShowModal({
+        title: "Change Background",
+        resize: "none",
+        size: { width: 360, height: message ? 350 : 300 }
+      });
+    } else if (typeof dialog.showModal === "function") {
+      shown = dialog.showModal();
+    } else {
+      throw new Error("Change Background dialog API is not available.");
+    }
+    (hasFolder ? ui.changeBackgroundSelectBtn : ui.changeBackgroundFolderBtn).focus?.();
+    if (shown && typeof shown.then === "function") await shown;
+    else await closePromise;
+    return { action: chosenAction };
+  } finally {
+    dialog.hidden = true;
+    for (const remove of cleanup) remove();
+  }
+}
+
+async function handleChangeBackground() {
+  if (running) return;
+  running = true;
+  setButtonsDisabled(true);
+  toast.dismiss();
+
+  try {
+    let uxp = null;
+    try { uxp = require("uxp"); } catch (_) {}
+
+    let photoshop = null;
+    try { photoshop = require("photoshop"); } catch (_) {}
+
+    const localFileSystem = uxp?.storage?.localFileSystem || null;
+    const storage = typeof localStorage !== "undefined" ? localStorage : null;
+
+    const { runChangeBackground, buildChangeBackgroundToast } = require("./src/tools/changeBackground");
+    const report = result => {
+      const summary = buildChangeBackgroundToast(result);
+      if (summary?.message) toast.show(summary.message, summary.type);
+    };
+
+    const result = await runChangeBackground({
+      promptForFolder: async () => {
+        if (!localFileSystem || typeof localFileSystem.getFolder !== "function") {
+          throw new Error("Folder selection API is not available.");
+        }
+        return localFileSystem.getFolder();
+      },
+      showChangeBackgroundDialog: promptForChangeBackgroundDialog,
+      onResult: report,
+      photoshop,
+      localFileSystem,
+      storage
+    });
+
+    if (result && result.outcome !== "cancelled") {
+      report(result);
+    }
+    return result;
+  } catch (error) {
+    console.error("Change Background error:", error);
+    const message = error?.message || "Change Background failed";
+    toast.show(message, "error");
+    return { outcome: "error", success: false, error, message };
+  } finally {
+    running = false;
+    setButtonsDisabled(false);
+  }
+}
+
 async function handleOpenPsd() {
   if (running) return;
   running = true;
@@ -2065,6 +2202,7 @@ attachActionHandler(ui.saveAssetBtn, wrapProtectedAction(handleSaveAsset));
 attachActionHandler(ui.pngMaskBtn, wrapProtectedAction(() => handleAddAsset("png-mask")));
 attachActionHandler(ui.pngTextBtn, wrapProtectedAction(() => handleAddAsset("png-text")));
 attachActionHandler(ui.clipArtBtn, wrapProtectedAction(() => handleAddAsset("clip-art")));
+attachActionHandler(ui.changeBackgroundBtn, wrapProtectedAction(handleChangeBackground));
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
@@ -2077,6 +2215,8 @@ if (typeof module !== "undefined" && module.exports) {
     promptForAddAssetDialog,
     handleSaveAsset,
     promptForSaveAssetDialog,
+    handleChangeBackground,
+    promptForChangeBackgroundDialog,
     promptForAssetDialog,
     handleAddAsset,
     promptForSaveFrameDialog,

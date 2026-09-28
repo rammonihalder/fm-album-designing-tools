@@ -185,7 +185,11 @@
           <span class="tool-label">CLIP ART</span>
           <span class="tool-balance-slot" aria-hidden="true"></span>
         </div>
-        <div class="album-tool-action album-tool-reserved" aria-hidden="true"></div>
+        <div id="changeBackgroundBtn" class="album-tool-action" role="button" tabindex="0" data-tool="change-background">
+          <span class="tool-icon-slot"><img class="tool-icon" src="assets/icons/change-background.png" alt="" draggable="false" /></span>
+          <span class="tool-label">CHANGE B&#65;CKGROUND</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
       </div>
     </section>
 
@@ -337,6 +341,23 @@
       <div class="add-frame-actions">
         <button id="saveAssetSaveBtn" class="btn primary full" type="button" disabled aria-disabled="true">SAVE ASSET</button>
         <button id="saveAssetCancelBtn" class="btn btn-cancel full" type="button">CANCEL</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- CHANGE B&#65;CKGROUND Dialog -->
+  <dialog id="changeBackgroundDialog" hidden>
+    <div class="dialog-content add-frame-dialog-content">
+      <div class="dialog-header">
+        <h2>CHANGE B&#65;CKGROUND</h2>
+      </div>
+      <div class="frame-root-label">B&#65;CKGROUND FOLDER</div>
+      <p id="changeBackgroundFolderPath" class="frame-root-path" title="">No background folder selected</p>
+      <p id="changeBackgroundMessage" class="add-frame-message" role="status" aria-live="polite" hidden></p>
+      <div class="add-frame-actions">
+        <button id="changeBackgroundFolderBtn" class="btn full" type="button">SET FOLDER</button>
+        <button id="changeBackgroundSelectBtn" class="btn primary full" type="button" disabled aria-disabled="true">SELECT B&#65;CKGROUND</button>
+        <button id="changeBackgroundCancelBtn" class="btn btn-cancel full" type="button">CANCEL</button>
       </div>
     </div>
   </dialog>

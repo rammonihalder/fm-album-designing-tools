@@ -47,11 +47,13 @@ function createHarness({
 
   const saveDialog = elements.get("saveAssetDialog");
   const addDialog = elements.get("addAssetDialog");
+  const changeBgDialog = elements.get("changeBackgroundDialog");
   assert.ok(saveDialog, "saveAssetDialog must exist");
   assert.ok(addDialog, "addAssetDialog must exist");
+  assert.ok(changeBgDialog, "changeBackgroundDialog must exist");
 
-  let saveOpen = false, addOpen = false, folderCalls = 0, fileCalls = 0;
-  let resolveSaveModal, resolveAddModal;
+  let saveOpen = false, addOpen = false, changeBgOpen = false, folderCalls = 0, fileCalls = 0;
+  let resolveSaveModal, resolveAddModal, resolveChangeBgModal;
 
   Object.defineProperty(saveDialog, "open", { get: () => saveOpen });
   saveDialog.uxpShowModal = () => {
@@ -73,6 +75,17 @@ function createHarness({
     addOpen = false;
     resolveAddModal?.(reason);
     void addDialog.fire("close");
+  };
+
+  Object.defineProperty(changeBgDialog, "open", { get: () => changeBgOpen });
+  changeBgDialog.uxpShowModal = () => {
+    changeBgOpen = true;
+    return new Promise(resolve => { resolveChangeBgModal = resolve; });
+  };
+  changeBgDialog.close = reason => {
+    changeBgOpen = false;
+    resolveChangeBgModal?.(reason);
+    void changeBgDialog.fire("close");
   };
 
   const source = {
@@ -146,6 +159,7 @@ function createHarness({
     source,
     get saveOpen() { return saveOpen; },
     get addOpen() { return addOpen; },
+    get changeBgOpen() { return changeBgOpen; },
     get folderCalls() { return folderCalls; },
     get fileCalls() { return fileCalls; },
     tick: async () => { await new Promise(r => setImmediate(r)); }
@@ -226,5 +240,45 @@ test("ADD ASSET UI: SET FOLDER enables SELECT ASSET, and category dropdown chang
   assert.equal(h.elements.get("addAssetCategorySelect").value, "DECORATION");
 
   await h.elements.get("addAssetCancelBtn").fire("click");
+  await pending;
+});
+
+test("CHANGE BACKGROUND UI: first use shows SET FOLDER, disabled SELECT BACKGROUND", async () => {
+  const h = createHarness();
+  const pending = h.main.handleChangeBackground();
+  await h.tick();
+
+  assert.equal(h.changeBgOpen, true);
+  assert.equal(h.folderCalls, 0);
+  assert.equal(h.elements.get("changeBackgroundFolderPath").textContent, "No background folder selected");
+  assert.equal(h.elements.get("changeBackgroundFolderBtn").textContent, "SET FOLDER");
+  assert.equal(h.elements.get("changeBackgroundSelectBtn").disabled, true);
+
+  await h.elements.get("changeBackgroundCancelBtn").fire("click");
+  const res = await pending;
+  assert.equal(res.outcome, "cancelled");
+});
+
+test("CHANGE BACKGROUND UI: SET FOLDER updates path and enables SELECT BACKGROUND", async () => {
+  const bgFolder = {
+    name: "Backgrounds",
+    nativePath: "D:/Memory Maker/Backgrounds",
+    isFolder: true,
+    entries: [],
+    getEntries: async () => []
+  };
+  const h = createHarness({ picks: [bgFolder] });
+  const pending = h.main.handleChangeBackground();
+  await h.tick();
+
+  await h.elements.get("changeBackgroundFolderBtn").fire("click");
+  await h.tick();
+
+  assert.equal(h.folderCalls, 1);
+  assert.equal(h.elements.get("changeBackgroundFolderPath").textContent, bgFolder.nativePath);
+  assert.equal(h.elements.get("changeBackgroundFolderBtn").textContent, "CHANGE FOLDER");
+  assert.equal(h.elements.get("changeBackgroundSelectBtn").disabled, false);
+
+  await h.elements.get("changeBackgroundCancelBtn").fire("click");
   await pending;
 });

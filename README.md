@@ -35,7 +35,7 @@ CREATE PAGE remains the full-width first action below the original eight-tool gr
 - **[ ADD FRAME ] [ SAVE FRAME ]**
 - **[ ADD ASSET ] [ SAVE ASSET ]**
 - **[ PNG MASK ] [ PNG TEXT ]** (legacy individual tools preserved for migration)
-- **[ CLIP ART ] [ (reserved) ]**
+- **[ CLIP ART ] [ CHANGE BACKGROUND ]**
 
 | Action | Asset / result | Root key | Select / Action label |
 | --- | --- | --- | --- |
@@ -44,6 +44,7 @@ CREATE PAGE remains the full-width first action below the original eight-tool gr
 | SAVE FRAME | Selected layers/groups exported as a layered PSD | `mm_save_frame_root_folder_token` | SAVE FRAME |
 | ADD ASSET | Transparent PNG asset imported as Embedded Smart Object | `mm_asset_library_root_folder_token` | SELECT ASSET |
 | SAVE ASSET | Selected layers/groups exported as trimmed transparent PNG | `mm_asset_library_root_folder_token` | SAVE ASSET |
+| CHANGE BACKGROUND | Cover-fitted background image replaced at bottom of stack | `mm_background_folder_token` | SELECT BACKGROUND |
 | PNG MASK | Transparent PNG as an embedded Smart Object | `mm_png_mask_folder_token` | SELECT PNG MASK |
 | PNG TEXT | Transparent PNG graphic as an embedded Smart Object | `mm_png_text_folder_token` | SELECT PNG TEXT |
 | CLIP ART | Transparent PNG as an embedded Smart Object | `mm_clip_art_folder_token` | SELECT CLIP ART |
@@ -107,6 +108,20 @@ The **ADD ASSET** and **SAVE ASSET** tools form a unified reusable asset-library
 PNG placement uses an embedded `placeEvent` with a UXP session token and `linked: false`, without opening or saving the source PNG. Each new layer receives the filename without `.png`, stays independent of existing groups, is uniformly scaled down only if it exceeds 80% of the canvas width or height, and is centered and selected for Ctrl+T. Small assets are not enlarged. PNG MASK does not create a clipping mask; PNG TEXT remains a graphic, with no OCR or editable-text conversion; CLIP ART has no special clipping behavior. ADD FRAME continues using its separate editable PSD group importer.
 
 Each PNG import runs in one modal/history operation: **Add PNG Mask**, **Add PNG Text**, or **Add Clip Art**. Failed placement/transforms roll back partial additions and log the native error. The existing license gate, running lock, DEV bypass and v1.2.0 version apply to all three tools; no production CCX is generated.
+
+#### CHANGE BACKGROUND
+
+- **Workflow:**
+  1. User opens an album PSD (checks for active document; reports `Create or open a page first.` if missing).
+  2. User clicks **CHANGE BACKGROUND**.
+  3. A compact dialog opens showing **BACKGROUND FOLDER** (or `No background folder selected`), **[ SET FOLDER / CHANGE FOLDER ]**, **[ SELECT BACKGROUND ]** (disabled if no folder configured), and **[ CANCEL ]**.
+  4. **Dedicated Root Memory:** Remembers folder using `mm_background_folder_token`, independent of frame roots, asset library root, and legacy tools. Stale tokens are safely cleared without touching other tools.
+  5. **File Selection:** Opens native picker filtered to JPG, JPEG, and PNG (`types: ["jpg", "jpeg", "png"]`, `allowMultiple: false`), starting at the remembered root folder. Navigating elsewhere never changes the configured root.
+  6. **Bottom-Most Top-Level Layer Detection:** The bottom-most top-level layer in the document is ALWAYS the background to replace (`targetDocument.layers[targetDocument.layers.length - 1]`). Never inspects name or rejects by layer kind (handles `Background`, `Layer 0`, `BG`, `IMG...`, `DSC...`, Smart Objects, normal pixel layers, shapes, groups, text, etc.). Never recurses into nested groups. If the document has zero layers, reports `No layer available to replace.`
+  7. **Placement & Cover Fit:** Places the selected image as an Embedded Smart Object (`linked: false`) named without extension (e.g. `Dark Garden 04.jpg` -> `Dark Garden 04`). Scales the image using **COVER** behavior (`scale = max(canvasWidth / imageWidth, canvasHeight / imageHeight)`) so the entire canvas is filled without aspect-ratio distortion or empty borders, then centers the image.
+  8. **Stack Ordering & Safe Removal:** Clears inherited clipping (`isClippingMask = false`, `grouped = false`). Moves the new background immediately above the old bottom layer first. Then removes the old bottom layer (safely unlocking it or using batchPlay fallback if it is a locked Photoshop Background layer). The new background naturally becomes the bottom-most top-level layer. Any failure prior to old layer removal cleans up the placed layer and keeps the old bottom layer untouched.
+  9. **True Background Layer Conversion:** As the final step after the old bottom layer has been deleted, converts the new layer into a true Photoshop Background Layer using Photoshop's native batchPlay `make backgroundLayer` command (equivalent to `Layer > New > Background from Layer`). If conversion fails, the new background is kept intact at the bottom and a non-fatal warning is returned: `Background changed, but could not convert it to a Background layer.`
+  10. **Single-Step Undo:** Entire operation runs under one modal history operation named `Change Background` for seamless `Ctrl+Z` restoration.
 
 #### SAVE FRAME
 
