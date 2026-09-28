@@ -29,22 +29,80 @@ The panel presents an 8-button responsive 2-column grid with clean line icons an
 - Adds **Custom Page** with inch/pixel dimensions and White/Black/Transparent background; resolution remains fixed at 300 DPI.
 - Page creation runs inside Photoshop `executeAsModal`, is protected by the existing license gate, and participates in the shared button-locking state.
 
-### CREATE ALBUM assets
+### CREATE ALBUM layout and assets
 
-CREATE PAGE remains the full-width first action below the original eight-tool grid. The green tool buttons use three rows: **ADD FRAME / SAVE FRAME**, **PNG MASK / PNG TEXT**, then **CLIP ART / an empty future slot**, with the existing single-column fallback for narrow panels.
+CREATE PAGE remains the full-width first action below the original eight-tool grid. The green tool buttons use four rows:
+- **[ ADD FRAME ] [ SAVE FRAME ]**
+- **[ ADD ASSET ] [ SAVE ASSET ]**
+- **[ PNG MASK ] [ PNG TEXT ]** (legacy individual tools preserved for migration)
+- **[ CLIP ART ] [ (reserved) ]**
 
-| Action | Asset / result | Independent root key | Select label |
+| Action | Asset / result | Root key | Select / Action label |
 | --- | --- | --- | --- |
 | CREATE PAGE | Preset or custom album/social canvas | None | Existing page presets |
 | ADD FRAME | PSD contents as editable grouped layers | `mm_add_frame_folder_token` | SELECT PSD FRAME |
 | SAVE FRAME | Selected layers/groups exported as a layered PSD | `mm_save_frame_root_folder_token` | SAVE FRAME |
+| ADD ASSET | Transparent PNG asset imported as Embedded Smart Object | `mm_asset_library_root_folder_token` | SELECT ASSET |
+| SAVE ASSET | Selected layers/groups exported as trimmed transparent PNG | `mm_asset_library_root_folder_token` | SAVE ASSET |
 | PNG MASK | Transparent PNG as an embedded Smart Object | `mm_png_mask_folder_token` | SELECT PNG MASK |
 | PNG TEXT | Transparent PNG graphic as an embedded Smart Object | `mm_png_text_folder_token` | SELECT PNG TEXT |
 | CLIP ART | Transparent PNG as an embedded Smart Object | `mm_clip_art_folder_token` | SELECT CLIP ART |
 
-Every asset root can be changed independently. The three PNG tools share `src/tools/addAsset.js` and one category-configured compact dialog. The heading identifies the category; **ROOT FOLDER**, **No folder selected**, **SET FOLDER / CHANGE FOLDER**, the exact category SELECT label, and **CANCEL** follow the same interaction pattern as ADD FRAME. SELECT stays disabled until a valid root is saved. Long paths use ellipsis while retaining the full tooltip; warnings/errors remain visible inside the reopened dialog.
+### Reusable Asset Library (ADD ASSET / SAVE ASSET)
 
-SET/CHANGE uses native UXP folder selection and persistent tokens, preserving existing roots on cancellation or storage failure. Each root survives panel reopen, plugin reload and Photoshop restart. Invalid tokens clear only that category. File selection uses `{ initialLocation: rememberedRoot, types: ["png"], allowMultiple: false }`; cancelling or navigating elsewhere never changes the saved root. No document means **Create or open a page first.**, with no file picker.
+The **ADD ASSET** and **SAVE ASSET** tools form a unified reusable asset-library workflow sharing one common Asset Library Root folder.
+
+#### Shared Root Folder & Categories
+
+- **Storage Key:** `mm_asset_library_root_folder_token` (shared between ADD ASSET and SAVE ASSET, independent of frame tools and legacy PNG tools).
+- **Categories:**
+  1. `PNG TEXT`
+  2. `PNG ASSET` (default)
+  3. `DECORATION`
+  4. `PNG BORDER`
+  5. `PNG MASK`
+- **Folder Structure:** Inside the Asset Library Root (e.g. `D:\Memory Maker\PNG Assets\`), category folders are automatically resolved and created on demand:
+  ```
+  D:\Memory Maker\PNG Assets\
+      PNG TEXT\
+      PNG ASSET\
+      DECORATION\
+      PNG BORDER\
+      PNG MASK\
+  ```
+
+#### SAVE ASSET Workflow
+
+1. User opens any market or template PSD.
+2. User selects one or more graphic layers or groups.
+3. User clicks **SAVE ASSET**.
+4. A compact dialog opens displaying the current **ASSET LIBRARY ROOT** (or "No asset library folder selected" with **SET FOLDER**), a **CATEGORY** dropdown defaulting to **PNG ASSET**, **[ SAVE ASSET ]** (disabled until a root is configured), and **[ CANCEL ]**.
+5. When saved:
+   - Duplicate only the selected layers/groups into a temporary document.
+   - Preserve their relative positions, masks, and visible effects (shadows, glows, strokes, transforms).
+   - Perform a transparent pixel trim on all four sides (`Image > Trim > Transparent Pixels`).
+   - Export as a transparent PNG into `<Root>\<CATEGORY>\<filename>.png`.
+   - Numbering is automatic, category-specific (`mm_text01.png`, `mm_asset01.png`, `mm_decoration01.png`, `mm_border01.png`, `mm_mask01.png`), 2-digit zero-padded (`01`–`99`) or natural larger numbering (`100+`), per-category, ignores unrelated PNG files, and never overwrites existing files.
+   - Temporary document closes without saving.
+   - Source document is completely unchanged, and source layer selection is restored.
+   - Success toast: `Saved asset: <CATEGORY> / <filename>` (e.g., `Saved asset: PNG TEXT / mm_text03.png`).
+
+#### ADD ASSET Workflow
+
+1. User opens or creates an album page.
+2. User clicks **ADD ASSET**.
+3. A compact dialog opens with **ASSET LIBRARY ROOT**, **CATEGORY** dropdown defaulting to **PNG ASSET**, **[ SELECT ASSET ]** (disabled if no root), and **[ CANCEL ]**.
+4. Clicking **[ SELECT ASSET ]** ensures the category folder exists and opens Photoshop's native file picker filtered to PNG files (`initialLocation: categoryFolder`, `types: ["png"]`, `allowMultiple: false`).
+5. Upon selection:
+   - Placed into active document as an **Embedded Smart Object** (`batchPlay` `placeEvent` with `linked: false`).
+   - Preserves alpha transparency.
+   - Preserves aspect ratio.
+   - Centered on canvas.
+   - Proportionally scaled down only if larger than 80% of canvas width or height; smaller assets are never enlarged.
+   - Placed on an independent layer at the top, clearing any inherited clipping.
+   - Layer named using the filename without extension (e.g., `mm_asset14.png` -> `mm_asset14`).
+   - Placed layer remains selected for immediate `Ctrl+T` transform.
+   - Wrapped under single-step undo history named `Add Asset`.
 
 PNG placement uses an embedded `placeEvent` with a UXP session token and `linked: false`, without opening or saving the source PNG. Each new layer receives the filename without `.png`, stays independent of existing groups, is uniformly scaled down only if it exceeds 80% of the canvas width or height, and is centered and selected for Ctrl+T. Small assets are not enlarged. PNG MASK does not create a clipping mask; PNG TEXT remains a graphic, with no OCR or editable-text conversion; CLIP ART has no special clipping behavior. ADD FRAME continues using its separate editable PSD group importer.
 

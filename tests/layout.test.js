@@ -187,6 +187,13 @@ function buildProbePage(runDirectory, width, height) {
           green: getComputedStyle(element).backgroundColor === getComputedStyle(frame).backgroundColor,
           iconLoaded: icon.naturalWidth > 0, role: element.getAttribute('role'), tabIndex: element.getAttribute('tabindex') };
       });
+      const libraryAssetButtons = ['addAssetBtn', 'saveAssetBtn'].map(id => {
+        const element = document.getElementById(id), icon = element.querySelector('img');
+        return { id, label: element.querySelector('.tool-label').textContent, rect: rect(element),
+          inAlbum: !!element.closest('.create-album-section'), row: Array.from(album.querySelectorAll('.create-album-row')).indexOf(element.parentElement),
+          green: getComputedStyle(element).backgroundColor === getComputedStyle(frame).backgroundColor,
+          iconLoaded: icon.naturalWidth > 0, role: element.getAttribute('role'), tabIndex: element.getAttribute('tabindex') };
+      });
       const frameDialog = document.getElementById('addFrameDialog');
       const emptyDialog = promptForAddFrameDialog({ folder: null });
       const noFolderText = document.getElementById('addFrameFolderPath').textContent;
@@ -273,6 +280,62 @@ function buildProbePage(runDirectory, width, height) {
         dialog: rect(saveDialog), saveButton: rect(document.getElementById('saveFrameSaveBtn')), cancelButton: rect(document.getElementById('saveFrameCancelBtn')) };
       document.getElementById('saveFrameCancelBtn').click(); await saveRetry;
 
+      const addAssetButton = document.getElementById('addAssetBtn');
+      const addAssetDialogEl = document.getElementById('addAssetDialog');
+      const addAssetCategorySelect = document.getElementById('addAssetCategorySelect');
+      const addAssetEmpty = promptForAddAssetDialog();
+      const addAssetChecks = {
+        inAlbum: !!addAssetButton.closest('.create-album-section'),
+        green: getComputedStyle(addAssetButton).backgroundColor === getComputedStyle(frame).backgroundColor,
+        iconLoaded: addAssetButton.querySelector('img').naturalWidth === 64,
+        label: addAssetButton.querySelector('.tool-label').textContent,
+        role: addAssetButton.getAttribute('role'), tabIndex: addAssetButton.getAttribute('tabindex'),
+        emptyPath: document.getElementById('addAssetFolderPath').textContent,
+        emptyDisabled: document.getElementById('addAssetSelectBtn').disabled,
+        defaultCategory: addAssetCategorySelect.value,
+        categories: Array.from(addAssetCategorySelect.options, option => option.value)
+      };
+      document.getElementById('addAssetCancelBtn').click(); await addAssetEmpty;
+      const addAssetConfigured = promptForAddAssetDialog({ folder: { nativePath: fullPath }, folderPath: fullPath, category: 'DECORATION' });
+      const addAssetPath = document.getElementById('addAssetFolderPath');
+      Object.assign(addAssetChecks, {
+        fullPath: addAssetPath.textContent === fullPath && addAssetPath.title === fullPath,
+        ellipsis: getComputedStyle(addAssetPath).textOverflow, clipped: addAssetPath.scrollWidth > addAssetPath.clientWidth,
+        selectedCategory: addAssetCategorySelect.value, enabled: !document.getElementById('addAssetSelectBtn').disabled,
+        folderLabel: document.getElementById('addAssetFolderBtn').textContent,
+        dialog: rect(addAssetDialogEl), path: rect(addAssetPath), folderButton: rect(document.getElementById('addAssetFolderBtn')),
+        categorySelect: rect(addAssetCategorySelect), selectButton: rect(document.getElementById('addAssetSelectBtn')), cancelButton: rect(document.getElementById('addAssetCancelBtn'))
+      });
+      document.getElementById('addAssetCancelBtn').click(); await addAssetConfigured;
+
+      const saveAssetButton = document.getElementById('saveAssetBtn');
+      const saveAssetDialogEl = document.getElementById('saveAssetDialog');
+      const saveAssetCategorySelect = document.getElementById('saveAssetCategorySelect');
+      const saveAssetEmpty = promptForSaveAssetDialog();
+      const saveAssetChecks = {
+        inAlbum: !!saveAssetButton.closest('.create-album-section'),
+        green: getComputedStyle(saveAssetButton).backgroundColor === getComputedStyle(frame).backgroundColor,
+        iconLoaded: saveAssetButton.querySelector('img').naturalWidth === 64,
+        label: saveAssetButton.querySelector('.tool-label').textContent,
+        role: saveAssetButton.getAttribute('role'), tabIndex: saveAssetButton.getAttribute('tabindex'),
+        emptyPath: document.getElementById('saveAssetFolderPath').textContent,
+        emptyDisabled: document.getElementById('saveAssetSaveBtn').disabled,
+        defaultCategory: saveAssetCategorySelect.value,
+        categories: Array.from(saveAssetCategorySelect.options, option => option.value)
+      };
+      document.getElementById('saveAssetCancelBtn').click(); await saveAssetEmpty;
+      const saveAssetConfigured = promptForSaveAssetDialog({ folder: { nativePath: fullPath }, folderPath: fullPath, category: 'PNG TEXT' });
+      const saveAssetPath = document.getElementById('saveAssetFolderPath');
+      Object.assign(saveAssetChecks, {
+        fullPath: saveAssetPath.textContent === fullPath && saveAssetPath.title === fullPath,
+        ellipsis: getComputedStyle(saveAssetPath).textOverflow, clipped: saveAssetPath.scrollWidth > saveAssetPath.clientWidth,
+        selectedCategory: saveAssetCategorySelect.value, enabled: !document.getElementById('saveAssetSaveBtn').disabled,
+        folderLabel: document.getElementById('saveAssetFolderBtn').textContent,
+        dialog: rect(saveAssetDialogEl), path: rect(saveAssetPath), folderButton: rect(document.getElementById('saveAssetFolderBtn')),
+        categorySelect: rect(saveAssetCategorySelect), saveButton: rect(document.getElementById('saveAssetSaveBtn')), cancelButton: rect(document.getElementById('saveAssetCancelBtn'))
+      });
+      document.getElementById('saveAssetCancelBtn').click(); await saveAssetConfigured;
+
       const result = {
         viewport: { width: innerWidth, height: innerHeight },
         panel: {
@@ -289,7 +352,7 @@ function buildProbePage(runDirectory, width, height) {
         rowCounts,
         actionDetails,
         frameLayout,
-        assetButtons, assetDialogChecks, saveChecks,
+        assetButtons, libraryAssetButtons, assetDialogChecks, saveChecks, addAssetChecks, saveAssetChecks,
         wrapperPosition,
         wrapperDisplay,
         svgCountInButtons,
@@ -391,19 +454,58 @@ function assertCommonLayout(layout) {
   const frame = layout.frameLayout;
   assert.ok(frame.album.top >= layout.toolButtonsSection.bottom, 'CREATE ALBUM must remain below the original tool grid');
   assert.deepEqual(layout.assetButtons.map(button => button.label), ['PNG MASK', 'PNG TEXT', 'CLIP ART']);
-  assert.deepEqual(layout.assetButtons.map(button => button.row), [1, 1, 2]);
+  assert.deepEqual(layout.assetButtons.map(button => button.row), [2, 2, 3]);
   for (const button of layout.assetButtons) {
     assert.equal(button.inAlbum, true); assert.equal(button.green, true); assert.equal(button.iconLoaded, true);
     assert.equal(button.role, 'button'); assert.equal(button.tabIndex, '0');
   }
+  assert.deepEqual(layout.libraryAssetButtons.map(button => button.label), ['ADD ASSET', 'SAVE ASSET']);
+  assert.deepEqual(layout.libraryAssetButtons.map(button => button.row), [1, 1]);
+  for (const button of layout.libraryAssetButtons) {
+    assert.equal(button.inAlbum, true); assert.equal(button.green, true); assert.equal(button.iconLoaded, true);
+    assert.equal(button.role, 'button'); assert.equal(button.tabIndex, '0');
+  }
+  const [addAsset, saveAssetBtn] = layout.libraryAssetButtons.map(button => button.rect);
   const [mask, text, clip] = layout.assetButtons.map(button => button.rect);
   if (layout.viewport.width > 290) {
+    assert.equal(addAsset.top, saveAssetBtn.top);
+    assert.ok(frame.frame.bottom < addAsset.top);
+    assert.ok(addAsset.right <= saveAssetBtn.left);
+    assert.ok(addAsset.bottom < mask.top);
+    assert.ok(Math.abs(addAsset.width - saveAssetBtn.width) < 1);
+    assert.ok(frame.page.width > saveAssetBtn.width);
     assert.equal(mask.top, text.top); assert.ok(frame.frame.bottom < mask.top);
     assert.ok(mask.right <= text.left); assert.ok(mask.bottom < clip.top);
     assert.ok(Math.abs(mask.width - text.width) < 1); assert.ok(frame.page.width > text.width);
   } else {
-    assert.ok(frame.frame.bottom <= frame.reserved.top); assert.ok(frame.reserved.bottom <= mask.top); assert.ok(mask.bottom <= text.top); assert.ok(text.bottom <= clip.top);
+    assert.ok(frame.frame.bottom <= frame.reserved.top);
+    assert.ok(frame.reserved.bottom <= addAsset.top);
+    assert.ok(addAsset.bottom <= saveAssetBtn.top);
+    assert.ok(saveAssetBtn.bottom <= mask.top);
+    assert.ok(mask.bottom <= text.top);
+    assert.ok(text.bottom <= clip.top);
   }
+  const addAssetChk = layout.addAssetChecks;
+  assert.equal(addAssetChk.inAlbum, true); assert.equal(addAssetChk.green, true); assert.equal(addAssetChk.iconLoaded, true); assert.equal(addAssetChk.label, 'ADD ASSET');
+  assert.equal(addAssetChk.emptyPath, 'No asset library folder selected'); assert.equal(addAssetChk.emptyDisabled, true);
+  assert.equal(addAssetChk.defaultCategory, 'PNG ASSET');
+  assert.deepEqual(addAssetChk.categories, ['PNG TEXT', 'PNG ASSET', 'DECORATION', 'PNG BORDER', 'PNG MASK']);
+  assert.equal(addAssetChk.fullPath, true); assert.equal(addAssetChk.ellipsis, 'ellipsis'); assert.equal(addAssetChk.clipped, true);
+  assert.equal(addAssetChk.selectedCategory, 'DECORATION'); assert.equal(addAssetChk.enabled, true); assert.equal(addAssetChk.folderLabel, 'CHANGE FOLDER');
+  assert.ok(addAssetChk.path.bottom <= addAssetChk.folderButton.top); assert.ok(addAssetChk.folderButton.bottom <= addAssetChk.categorySelect.top);
+  assert.ok(addAssetChk.categorySelect.bottom <= addAssetChk.selectButton.top); assert.ok(addAssetChk.selectButton.bottom <= addAssetChk.cancelButton.top);
+  assert.ok(addAssetChk.cancelButton.bottom <= addAssetChk.dialog.bottom); assert.ok(addAssetChk.dialog.height <= 410);
+
+  const saveAssetChk = layout.saveAssetChecks;
+  assert.equal(saveAssetChk.inAlbum, true); assert.equal(saveAssetChk.green, true); assert.equal(saveAssetChk.iconLoaded, true); assert.equal(saveAssetChk.label, 'SAVE ASSET');
+  assert.equal(saveAssetChk.emptyPath, 'No asset library folder selected'); assert.equal(saveAssetChk.emptyDisabled, true);
+  assert.equal(saveAssetChk.defaultCategory, 'PNG ASSET');
+  assert.deepEqual(saveAssetChk.categories, ['PNG TEXT', 'PNG ASSET', 'DECORATION', 'PNG BORDER', 'PNG MASK']);
+  assert.equal(saveAssetChk.fullPath, true); assert.equal(saveAssetChk.ellipsis, 'ellipsis'); assert.equal(saveAssetChk.clipped, true);
+  assert.equal(saveAssetChk.selectedCategory, 'PNG TEXT'); assert.equal(saveAssetChk.enabled, true); assert.equal(saveAssetChk.folderLabel, 'CHANGE FOLDER');
+  assert.ok(saveAssetChk.path.bottom <= saveAssetChk.folderButton.top); assert.ok(saveAssetChk.folderButton.bottom <= saveAssetChk.categorySelect.top);
+  assert.ok(saveAssetChk.categorySelect.bottom <= saveAssetChk.saveButton.top); assert.ok(saveAssetChk.saveButton.bottom <= saveAssetChk.cancelButton.top);
+  assert.ok(saveAssetChk.cancelButton.bottom <= saveAssetChk.dialog.bottom); assert.ok(saveAssetChk.dialog.height <= 410);
   const save = layout.saveChecks;
   assert.equal(save.inAlbum, true); assert.equal(save.green, true); assert.equal(save.iconLoaded, true); assert.equal(save.label, 'SAVE FRAME');
   assert.equal(save.role, 'button'); assert.equal(save.tabIndex, '0');

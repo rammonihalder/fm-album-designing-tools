@@ -670,6 +670,51 @@ async function saveDocumentCopyJpeg(doc, fileEntry, options = {}) {
   throw new Error("Photoshop saveAs.jpg API is not available on this document.");
 }
 
+async function saveDocumentCopyPng(doc, fileEntry, options = {}) {
+  let ps = options.photoshop || photoshop;
+  if (!ps && typeof require === "function") {
+    try { ps = require("photoshop"); } catch (_) {}
+  }
+  let lfs = options.localFileSystem || localFileSystem;
+  if (!lfs && typeof require === "function") {
+    try { lfs = require("uxp")?.storage?.localFileSystem; } catch (_) {}
+  }
+
+  if (doc && doc.saveAs && typeof doc.saveAs.png === "function") {
+    return doc.saveAs.png(fileEntry, options, true);
+  }
+
+  if (ps?.action && typeof ps.action.batchPlay === "function") {
+    let token = fileEntry?.token;
+    if (!token && lfs && typeof lfs.createSessionToken === "function") {
+      try { token = await lfs.createSessionToken(fileEntry); } catch (_) {}
+    }
+    if (!token) {
+      token = String(fileEntry?.nativePath || fileEntry?.name || fileEntry);
+    }
+    const results = await ps.action.batchPlay([
+      {
+        _obj: "save",
+        as: {
+          _obj: "PNGFormat",
+          method: { _enum: "PNGMethod", _value: "quick" }
+        },
+        in: {
+          _path: token,
+          _kind: "local"
+        },
+        copy: true,
+        lowerCase: true,
+        _options: { dialogOptions: "dontDisplay" }
+      }
+    ], {});
+    const failed = Array.isArray(results) && results.find(item => item?._obj === "error" || item?.result < 0 || (item?.executionStatus && item.executionStatus !== "success" && item.executionStatus !== 0));
+    if (failed) throw new Error(failed.message || "Photoshop PNG save operation failed.");
+    return results;
+  }
+  throw new Error("Photoshop saveAs.png API is not available on this document.");
+}
+
 async function executeSavePageModal(operationFn, commandName = "MM Save Page") {
   if (core && typeof core.executeAsModal === "function") {
     return core.executeAsModal(async executionContext => {
@@ -888,6 +933,7 @@ module.exports = {
   findDocumentById,
   saveDocumentCopyPsd,
   saveDocumentCopyJpeg,
+  saveDocumentCopyPng,
   trimTransparentPixels,
   px
 };

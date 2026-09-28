@@ -156,6 +156,18 @@
         </div>
       </div>
       <div class="create-album-row">
+        <div id="addAssetBtn" class="album-tool-action" role="button" tabindex="0" data-tool="add-asset">
+          <span class="tool-icon-slot"><img class="tool-icon" src="assets/icons/add-asset.png" alt="" draggable="false" /></span>
+          <span class="tool-label">ADD ASSET</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+        <div id="saveAssetBtn" class="album-tool-action" role="button" tabindex="0" data-tool="save-asset">
+          <span class="tool-icon-slot"><img class="tool-icon" src="assets/icons/save-asset.png" alt="" draggable="false" /></span>
+          <span class="tool-label">SAVE ASSET</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+      </div>
+      <div class="create-album-row">
         <div id="pngMaskBtn" class="album-tool-action" role="button" tabindex="0" data-tool="png-mask">
           <span class="tool-icon-slot"><img class="tool-icon" src="assets/icons/png-mask.png" alt="" draggable="false" /></span>
           <span class="tool-label">PNG MASK</span>
@@ -275,6 +287,56 @@
         <button id="assetFolderBtn" class="btn full" type="button">SET FOLDER</button>
         <button id="assetSelectBtn" class="btn primary full" type="button" disabled aria-disabled="true">SELECT PNG MASK</button>
         <button id="assetCancelBtn" class="btn btn-cancel full" type="button">CANCEL</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ADD ASSET Dialog -->
+  <dialog id="addAssetDialog" hidden>
+    <div class="dialog-content add-frame-dialog-content">
+      <div class="dialog-header"><h2>ADD ASSET</h2></div>
+      <div class="frame-root-label">ASSET LIBRARY ROOT</div>
+      <p id="addAssetFolderPath" class="frame-root-path" title="">No asset library folder selected</p>
+      <div class="add-frame-actions">
+        <button id="addAssetFolderBtn" class="btn full" type="button">SET FOLDER</button>
+      </div>
+      <label class="frame-root-label" for="addAssetCategorySelect">CATEGORY</label>
+      <select id="addAssetCategorySelect" class="asset-category-select" aria-label="Asset Category">
+        <option value="PNG TEXT">PNG TEXT</option>
+        <option value="PNG ASSET" selected>PNG ASSET</option>
+        <option value="DECORATION">DECORATION</option>
+        <option value="PNG BORDER">PNG BORDER</option>
+        <option value="PNG MASK">PNG MASK</option>
+      </select>
+      <p id="addAssetMessage" class="add-frame-message" role="status" aria-live="polite" hidden></p>
+      <div class="add-frame-actions">
+        <button id="addAssetSelectBtn" class="btn primary full" type="button" disabled aria-disabled="true">SELECT ASSET</button>
+        <button id="addAssetCancelBtn" class="btn btn-cancel full" type="button">CANCEL</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- SAVE ASSET Dialog -->
+  <dialog id="saveAssetDialog" hidden>
+    <div class="dialog-content add-frame-dialog-content">
+      <div class="dialog-header"><h2>SAVE ASSET</h2></div>
+      <div class="frame-root-label">ASSET LIBRARY ROOT</div>
+      <p id="saveAssetFolderPath" class="frame-root-path" title="">No asset library folder selected</p>
+      <div class="add-frame-actions">
+        <button id="saveAssetFolderBtn" class="btn full" type="button">SET FOLDER</button>
+      </div>
+      <label class="frame-root-label" for="saveAssetCategorySelect">CATEGORY</label>
+      <select id="saveAssetCategorySelect" class="asset-category-select" aria-label="Asset Category">
+        <option value="PNG TEXT">PNG TEXT</option>
+        <option value="PNG ASSET" selected>PNG ASSET</option>
+        <option value="DECORATION">DECORATION</option>
+        <option value="PNG BORDER">PNG BORDER</option>
+        <option value="PNG MASK">PNG MASK</option>
+      </select>
+      <p id="saveAssetMessage" class="add-frame-message" role="status" aria-live="polite" hidden></p>
+      <div class="add-frame-actions">
+        <button id="saveAssetSaveBtn" class="btn primary full" type="button" disabled aria-disabled="true">SAVE ASSET</button>
+        <button id="saveAssetCancelBtn" class="btn btn-cancel full" type="button">CANCEL</button>
       </div>
     </div>
   </dialog>

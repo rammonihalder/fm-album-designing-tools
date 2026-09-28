@@ -65,6 +65,8 @@ const ui = {
   removePhotosBtn: $("removePhotosBtn"),
   addFrameBtn: $("addFrameBtn"),
   saveFrameBtn: $("saveFrameBtn"),
+  addAssetBtn: $("addAssetBtn"),
+  saveAssetBtn: $("saveAssetBtn"),
   pngMaskBtn: $("pngMaskBtn"),
   pngTextBtn: $("pngTextBtn"),
   clipArtBtn: $("clipArtBtn"),
@@ -94,6 +96,24 @@ const ui = {
   saveFrameFolderBtn: $("saveFrameFolderBtn"),
   saveFrameSaveBtn: $("saveFrameSaveBtn"),
   saveFrameCancelBtn: $("saveFrameCancelBtn"),
+
+  // ADD ASSET Dialog
+  addAssetDialog: $("addAssetDialog"),
+  addAssetFolderPath: $("addAssetFolderPath"),
+  addAssetCategorySelect: $("addAssetCategorySelect"),
+  addAssetMessage: $("addAssetMessage"),
+  addAssetFolderBtn: $("addAssetFolderBtn"),
+  addAssetSelectBtn: $("addAssetSelectBtn"),
+  addAssetCancelBtn: $("addAssetCancelBtn"),
+
+  // SAVE ASSET Dialog
+  saveAssetDialog: $("saveAssetDialog"),
+  saveAssetFolderPath: $("saveAssetFolderPath"),
+  saveAssetCategorySelect: $("saveAssetCategorySelect"),
+  saveAssetMessage: $("saveAssetMessage"),
+  saveAssetFolderBtn: $("saveAssetFolderBtn"),
+  saveAssetSaveBtn: $("saveAssetSaveBtn"),
+  saveAssetCancelBtn: $("saveAssetCancelBtn"),
 
   folderBrowserDialog: $("folderBrowserDialog"),
   folderBrowserCurrent: $("folderBrowserCurrent"),
@@ -190,6 +210,8 @@ console.log("[MM UI] buttons", {
   removePhotos: !!ui.removePhotosBtn,
   addFrame: !!ui.addFrameBtn,
   saveFrame: !!ui.saveFrameBtn,
+  addAsset: !!ui.addAssetBtn,
+  saveAsset: !!ui.saveAssetBtn,
   pngMask: !!ui.pngMaskBtn,
   pngText: !!ui.pngTextBtn,
   clipArt: !!ui.clipArtBtn
@@ -213,6 +235,8 @@ const requiredButtons = [
   ["removePhotosBtn", ui.removePhotosBtn],
   ["addFrameBtn", ui.addFrameBtn],
   ["saveFrameBtn", ui.saveFrameBtn],
+  ["addAssetBtn", ui.addAssetBtn],
+  ["saveAssetBtn", ui.saveAssetBtn],
   ["pngMaskBtn", ui.pngMaskBtn],
   ["pngTextBtn", ui.pngTextBtn],
   ["clipArtBtn", ui.clipArtBtn]
@@ -245,6 +269,8 @@ function setButtonsDisabled(disabled) {
     ui.removePhotosBtn,
     ui.addFrameBtn,
     ui.saveFrameBtn,
+    ui.addAssetBtn,
+    ui.saveAssetBtn,
     ui.pngMaskBtn,
     ui.pngTextBtn,
     ui.clipArtBtn
@@ -1074,6 +1100,214 @@ async function handleSaveFrame() {
     toast.show(message, "error"); return { outcome: "error", success: false, error, message };
   } finally { running = false; setButtonsDisabled(false); }
 }
+
+async function promptForAddAssetDialog({ folder = null, folderPath = "", category = "PNG ASSET", message = "" } = {}) {
+  const dialog = ui.addAssetDialog;
+  if (!dialog) return { action: "cancel" };
+  const hasFolder = Boolean(folder);
+  ui.addAssetFolderPath.textContent = hasFolder ? folderPath || folder.nativePath || folder.name : "No asset library folder selected";
+  ui.addAssetFolderPath.setAttribute("title", hasFolder ? ui.addAssetFolderPath.textContent : "");
+  if (ui.addAssetCategorySelect) ui.addAssetCategorySelect.value = category;
+  ui.addAssetMessage.textContent = message;
+  ui.addAssetMessage.hidden = !message;
+  ui.addAssetFolderBtn.textContent = hasFolder ? "CHANGE FOLDER" : "SET FOLDER";
+  ui.addAssetSelectBtn.disabled = !hasFolder;
+  ui.addAssetSelectBtn.setAttribute("aria-disabled", String(!hasFolder));
+  const cleanup = [];
+  let closed = false, chosenAction = "cancel", resolveClose;
+  const closePromise = new Promise(resolve => { resolveClose = resolve; });
+  function listen(element, event, handler) {
+    if (!element) return;
+    element.addEventListener(event, handler);
+    cleanup.push(() => element.removeEventListener(event, handler));
+  }
+  function close(action) {
+    if (closed) return;
+    closed = true; chosenAction = action;
+    try { dialog.close(action); } finally { resolveClose(); }
+  }
+  function bindButton(element, action) {
+    const activate = () => { if (!element?.disabled) close(action); };
+    listen(element, "click", activate);
+    listen(element, "keydown", event => {
+      if (["Enter", " ", "Spacebar"].includes(event.key)) {
+        event.preventDefault(); event.stopPropagation(); activate();
+      }
+    });
+  }
+  bindButton(ui.addAssetFolderBtn, hasFolder ? "change-folder" : "set-folder");
+  bindButton(ui.addAssetSelectBtn, "select");
+  bindButton(ui.addAssetCancelBtn, "cancel");
+  listen(dialog, "keydown", event => { if (event.key === "Escape") { event.preventDefault(); close("cancel"); } });
+  listen(dialog, "cancel", event => { event.preventDefault(); close("cancel"); });
+  listen(dialog, "close", () => {
+    if (dialog.open === true) return;
+    closed = true; resolveClose();
+  });
+  try {
+    dialog.hidden = false;
+    let shown;
+    if (typeof dialog.uxpShowModal === "function") {
+      shown = dialog.uxpShowModal({ title: "ADD ASSET", resize: "none", size: { width: 360, height: message ? 460 : 390 } });
+    } else if (typeof dialog.showModal === "function") {
+      shown = dialog.showModal();
+    } else {
+      throw new Error("Add asset dialog API is not available.");
+    }
+    (hasFolder ? ui.addAssetCategorySelect || ui.addAssetSelectBtn : ui.addAssetFolderBtn).focus?.();
+    if (shown && typeof shown.then === "function") await shown;
+    else await closePromise;
+    return { action: chosenAction, category: ui.addAssetCategorySelect?.value || category };
+  } finally {
+    dialog.hidden = true;
+    for (const remove of cleanup) remove();
+  }
+}
+
+async function handleAddAssetLibrary() {
+  if (running) return;
+  running = true;
+  setButtonsDisabled(true);
+  toast.dismiss();
+
+  try {
+    let uxp = null;
+    try { uxp = require("uxp"); } catch (_) {}
+    let photoshop = null;
+    try { photoshop = require("photoshop"); } catch (_) {}
+
+    const localFileSystem = uxp?.storage?.localFileSystem || null;
+    const storage = typeof localStorage !== "undefined" ? localStorage : null;
+
+    const { runAddAssetLibrary, buildAddAssetToast } = require("./src/tools/addAssetLibraryItem");
+    const report = result => {
+      const summary = buildAddAssetToast(result);
+      if (summary?.message) toast.show(summary.message, summary.type);
+    };
+
+    const result = await runAddAssetLibrary({
+      showAddAssetDialog: promptForAddAssetDialog,
+      onResult: report,
+      photoshop,
+      localFileSystem,
+      storage
+    });
+    report(result);
+    return result;
+  } catch (error) {
+    console.error("[ADD ASSET]", error);
+    const message = `Could not add asset. ${error?.message || "Please try again."}`;
+    toast.show(message, "error");
+    return { outcome: "error", success: false, error, message };
+  } finally {
+    running = false;
+    setButtonsDisabled(false);
+  }
+}
+
+async function promptForSaveAssetDialog({ folder = null, folderPath = "", category = "PNG ASSET", message = "" } = {}) {
+  const dialog = ui.saveAssetDialog;
+  if (!dialog) return { action: "cancel" };
+  const hasFolder = Boolean(folder);
+  ui.saveAssetFolderPath.textContent = hasFolder ? folderPath || folder.nativePath || folder.name : "No asset library folder selected";
+  ui.saveAssetFolderPath.setAttribute("title", hasFolder ? ui.saveAssetFolderPath.textContent : "");
+  if (ui.saveAssetCategorySelect) ui.saveAssetCategorySelect.value = category;
+  ui.saveAssetMessage.textContent = message;
+  ui.saveAssetMessage.hidden = !message;
+  ui.saveAssetFolderBtn.textContent = hasFolder ? "CHANGE FOLDER" : "SET FOLDER";
+  ui.saveAssetSaveBtn.disabled = !hasFolder;
+  ui.saveAssetSaveBtn.setAttribute("aria-disabled", String(!hasFolder));
+  const cleanup = [];
+  let closed = false, chosenAction = "cancel", resolveClose;
+  const closePromise = new Promise(resolve => { resolveClose = resolve; });
+  function listen(element, event, handler) {
+    if (!element) return;
+    element.addEventListener(event, handler);
+    cleanup.push(() => element.removeEventListener(event, handler));
+  }
+  function close(action) {
+    if (closed) return;
+    closed = true; chosenAction = action;
+    try { dialog.close(action); } finally { resolveClose(); }
+  }
+  function bindButton(element, action) {
+    const activate = () => { if (!element?.disabled) close(action); };
+    listen(element, "click", activate);
+    listen(element, "keydown", event => {
+      if (["Enter", " ", "Spacebar"].includes(event.key)) {
+        event.preventDefault(); event.stopPropagation(); activate();
+      }
+    });
+  }
+  bindButton(ui.saveAssetFolderBtn, hasFolder ? "change-folder" : "set-folder");
+  bindButton(ui.saveAssetSaveBtn, "save");
+  bindButton(ui.saveAssetCancelBtn, "cancel");
+  listen(dialog, "keydown", event => { if (event.key === "Escape") { event.preventDefault(); close("cancel"); } });
+  listen(dialog, "cancel", event => { event.preventDefault(); close("cancel"); });
+  listen(dialog, "close", () => {
+    if (dialog.open === true) return;
+    closed = true; resolveClose();
+  });
+  try {
+    dialog.hidden = false;
+    let shown;
+    if (typeof dialog.uxpShowModal === "function") {
+      shown = dialog.uxpShowModal({ title: "SAVE ASSET", resize: "none", size: { width: 360, height: message ? 460 : 390 } });
+    } else if (typeof dialog.showModal === "function") {
+      shown = dialog.showModal();
+    } else {
+      throw new Error("Save asset dialog API is not available.");
+    }
+    (hasFolder ? ui.saveAssetCategorySelect || ui.saveAssetSaveBtn : ui.saveAssetFolderBtn).focus?.();
+    if (shown && typeof shown.then === "function") await shown;
+    else await closePromise;
+    return { action: chosenAction, category: ui.saveAssetCategorySelect?.value || category };
+  } finally {
+    dialog.hidden = true;
+    for (const remove of cleanup) remove();
+  }
+}
+
+async function handleSaveAsset() {
+  if (running) return;
+  running = true;
+  setButtonsDisabled(true);
+  toast.dismiss();
+
+  try {
+    let uxp = null;
+    try { uxp = require("uxp"); } catch (_) {}
+    let photoshop = null;
+    try { photoshop = require("photoshop"); } catch (_) {}
+
+    const localFileSystem = uxp?.storage?.localFileSystem || null;
+    const storage = typeof localStorage !== "undefined" ? localStorage : null;
+
+    const { runSaveAsset, buildSaveAssetToast } = require("./src/tools/saveAsset");
+    const report = result => {
+      const summary = buildSaveAssetToast(result);
+      if (summary?.message) toast.show(summary.message, summary.type);
+    };
+
+    const result = await runSaveAsset({
+      showSaveAssetDialog: promptForSaveAssetDialog,
+      onResult: report,
+      photoshop,
+      localFileSystem,
+      storage
+    });
+    report(result);
+    return result;
+  } catch (error) {
+    console.error("[SAVE ASSET]", error);
+    const message = `Could not save asset PNG. ${error?.message || "Please try again."}`;
+    toast.show(message, "error");
+    return { outcome: "error", success: false, error, message };
+  } finally {
+    running = false;
+    setButtonsDisabled(false);
+  }
+}
 async function handleOpenPsd() {
   if (running) return;
   running = true;
@@ -1826,6 +2060,8 @@ attachActionHandler(ui.savePsdCategoryBtn, wrapProtectedAction(handleSavePsdCate
 attachActionHandler(ui.removePhotosBtn, wrapProtectedAction(handleRemovePhotos));
 attachActionHandler(ui.addFrameBtn, wrapProtectedAction(handleAddFrame));
 attachActionHandler(ui.saveFrameBtn, wrapProtectedAction(handleSaveFrame));
+attachActionHandler(ui.addAssetBtn, wrapProtectedAction(handleAddAssetLibrary));
+attachActionHandler(ui.saveAssetBtn, wrapProtectedAction(handleSaveAsset));
 attachActionHandler(ui.pngMaskBtn, wrapProtectedAction(() => handleAddAsset("png-mask")));
 attachActionHandler(ui.pngTextBtn, wrapProtectedAction(() => handleAddAsset("png-text")));
 attachActionHandler(ui.clipArtBtn, wrapProtectedAction(() => handleAddAsset("clip-art")));
@@ -1837,6 +2073,10 @@ if (typeof module !== "undefined" && module.exports) {
     handleCreatePagePreset,
     handleAddFrame,
     promptForAddFrameDialog,
+    handleAddAssetLibrary,
+    promptForAddAssetDialog,
+    handleSaveAsset,
+    promptForSaveAssetDialog,
     promptForAssetDialog,
     handleAddAsset,
     promptForSaveFrameDialog,
