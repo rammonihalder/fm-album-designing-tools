@@ -149,23 +149,31 @@
           <span class="tool-label">ADD FRAME</span>
           <span class="tool-balance-slot" aria-hidden="true"></span>
         </div>
+        <div id="saveFrameBtn" class="album-tool-action" role="button" tabindex="0" data-tool="save-frame">
+          <span class="tool-icon-slot"><img class="tool-icon" src="assets/icons/save-frame.png" alt="" draggable="false" /></span>
+          <span class="tool-label">SAVE FRAME</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+      </div>
+      <div class="create-album-row">
         <div id="pngMaskBtn" class="album-tool-action" role="button" tabindex="0" data-tool="png-mask">
           <span class="tool-icon-slot"><img class="tool-icon" src="assets/icons/png-mask.png" alt="" draggable="false" /></span>
           <span class="tool-label">PNG MASK</span>
           <span class="tool-balance-slot" aria-hidden="true"></span>
         </div>
-      </div>
-      <div class="create-album-row">
         <div id="pngTextBtn" class="album-tool-action" role="button" tabindex="0" data-tool="png-text">
           <span class="tool-icon-slot"><img class="tool-icon" src="assets/icons/png-text.png" alt="" draggable="false" /></span>
           <span class="tool-label">PNG TEXT</span>
           <span class="tool-balance-slot" aria-hidden="true"></span>
         </div>
+      </div>
+      <div class="create-album-row">
         <div id="clipArtBtn" class="album-tool-action" role="button" tabindex="0" data-tool="clip-art">
           <span class="tool-icon-slot"><img class="tool-icon" src="assets/icons/clip-art.png" alt="" draggable="false" /></span>
           <span class="tool-label">CLIP ART</span>
           <span class="tool-balance-slot" aria-hidden="true"></span>
         </div>
+        <div class="album-tool-action album-tool-reserved" aria-hidden="true"></div>
       </div>
     </section>
 
@@ -423,6 +431,38 @@
       <div class="dialog-actions-vertical">
         <button id="savePsdDeleteConfirmBtn" class="btn btn-destructive full" type="button">DELETE ORIGINAL</button>
         <button id="savePsdDeleteCancelBtn" class="btn full" type="button">CANCEL DELETE</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- SAVE FRAME library / category dialog -->
+  <dialog id="saveFrameDialog" hidden>
+    <div class="dialog-content add-frame-dialog-content">
+      <div class="dialog-header"><h2>SAVE FRAME</h2></div>
+      <div class="frame-root-label">FRAME LIBRARY ROOT</div>
+      <div id="saveFrameFolderPath" class="frame-root-path">No frame library folder selected</div>
+      <div class="add-frame-actions">
+        <button id="saveFrameFolderBtn" class="btn full" type="button">SET FOLDER</button>
+      </div>
+      <label class="frame-root-label" for="saveFramePhotoCount">NUMBER OF PHOTOS</label>
+      <select id="saveFramePhotoCount" class="save-frame-photo-count" aria-label="Number of photos">
+        <option value="1">1 PHOTOS</option>
+        <option value="2">2 PHOTOS</option>
+        <option value="3" selected>3 PHOTOS</option>
+        <option value="4">4 PHOTOS</option>
+        <option value="5">5 PHOTOS</option>
+        <option value="6">6 PHOTOS</option>
+        <option value="7">7 PHOTOS</option>
+        <option value="8">8 PHOTOS</option>
+        <option value="9">9 PHOTOS</option>
+        <option value="10">10 PHOTOS</option>
+        <option value="11">11 PHOTOS</option>
+        <option value="12">12 PHOTOS</option>
+      </select>
+      <p id="saveFrameMessage" class="add-frame-message" role="status" aria-live="polite" hidden></p>
+      <div class="add-frame-actions">
+        <button id="saveFrameSaveBtn" class="btn btn-primary full" type="button" disabled>SAVE FRAME</button>
+        <button id="saveFrameCancelBtn" class="btn full" type="button">CANCEL</button>
       </div>
     </div>
   </dialog>

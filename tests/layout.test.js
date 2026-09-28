@@ -179,7 +179,7 @@ function buildProbePage(runDirectory, width, height) {
       const album = document.querySelector('.create-album-section');
       const page = document.getElementById('createPageBtn');
       const frame = document.getElementById('addFrameBtn');
-      const reserved = document.getElementById('pngMaskBtn');
+      const reserved = document.getElementById('saveFrameBtn');
       const assetButtons = ['pngMaskBtn', 'pngTextBtn', 'clipArtBtn'].map(id => {
         const element = document.getElementById(id), icon = element.querySelector('img');
         return { id, label: element.querySelector('.tool-label').textContent, rect: rect(element),
@@ -240,6 +240,39 @@ function buildProbePage(runDirectory, width, height) {
         document.getElementById('assetCancelBtn').click(); await configured;
       }
 
+      const saveFrameButton = document.getElementById('saveFrameBtn');
+      const saveDialog = document.getElementById('saveFrameDialog');
+      const saveEmpty = promptForSaveFrameDialog();
+      const saveCount = document.getElementById('saveFramePhotoCount');
+      const saveChecks = {
+        inAlbum: !!saveFrameButton.closest('.create-album-section'),
+        green: getComputedStyle(saveFrameButton).backgroundColor === getComputedStyle(frame).backgroundColor,
+        iconLoaded: saveFrameButton.querySelector('img').naturalWidth === 64,
+        label: saveFrameButton.querySelector('.tool-label').textContent,
+        role: saveFrameButton.getAttribute('role'), tabIndex: saveFrameButton.getAttribute('tabindex'),
+        emptyPath: document.getElementById('saveFrameFolderPath').textContent,
+        emptyDisabled: document.getElementById('saveFrameSaveBtn').disabled,
+        defaultCount: saveCount.value,
+        options: Array.from(saveCount.options, option => ({ value: option.value, label: option.textContent }))
+      };
+      document.getElementById('saveFrameCancelBtn').click(); await saveEmpty;
+      const saveConfigured = promptForSaveFrameDialog({ folder: { nativePath: fullPath }, folderPath: fullPath, photoCount: 5 });
+      const savePath = document.getElementById('saveFrameFolderPath');
+      Object.assign(saveChecks, {
+        fullPath: savePath.textContent === fullPath && savePath.title === fullPath,
+        ellipsis: getComputedStyle(savePath).textOverflow, clipped: savePath.scrollWidth > savePath.clientWidth,
+        selectedCount: saveCount.value, enabled: !document.getElementById('saveFrameSaveBtn').disabled,
+        folderLabel: document.getElementById('saveFrameFolderBtn').textContent,
+        dialog: rect(saveDialog), path: rect(savePath), folderButton: rect(document.getElementById('saveFrameFolderBtn')),
+        count: rect(saveCount), saveButton: rect(document.getElementById('saveFrameSaveBtn')), cancelButton: rect(document.getElementById('saveFrameCancelBtn'))
+      });
+      document.getElementById('saveFrameCancelBtn').click(); await saveConfigured;
+      const saveRetry = promptForSaveFrameDialog({ folder: { nativePath: fullPath }, message: errorText });
+      const saveMessage = document.getElementById('saveFrameMessage');
+      saveChecks.retry = { message: rect(saveMessage), visible: !saveMessage.hidden && getComputedStyle(saveMessage).display !== 'none',
+        dialog: rect(saveDialog), saveButton: rect(document.getElementById('saveFrameSaveBtn')), cancelButton: rect(document.getElementById('saveFrameCancelBtn')) };
+      document.getElementById('saveFrameCancelBtn').click(); await saveRetry;
+
       const result = {
         viewport: { width: innerWidth, height: innerHeight },
         panel: {
@@ -256,7 +289,7 @@ function buildProbePage(runDirectory, width, height) {
         rowCounts,
         actionDetails,
         frameLayout,
-        assetButtons, assetDialogChecks,
+        assetButtons, assetDialogChecks, saveChecks,
         wrapperPosition,
         wrapperDisplay,
         svgCountInButtons,
@@ -358,19 +391,31 @@ function assertCommonLayout(layout) {
   const frame = layout.frameLayout;
   assert.ok(frame.album.top >= layout.toolButtonsSection.bottom, 'CREATE ALBUM must remain below the original tool grid');
   assert.deepEqual(layout.assetButtons.map(button => button.label), ['PNG MASK', 'PNG TEXT', 'CLIP ART']);
-  assert.deepEqual(layout.assetButtons.map(button => button.row), [0, 1, 1]);
+  assert.deepEqual(layout.assetButtons.map(button => button.row), [1, 1, 2]);
   for (const button of layout.assetButtons) {
     assert.equal(button.inAlbum, true); assert.equal(button.green, true); assert.equal(button.iconLoaded, true);
     assert.equal(button.role, 'button'); assert.equal(button.tabIndex, '0');
   }
   const [mask, text, clip] = layout.assetButtons.map(button => button.rect);
   if (layout.viewport.width > 290) {
-    assert.equal(frame.frame.top, mask.top); assert.equal(text.top, clip.top);
-    assert.ok(frame.frame.right <= mask.left); assert.ok(text.right <= clip.left); assert.ok(mask.bottom < text.top);
-    assert.ok(Math.abs(text.width - clip.width) < 1); assert.ok(frame.page.width > text.width);
+    assert.equal(mask.top, text.top); assert.ok(frame.frame.bottom < mask.top);
+    assert.ok(mask.right <= text.left); assert.ok(mask.bottom < clip.top);
+    assert.ok(Math.abs(mask.width - text.width) < 1); assert.ok(frame.page.width > text.width);
   } else {
-    assert.ok(frame.frame.bottom <= mask.top); assert.ok(mask.bottom <= text.top); assert.ok(text.bottom <= clip.top);
+    assert.ok(frame.frame.bottom <= frame.reserved.top); assert.ok(frame.reserved.bottom <= mask.top); assert.ok(mask.bottom <= text.top); assert.ok(text.bottom <= clip.top);
   }
+  const save = layout.saveChecks;
+  assert.equal(save.inAlbum, true); assert.equal(save.green, true); assert.equal(save.iconLoaded, true); assert.equal(save.label, 'SAVE FRAME');
+  assert.equal(save.role, 'button'); assert.equal(save.tabIndex, '0');
+  assert.equal(save.emptyPath, 'No frame library folder selected'); assert.equal(save.emptyDisabled, true); assert.equal(save.defaultCount, '3');
+  assert.deepEqual(save.options, Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: (i + 1) + ' PHOTOS' })));
+  assert.equal(save.fullPath, true); assert.equal(save.ellipsis, 'ellipsis'); assert.equal(save.clipped, true);
+  assert.equal(save.selectedCount, '5'); assert.equal(save.enabled, true); assert.equal(save.folderLabel, 'CHANGE FOLDER');
+  assert.ok(save.path.bottom <= save.folderButton.top); assert.ok(save.folderButton.bottom <= save.count.top);
+  assert.ok(save.count.bottom <= save.saveButton.top); assert.ok(save.saveButton.bottom <= save.cancelButton.top);
+  assert.ok(save.cancelButton.bottom <= save.dialog.bottom); assert.ok(save.dialog.height <= 410);
+  assert.equal(save.retry.visible, true); assert.ok(save.retry.message.height <= 55);
+  assert.ok(save.retry.message.bottom <= save.retry.saveButton.top); assert.ok(save.retry.cancelButton.bottom <= save.retry.dialog.bottom); assert.ok(save.retry.dialog.height <= 460);
   for (const dialog of layout.assetDialogChecks) {
     assert.equal(dialog.unconfigured, 'No folder selected'); assert.equal(dialog.disabled, true); assert.equal(dialog.enabled, true);
     assert.equal(dialog.selectLabel, 'SELECT ' + dialog.title); assert.equal(dialog.folderLabel, 'CHANGE FOLDER');

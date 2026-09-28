@@ -808,6 +808,58 @@ async function executeRemovePhotosModal(operationFn, commandName = "MM Remove Ph
   return operationFn();
 }
 
+async function executeTrimBatchPlay(ps, enumValue) {
+  const results = await ps.action.batchPlay([
+    {
+      _obj: "trim",
+      trimBasedOn: {
+        _enum: "trimBasedOn",
+        _value: enumValue
+      },
+      top: true,
+      bottom: true,
+      left: true,
+      right: true,
+      _isCommand: true,
+      _options: { dialogOptions: "dontDisplay" }
+    }
+  ], {});
+  const failed = Array.isArray(results) && results.find(item => item?._obj === "error" || item?.result < 0 || (item?.executionStatus && item.executionStatus !== "success" && item.executionStatus !== 0));
+  if (failed) throw new Error(failed.message || "Photoshop trim operation failed.");
+  return results;
+}
+
+async function trimTransparentPixels(doc, photoshopRef = photoshop) {
+  const ps = photoshopRef || require("photoshop");
+  if (ps?.app && doc) {
+    try { ps.app.activeDocument = doc; } catch (_) {}
+  }
+  let lastError = null;
+  const trimType = ps?.constants?.TrimType?.TRANSPARENT || "transparent";
+  if (doc && typeof doc.trim === "function") {
+    try {
+      await doc.trim(trimType, true, true, true, true);
+      return;
+    } catch (domError) {
+      lastError = domError;
+      if (!ps?.action || typeof ps.action.batchPlay !== "function") throw domError;
+    }
+  }
+  if (ps?.action && typeof ps.action.batchPlay === "function") {
+    try {
+      return await executeTrimBatchPlay(ps, "transparency");
+    } catch (batchError) {
+      try {
+        return await executeTrimBatchPlay(ps, "transparentPixels");
+      } catch (_) {
+        if (lastError) batchError.cause = lastError;
+        throw batchError;
+      }
+    }
+  }
+  throw new Error("Photoshop trim API is not available.");
+}
+
 module.exports = {
   inspectImageFiles,
   runPlacement,
@@ -836,6 +888,7 @@ module.exports = {
   findDocumentById,
   saveDocumentCopyPsd,
   saveDocumentCopyJpeg,
+  trimTransparentPixels,
   px
 };
 

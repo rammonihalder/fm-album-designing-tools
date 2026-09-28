@@ -31,12 +31,13 @@ The panel presents an 8-button responsive 2-column grid with clean line icons an
 
 ### CREATE ALBUM assets
 
-CREATE PAGE remains the full-width first action below the original eight-tool grid. The green asset buttons use two rows: **ADD FRAME / PNG MASK**, then **PNG TEXT / CLIP ART**, with the existing single-column fallback for narrow panels.
+CREATE PAGE remains the full-width first action below the original eight-tool grid. The green tool buttons use three rows: **ADD FRAME / SAVE FRAME**, **PNG MASK / PNG TEXT**, then **CLIP ART / an empty future slot**, with the existing single-column fallback for narrow panels.
 
 | Action | Asset / result | Independent root key | Select label |
 | --- | --- | --- | --- |
 | CREATE PAGE | Preset or custom album/social canvas | None | Existing page presets |
 | ADD FRAME | PSD contents as editable grouped layers | `mm_add_frame_folder_token` | SELECT PSD FRAME |
+| SAVE FRAME | Selected layers/groups exported as a layered PSD | `mm_save_frame_root_folder_token` | SAVE FRAME |
 | PNG MASK | Transparent PNG as an embedded Smart Object | `mm_png_mask_folder_token` | SELECT PNG MASK |
 | PNG TEXT | Transparent PNG graphic as an embedded Smart Object | `mm_png_text_folder_token` | SELECT PNG TEXT |
 | CLIP ART | Transparent PNG as an embedded Smart Object | `mm_clip_art_folder_token` | SELECT CLIP ART |
@@ -49,9 +50,34 @@ PNG placement uses an embedded `placeEvent` with a UXP session token and `linked
 
 Each PNG import runs in one modal/history operation: **Add PNG Mask**, **Add PNG Text**, or **Add Clip Art**. Failed placement/transforms roll back partial additions and log the native error. The existing license gate, running lock, DEV bypass and v1.2.0 version apply to all three tools; no production CCX is generated.
 
+#### SAVE FRAME
+
+Open a market/source PSD and select the frame layers or groups to keep. **SAVE FRAME** opens a compact dark dialog with **FRAME LIBRARY ROOT**, **SET FOLDER / CHANGE FOLDER**, **NUMBER OF PHOTOS**, **SAVE FRAME** and **CANCEL**. The dropdown offers **1 PHOTOS** through **12 PHOTOS**, defaulting to **3 PHOTOS**. Escape cancels, buttons support Enter/Space, and long paths keep their full tooltip. Without a root, the path says **No frame library folder selected** and SAVE FRAME is disabled.
+
+Set the library root with the native UXP folder picker. Its dedicated persistent key, `mm_save_frame_root_folder_token`, is independent of every other tool. Cancelled folder changes keep the old root; successful changes update the path immediately. Stale roots clear only this key. The chosen photo count survives folder changes within the dialog.
+
+Saving to **5 PHOTOS**, for example, uses `<root>/5 PHOTOS/`, automatically creating that subfolder if missing and reusing it otherwise. Each folder has its own sequence: **Frame 001.psd**, **Frame 002.psd**, etc. The highest matching PSD number plus one is padded to at least three digits; existing files are never overwritten. The optional custom prefix is omitted in this development version.
+
+`src/tools/saveFrame.js` captures the source/selection before configuration, creates a transparent temporary document with the source's full width, height, PPI and practical color mode, and duplicates only the selected native layers/groups individually from bottom to top. A selected group includes its nested content; selecting both a group and its descendant does not duplicate the child twice. Native duplication retains editable text, Smart Objects, masks, effects and other supported layer properties. The exporter preserves positions without scaling, flattening or rasterizing, removes the temporary empty layer, trims the temporary document's transparent canvas to the actual visible non-transparent content bounds (equivalent to Photoshop `Image > Trim > Transparent Pixels` on Top, Bottom, Left, and Right), preserving all selected layers/groups as editable layers and preserving visible drop shadows, outer glows, strokes, masks, and transformed content without preserving unnecessary empty 12x36, 12x18 or source-document canvas size, and calls Photoshop `saveAs.psd(file, { layers: true, embedColorProfile: true }, true)`. RGB, CMYK, grayscale and Lab are supported creation modes; unsupported modes use RGB without changing the source. Supported 8/16/32-bit depth, color profile and pixel aspect ratio are also carried over. Clipping is retained when its actual base is also selected and the original relationship can be preserved; otherwise the selected content exports standalone without borrowing unselected layers. Adjustment appearance also depends on which related layers are selected.
+
+Only the owned temporary document is closed without further saving. Source layers remain unchanged, and source focus and original selection are restored. Failed saves clean up their unfinished file and temporary document, log native errors, and retain a useful error in the configuration dialog for retry. No document reports **Open a PSD first.**; no selection reports **Select one or more frame layers first.** Success closes the workflow and reports, for example, **Saved frame: 3 PHOTOS / Frame 004.psd**. SAVE FRAME uses the existing shared running lock, license gate and unchanged DEV bypass; the version remains **v1.2.0 DEV** and no CCX is generated.
+
+#### SAVE FRAME manual Photoshop verification
+
+1. Reload the unpackaged plugin. Confirm CREATE PAGE remains full-width below the original eight tools, with ADD FRAME / SAVE FRAME, PNG MASK / PNG TEXT and CLIP ART / empty slot beneath it. Check wide and narrow panels and the SAVE FRAME icon.
+2. With no document, confirm **Open a PSD first.** With a document and no selected layers, confirm **Select one or more frame layers first.** Confirm neither case opens a picker or creates a file.
+3. Select layers and open SAVE FRAME without a root. Confirm heading, root label, no-folder text, SET FOLDER, disabled SAVE, all 12 dropdown choices and default 3 PHOTOS. Test CANCEL, Escape, Tab, Enter/Space and cancelled SET FOLDER.
+4. Set a root. Confirm immediate path/tooltip, enabled SAVE and CHANGE FOLDER. Change the count, cancel CHANGE and confirm root/count survive; change successfully and confirm the other tools' roots remain untouched. Reopen/reload/restart Photoshop to check persistence. Move/delete the root and confirm only SAVE FRAME resets.
+5. Export to a missing category and an existing one. Confirm auto-creation/reuse, Frame 001/002 numbering, independent sequences in another category, ignored unrelated files, and no overwriting. Confirm the success toast's category/filename.
+6. Select multiple layers, a nested group, a group plus its selected child, and a child without its parent. Reopen exported PSDs and confirm only selected content is included once, stacking/nesting/names remain correct, and no extra blank layer is saved.
+7. Export editable text, embedded/linked Smart Objects, masks/vector masks, effects, opacity/blends, adjustment layers and clipping stacks with their bases selected. Check editability and appearance in the saved PSD, transparent areas around/inside the frame, trimmed canvas bounds (no fixed 12x36, 12x18 or source dimensions), preserved drop shadows/glows/strokes/masks, PPI and practical RGB/CMYK/grayscale/Lab modes (including 16/32-bit where PSD supports them).
+8. Confirm the source tab, original selection, layer hierarchy/names/positions, dirty state and history remain unchanged after success/cancellation/errors. Confirm other open documents stay open and no export document remains.
+9. Use a read-only/unavailable destination, a conflicting file named `N PHOTOS`, and unsupported/oversize PSD content. Confirm useful errors, native console details, no corrupted replacement of an existing frame, temporary cleanup, retry/cancel and button unlocking.
+10. Recheck CREATE PAGE, ADD FRAME, all three PNG tools and the original eight actions. While SAVE FRAME is open/saving, confirm conflicting buttons stay locked; verify normal licensing with DEV bypass disabled for the check, then restore the DEV setting.
+
 #### PNG asset manual Photoshop verification
 
-1. Reload the unpackaged plugin and confirm CREATE PAGE spans the first row, followed by ADD FRAME / PNG MASK and PNG TEXT / CLIP ART below the original tools. Confirm all original tools and ADD FRAME still work.
+1. Reload the unpackaged plugin and confirm CREATE PAGE spans the first row, followed by ADD FRAME / SAVE FRAME, PNG MASK / PNG TEXT and CLIP ART / empty slot below the original tools. Confirm all original tools and ADD FRAME still work.
 2. For each PNG category, open its dialog with no saved root. Confirm its exact heading and SELECT label, **No folder selected**, SET FOLDER, disabled SELECT, CANCEL, Escape and Enter/Space behavior. Cancel SET FOLDER and confirm no token is saved.
 3. Set three different roots; confirm the immediate path/tooltip, CHANGE FOLDER and enabled SELECT. Reopen the panel, reload the plugin and restart Photoshop; confirm all three roots and the ADD FRAME root remain independent. Cancel CHANGE, then successfully change one root, and confirm the other roots are untouched. Move/delete one root and confirm only that category returns to SET FOLDER.
 4. Confirm each native picker starts at its own root, filters PNG and allows one selection. Cancel to return to configuration. Navigate elsewhere and import a PNG; reopen and confirm the original configured root is unchanged. With no page open, confirm the exact warning and no picker.
@@ -191,6 +217,7 @@ Natively ported from legacy JSX (`SAVE_PSD_CATEGORYV 5.0.JSX`) to modular UXP:
 - `src/tools/createPage.js` — Creates 300-DPI album/social/custom pages and album-safe guides
 - `src/tools/addFrame.js` — Remembered Frame Root Folder, native PSD picker, and editable-group import with fit/center and rollback
 - `src/tools/addAsset.js` — Shared PNG MASK / PNG TEXT / CLIP ART configuration, independent folder memory, native PNG selection, embedded placement, fitting and cleanup
+- `src/tools/saveFrame.js` — Independent Frame Library Root, photo-count folders, selected-content layered PSD export and safe temporary cleanup
 - `src/tools/openPsd.js` — Open PSD workflow with folder memory
 - `src/tools/autoPhotoFill.js` — Auto Photo Fill workflow with folder memory
 - `src/tools/swapPhotos.js` — Smart Object content swap
@@ -237,4 +264,4 @@ Run all unit tests:
 node --test
 ```
 
-The suite includes ADD FRAME persistence/editable-import tests (`tests/addFrame.test.js`), frame dialog tests (`tests/addFrameUi.test.js`), shared PNG import/folder tests (`tests/addAsset.test.js`), category dialog/action tests (`tests/addAssetUi.test.js`), all existing tool and licensing suites, and headless browser layout probes. Photoshop-native transparency/editability, undo and cross-restart persistence also require the manual checks above.
+The suite includes ADD FRAME persistence/editable-import tests (`tests/addFrame.test.js`), frame dialog tests (`tests/addFrameUi.test.js`), shared PNG import/folder tests (`tests/addAsset.test.js`), category dialog/action tests (`tests/addAssetUi.test.js`), SAVE FRAME export/root/numbering tests (`tests/saveFrame.test.js`) and dialog/protected-action tests (`tests/saveFrameUi.test.js`), all existing tool and licensing suites, and headless browser layout probes. Photoshop-native transparency/editability, undo and cross-restart persistence also require the manual checks above.

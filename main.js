@@ -64,6 +64,7 @@ const ui = {
   savePsdCategoryBtn: $("savePsdCategoryBtn"),
   removePhotosBtn: $("removePhotosBtn"),
   addFrameBtn: $("addFrameBtn"),
+  saveFrameBtn: $("saveFrameBtn"),
   pngMaskBtn: $("pngMaskBtn"),
   pngTextBtn: $("pngTextBtn"),
   clipArtBtn: $("clipArtBtn"),
@@ -84,6 +85,15 @@ const ui = {
   assetFolderBtn: $("assetFolderBtn"),
   assetSelectBtn: $("assetSelectBtn"),
   assetCancelBtn: $("assetCancelBtn"),
+
+  // SAVE FRAME library / photo-count dialog
+  saveFrameDialog: $("saveFrameDialog"),
+  saveFrameFolderPath: $("saveFrameFolderPath"),
+  saveFramePhotoCount: $("saveFramePhotoCount"),
+  saveFrameMessage: $("saveFrameMessage"),
+  saveFrameFolderBtn: $("saveFrameFolderBtn"),
+  saveFrameSaveBtn: $("saveFrameSaveBtn"),
+  saveFrameCancelBtn: $("saveFrameCancelBtn"),
 
   folderBrowserDialog: $("folderBrowserDialog"),
   folderBrowserCurrent: $("folderBrowserCurrent"),
@@ -179,6 +189,7 @@ console.log("[MM UI] buttons", {
   savePsdCategory: !!ui.savePsdCategoryBtn,
   removePhotos: !!ui.removePhotosBtn,
   addFrame: !!ui.addFrameBtn,
+  saveFrame: !!ui.saveFrameBtn,
   pngMask: !!ui.pngMaskBtn,
   pngText: !!ui.pngTextBtn,
   clipArt: !!ui.clipArtBtn
@@ -201,6 +212,7 @@ const requiredButtons = [
   ["savePsdCategoryBtn", ui.savePsdCategoryBtn],
   ["removePhotosBtn", ui.removePhotosBtn],
   ["addFrameBtn", ui.addFrameBtn],
+  ["saveFrameBtn", ui.saveFrameBtn],
   ["pngMaskBtn", ui.pngMaskBtn],
   ["pngTextBtn", ui.pngTextBtn],
   ["clipArtBtn", ui.clipArtBtn]
@@ -232,6 +244,7 @@ function setButtonsDisabled(disabled) {
     ui.savePsdCategoryBtn,
     ui.removePhotosBtn,
     ui.addFrameBtn,
+    ui.saveFrameBtn,
     ui.pngMaskBtn,
     ui.pngTextBtn,
     ui.clipArtBtn
@@ -992,6 +1005,75 @@ async function handleAddAsset(type) {
     running = false; setButtonsDisabled(false);
   }
 }
+async function promptForSaveFrameDialog({ folder = null, folderPath = "", photoCount = 3, message = "" } = {}) {
+  const dialog = ui.saveFrameDialog;
+  if (!dialog) return { action: "cancel" };
+  const hasFolder = Boolean(folder);
+  ui.saveFrameFolderPath.textContent = hasFolder ? folderPath || folder.nativePath || folder.name : "No frame library folder selected";
+  ui.saveFrameFolderPath.setAttribute("title", hasFolder ? ui.saveFrameFolderPath.textContent : "");
+  ui.saveFramePhotoCount.value = String(photoCount);
+  ui.saveFrameMessage.textContent = message; ui.saveFrameMessage.hidden = !message;
+  ui.saveFrameFolderBtn.textContent = hasFolder ? "CHANGE FOLDER" : "SET FOLDER";
+  ui.saveFrameSaveBtn.disabled = !hasFolder;
+  ui.saveFrameSaveBtn.setAttribute("aria-disabled", String(!hasFolder));
+  const cleanup = [];
+  let closed = false, chosenAction = "cancel", resolveClose;
+  const closePromise = new Promise(resolve => { resolveClose = resolve; });
+  function listen(element, event, handler) {
+    element.addEventListener(event, handler); cleanup.push(() => element.removeEventListener(event, handler));
+  }
+  function close(action) {
+    if (closed) return;
+    closed = true; chosenAction = action;
+    try { dialog.close(action); } finally { resolveClose(); }
+  }
+  function bindButton(element, action) {
+    const activate = () => { if (!element.disabled) close(action); };
+    listen(element, "click", activate);
+    listen(element, "keydown", event => {
+      if (["Enter", " ", "Spacebar"].includes(event.key)) { event.preventDefault(); event.stopPropagation(); activate(); }
+    });
+  }
+  bindButton(ui.saveFrameFolderBtn, hasFolder ? "change-folder" : "set-folder");
+  bindButton(ui.saveFrameSaveBtn, "save"); bindButton(ui.saveFrameCancelBtn, "cancel");
+  listen(dialog, "keydown", event => { if (event.key === "Escape") { event.preventDefault(); close("cancel"); } });
+  listen(dialog, "cancel", event => { event.preventDefault(); close("cancel"); });
+  listen(dialog, "close", () => {
+    // A browser can deliver the previous close event after this dialog opens.
+    if (dialog.open === true) return;
+    closed = true; resolveClose();
+  });
+  try {
+    dialog.hidden = false;
+    let shown;
+    if (typeof dialog.uxpShowModal === "function") shown = dialog.uxpShowModal({ title: "SAVE FRAME", resize: "none", size: { width: 360, height: message ? 460 : 390 } });
+    else if (typeof dialog.showModal === "function") shown = dialog.showModal();
+    else throw new Error("Save frame dialog API is not available.");
+    (hasFolder ? ui.saveFramePhotoCount : ui.saveFrameFolderBtn).focus?.();
+    if (shown && typeof shown.then === "function") await shown;
+    else await closePromise;
+    return { action: chosenAction, photoCount: Number(ui.saveFramePhotoCount.value) };
+  } finally {
+    dialog.hidden = true;
+    for (const remove of cleanup) remove();
+  }
+}
+async function handleSaveFrame() {
+  if (running) return;
+  running = true; setButtonsDisabled(true); toast.dismiss();
+  try {
+    const { runSaveFrame, buildSaveFrameToast } = require("./src/tools/saveFrame");
+    const report = result => { const summary = buildSaveFrameToast(result); if (summary?.message) toast.show(summary.message, summary.type); };
+    const result = await runSaveFrame({ showSaveFrameDialog: promptForSaveFrameDialog, onResult: report,
+      photoshop: require("photoshop"), localFileSystem: require("uxp").storage.localFileSystem,
+      storage: typeof localStorage !== "undefined" ? localStorage : null });
+    report(result); return result;
+  } catch (error) {
+    console.error("[SAVE FRAME]", error);
+    const message = `Could not save frame PSD. ${error?.message || "Please try again."}`;
+    toast.show(message, "error"); return { outcome: "error", success: false, error, message };
+  } finally { running = false; setButtonsDisabled(false); }
+}
 async function handleOpenPsd() {
   if (running) return;
   running = true;
@@ -1743,6 +1825,7 @@ attachActionHandler(ui.saveEditedPhotosBtn, wrapProtectedAction(handleSaveEdited
 attachActionHandler(ui.savePsdCategoryBtn, wrapProtectedAction(handleSavePsdCategory));
 attachActionHandler(ui.removePhotosBtn, wrapProtectedAction(handleRemovePhotos));
 attachActionHandler(ui.addFrameBtn, wrapProtectedAction(handleAddFrame));
+attachActionHandler(ui.saveFrameBtn, wrapProtectedAction(handleSaveFrame));
 attachActionHandler(ui.pngMaskBtn, wrapProtectedAction(() => handleAddAsset("png-mask")));
 attachActionHandler(ui.pngTextBtn, wrapProtectedAction(() => handleAddAsset("png-text")));
 attachActionHandler(ui.clipArtBtn, wrapProtectedAction(() => handleAddAsset("clip-art")));
@@ -1756,6 +1839,8 @@ if (typeof module !== "undefined" && module.exports) {
     promptForAddFrameDialog,
     promptForAssetDialog,
     handleAddAsset,
+    promptForSaveFrameDialog,
+    handleSaveFrame,
     buildAutoPhotoFillToast,
     buildOpenPsdToast,
     buildFlipPhotoToast,

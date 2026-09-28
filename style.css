@@ -1054,6 +1054,13 @@ dialog#licenseDialog,
  * ------------------------------------------------------------- */
 #addFrameDialog { width: 360px; }
 #assetDialog { width: 360px; }
+#saveFrameDialog { width: 360px; }
+#saveFrameDialog .dialog-content { gap: 8px; }
+.save-frame-photo-count {
+  width: 100%; box-sizing: border-box; margin: 8px 0 14px;
+  padding: 9px 10px; background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 5px; font-size: 12px;
+}
 .add-frame-dialog-content { width: 100%; }
 .frame-root-label { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: 0.6px; margin-top: 12px; }
 .frame-root-path {
