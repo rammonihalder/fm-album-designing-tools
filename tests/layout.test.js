@@ -400,7 +400,7 @@ function assertCommonLayout(layout) {
 
   assert.equal(layout.brandPrefix, "MEMORY MAKER", "Branded prefix must be MEMORY MAKER");
   assert.equal(layout.title, "Album Design Tools", "Title must be Album Design Tools");
-  assert.equal(layout.version, "v1.0.0", "Version must be v1.0.0");
+  assert.equal(layout.version, "v1.1.0", "Version must be v1.1.0");
   assert.equal(layout.popupCount, 0, "no workflow dialog should be open while idle");
   assert.equal(layout.toastVisible, true, "toast must be readable");
   assert.equal(layout.toastPosition, "static");

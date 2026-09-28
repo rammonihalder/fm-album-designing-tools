@@ -62,12 +62,12 @@ test("3. AUTO PHOTO FILL appears BEFORE SWAP PHOTOS", () => {
   assert.ok(autoPos < swapPos, "autoPhotoFillBtn must appear before swapPhotosBtn");
 });
 
-test("4. Visible version is v1.0.0 in index.html and manifest.json", () => {
+test("4. Visible version is v1.1.0 in index.html and manifest.json", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v1.0.0"), "index.html must display v1.0.0");
+  assert.ok(html.includes("v1.1.0"), "index.html must display v1.1.0");
 
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "1.0.0", "manifest.json version must be 1.0.0");
+  assert.equal(manifest.version, "1.1.0", "manifest.json version must be 1.1.0");
   assert.equal(manifest.id, "in.memorymaker.albumplacer", "plugin ID must remain in.memorymaker.albumplacer");
 });
 

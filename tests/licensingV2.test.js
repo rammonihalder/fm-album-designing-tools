@@ -17,7 +17,7 @@ const {
 } = require("../src/licensing/crypto/tokenVerifier");
 const { createLicenseApiClient } = require("../src/licensing/licenseApi");
 const { createLicenseStorage } = require("../src/licensing/licenseStorage");
-const { STORAGE_KEYS } = require("../src/licensing/constants");
+const { STORAGE_KEYS, PLUGIN_VERSION } = require("../src/licensing/constants");
 const {
   LicenseManager,
   createLicenseManager,
@@ -92,7 +92,15 @@ test("V2-1. manifest network permissions are strictly limited to Worker domain a
     fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8")
   );
   assert.equal(manifest.id, "in.memorymaker.albumplacer");
-  assert.equal(manifest.version, "1.0.0");
+  assert.equal(manifest.version, "1.1.0");
+  assert.equal(PLUGIN_VERSION, manifest.version, "runtime PLUGIN_VERSION must match manifest.version");
+
+  const indexHtml = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
+  assert.ok(
+    indexHtml.includes(`<span class="version">v${manifest.version}</span>`),
+    "index.html must display visible version matching manifest"
+  );
+
   assert.equal(manifest.requiredPermissions?.localFileSystem, "fullAccess");
   assert.ok(manifest.requiredPermissions?.network, "Manifest must include network permission");
   assert.notEqual(manifest.requiredPermissions.network.domains, "all", "network.domains must NOT be 'all'");
@@ -1144,7 +1152,7 @@ test("V2-27. API client timeout, network error, and non-200 responses are saniti
       licenseKey: "SECRET-KEY-1234",
       deviceHash: "SECRET-DEVICE-HASH",
       deviceName: "Photoshop Test",
-      pluginVersion: "1.0.0"
+      pluginVersion: PLUGIN_VERSION
     });
 
     assert.equal(resTimeout.ok, false);

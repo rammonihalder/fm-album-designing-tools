@@ -2,7 +2,7 @@
 
 const { LICENSE_STATES, normalizeState, isOperationalState } = require("./licenseState");
 const { createLicenseStorage } = require("./licenseStorage");
-const { LOG_PREFIX, REFRESH_INTERVAL_DAYS, OFFLINE_GRACE_PERIOD_DAYS } = require("./constants");
+const { LOG_PREFIX, REFRESH_INTERVAL_DAYS, OFFLINE_GRACE_PERIOD_DAYS, PLUGIN_VERSION } = require("./constants");
 const { verifyToken } = require("./crypto/tokenVerifier");
 const { createLicenseApiClient } = require("./licenseApi");
 const { generateOpaqueDeviceId, getGenericDeviceName } = require("./deviceId");
@@ -68,7 +68,7 @@ class LicenseManager {
     this._apiClient = dependencies.apiClient !== undefined ? dependencies.apiClient : null;
     this._verifier = dependencies.verifier !== undefined ? dependencies.verifier : (t => verifyToken(t, { expectedDeviceHash: this._deviceId }));
     this._clock = typeof dependencies.clock === "function" ? dependencies.clock : () => Date.now();
-    this._pluginVersion = dependencies.pluginVersion || "1.0.0";
+    this._pluginVersion = dependencies.pluginVersion || PLUGIN_VERSION;
     this._logger = dependencies.logger || console;
 
     this._deviceId = null;
