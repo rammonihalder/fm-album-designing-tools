@@ -10,6 +10,15 @@ const { runSavePsdCategory, buildSavePsdCategoryToast } = require("./src/tools/s
 const { runRemovePhotos, buildRemovePhotosToast } = require("./src/tools/removePhotos");
 const { createToastManager } = require("./src/ui/toast");
 
+// DEVELOPMENT TESTING ONLY.
+// Keep this true only while running the unpackaged plugin from UXP Developer Tool.
+// Set to false (or remove this block) before building/distributing the production CCX.
+let DEV_LICENSE_BYPASS = true;
+
+if (DEV_LICENSE_BYPASS) {
+  console.warn("[MM DEV] License gate bypass ENABLED - development testing only. Do not package this build.");
+}
+
 // Licensing Foundation (Phase 1 - Non-enforcing)
 let licenseManager = null;
 try {
@@ -26,6 +35,25 @@ const $ = id => (typeof document !== "undefined" && typeof document.getElementBy
 
 
 const ui = {
+  // Create Album / Create Page
+  createPageBtn: $("createPageBtn"),
+  createPagePresetPanel: $("createPagePresetPanel"),
+  createAlbum12x36Btn: $("createAlbum12x36Btn"),
+  createAlbum12x18Btn: $("createAlbum12x18Btn"),
+  createInstagramBtn: $("createInstagramBtn"),
+  createFacebookBtn: $("createFacebookBtn"),
+  createYouTubeBtn: $("createYouTubeBtn"),
+  createCustomBtn: $("createCustomBtn"),
+
+  createCustomPageDialog: $("createCustomPageDialog"),
+  createCustomWidthInput: $("createCustomWidthInput"),
+  createCustomHeightInput: $("createCustomHeightInput"),
+  createCustomUnitSelect: $("createCustomUnitSelect"),
+  createCustomBackgroundSelect: $("createCustomBackgroundSelect"),
+  createCustomPageError: $("createCustomPageError"),
+  createCustomPageCreateBtn: $("createCustomPageCreateBtn"),
+  createCustomPageCancelBtn: $("createCustomPageCancelBtn"),
+
   // Action buttons
   openPsdBtn: $("openPsdBtn"),
   autoPhotoFillBtn: $("autoPhotoFillBtn"),
@@ -35,6 +63,27 @@ const ui = {
   saveEditedPhotosBtn: $("saveEditedPhotosBtn"),
   savePsdCategoryBtn: $("savePsdCategoryBtn"),
   removePhotosBtn: $("removePhotosBtn"),
+  addFrameBtn: $("addFrameBtn"),
+  pngMaskBtn: $("pngMaskBtn"),
+  pngTextBtn: $("pngTextBtn"),
+  clipArtBtn: $("clipArtBtn"),
+
+  // ADD FRAME root configuration dialog
+  addFrameDialog: $("addFrameDialog"),
+  addFrameFolderPath: $("addFrameFolderPath"),
+  addFrameMessage: $("addFrameMessage"),
+  addFrameFolderBtn: $("addFrameFolderBtn"),
+  addFrameSelectBtn: $("addFrameSelectBtn"),
+  addFrameCancelBtn: $("addFrameCancelBtn"),
+
+  // Shared PNG asset configuration dialog
+  assetDialog: $("assetDialog"),
+  assetDialogTitle: $("assetDialogTitle"),
+  assetFolderPath: $("assetFolderPath"),
+  assetMessage: $("assetMessage"),
+  assetFolderBtn: $("assetFolderBtn"),
+  assetSelectBtn: $("assetSelectBtn"),
+  assetCancelBtn: $("assetCancelBtn"),
 
   folderBrowserDialog: $("folderBrowserDialog"),
   folderBrowserCurrent: $("folderBrowserCurrent"),
@@ -110,9 +159,17 @@ const ui = {
   toast: $("toast")
 };
 
+if (DEV_LICENSE_BYPASS && typeof document !== "undefined") {
+  const versionBadge = document.querySelector?.(".version");
+  if (versionBadge && !String(versionBadge.textContent || "").includes("DEV")) {
+    versionBadge.textContent = `${versionBadge.textContent} DEV`;
+  }
+}
+
 console.log("[MM UI] main.js loaded");
 
 console.log("[MM UI] buttons", {
+  createPage: !!ui.createPageBtn,
   openPsd: !!ui.openPsdBtn,
   autoPhotoFill: !!ui.autoPhotoFillBtn,
   swapPhotos: !!ui.swapPhotosBtn,
@@ -120,10 +177,21 @@ console.log("[MM UI] buttons", {
   savePage: !!ui.savePageBtn,
   saveEditedPhotos: !!ui.saveEditedPhotosBtn,
   savePsdCategory: !!ui.savePsdCategoryBtn,
-  removePhotos: !!ui.removePhotosBtn
+  removePhotos: !!ui.removePhotosBtn,
+  addFrame: !!ui.addFrameBtn,
+  pngMask: !!ui.pngMaskBtn,
+  pngText: !!ui.pngTextBtn,
+  clipArt: !!ui.clipArtBtn
 });
 
 const requiredButtons = [
+  ["createPageBtn", ui.createPageBtn],
+  ["createAlbum12x36Btn", ui.createAlbum12x36Btn],
+  ["createAlbum12x18Btn", ui.createAlbum12x18Btn],
+  ["createInstagramBtn", ui.createInstagramBtn],
+  ["createFacebookBtn", ui.createFacebookBtn],
+  ["createYouTubeBtn", ui.createYouTubeBtn],
+  ["createCustomBtn", ui.createCustomBtn],
   ["openPsdBtn", ui.openPsdBtn],
   ["autoPhotoFillBtn", ui.autoPhotoFillBtn],
   ["swapPhotosBtn", ui.swapPhotosBtn],
@@ -131,7 +199,11 @@ const requiredButtons = [
   ["savePageBtn", ui.savePageBtn],
   ["saveEditedPhotosBtn", ui.saveEditedPhotosBtn],
   ["savePsdCategoryBtn", ui.savePsdCategoryBtn],
-  ["removePhotosBtn", ui.removePhotosBtn]
+  ["removePhotosBtn", ui.removePhotosBtn],
+  ["addFrameBtn", ui.addFrameBtn],
+  ["pngMaskBtn", ui.pngMaskBtn],
+  ["pngTextBtn", ui.pngTextBtn],
+  ["clipArtBtn", ui.clipArtBtn]
 ];
 for (const [id, btn] of requiredButtons) {
   if (!btn) {
@@ -144,6 +216,13 @@ let running = false;
 
 function setButtonsDisabled(disabled) {
   const buttons = [
+    ui.createPageBtn,
+    ui.createAlbum12x36Btn,
+    ui.createAlbum12x18Btn,
+    ui.createInstagramBtn,
+    ui.createFacebookBtn,
+    ui.createYouTubeBtn,
+    ui.createCustomBtn,
     ui.openPsdBtn,
     ui.autoPhotoFillBtn,
     ui.swapPhotosBtn,
@@ -151,7 +230,11 @@ function setButtonsDisabled(disabled) {
     ui.savePageBtn,
     ui.saveEditedPhotosBtn,
     ui.savePsdCategoryBtn,
-    ui.removePhotosBtn
+    ui.removePhotosBtn,
+    ui.addFrameBtn,
+    ui.pngMaskBtn,
+    ui.pngTextBtn,
+    ui.clipArtBtn
   ];
   for (const btn of buttons) {
     if (!btn) continue;
@@ -571,8 +654,344 @@ async function promptForDeleteConfirmation({ fileName = "", docName = "" } = {})
 }
 
 // -------------------------------------------------------------
+// Create Album / Create Page
+// -------------------------------------------------------------
+function toggleCreatePagePanel() {
+  if (!ui.createPagePresetPanel || !ui.createPageBtn) return { outcome: "unavailable" };
+  const willOpen = Boolean(ui.createPagePresetPanel.hidden);
+  ui.createPagePresetPanel.hidden = !willOpen;
+  ui.createPageBtn.setAttribute?.("aria-expanded", String(willOpen));
+  return { outcome: "success", open: willOpen };
+}
+
+function promptForCustomPageOptions() {
+  const dialog = ui.createCustomPageDialog;
+  if (!dialog) {
+    return Promise.resolve({ cancelled: false, width: 12, height: 12, unit: "in", background: "white" });
+  }
+
+  if (ui.createCustomWidthInput) ui.createCustomWidthInput.value = "12";
+  if (ui.createCustomHeightInput) ui.createCustomHeightInput.value = "12";
+  if (ui.createCustomUnitSelect) ui.createCustomUnitSelect.value = "in";
+  if (ui.createCustomBackgroundSelect) ui.createCustomBackgroundSelect.value = "white";
+  if (ui.createCustomPageError) {
+    ui.createCustomPageError.hidden = true;
+    ui.createCustomPageError.textContent = "";
+  }
+
+  return new Promise(async resolve => {
+    let confirmed = false;
+    let cancelled = false;
+
+    function readAndValidate() {
+      const width = Number(ui.createCustomWidthInput?.value);
+      const height = Number(ui.createCustomHeightInput?.value);
+      const unit = ui.createCustomUnitSelect?.value === "px" ? "px" : "in";
+      const background = ui.createCustomBackgroundSelect?.value || "white";
+
+      if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) {
+        if (ui.createCustomPageError) {
+          ui.createCustomPageError.textContent = "Enter a valid width and height.";
+          ui.createCustomPageError.hidden = false;
+        }
+        return null;
+      }
+
+      const widthPx = unit === "in" ? width * 300 : width;
+      const heightPx = unit === "in" ? height * 300 : height;
+      if (widthPx > 300000 || heightPx > 300000) {
+        if (ui.createCustomPageError) {
+          ui.createCustomPageError.textContent = "Page size is too large for Photoshop.";
+          ui.createCustomPageError.hidden = false;
+        }
+        return null;
+      }
+
+      if (ui.createCustomPageError) {
+        ui.createCustomPageError.hidden = true;
+        ui.createCustomPageError.textContent = "";
+      }
+      return { width, height, unit, background };
+    }
+
+    function onCreate() {
+      const options = readAndValidate();
+      if (!options) return;
+      confirmed = options;
+      dialog.close?.("create");
+    }
+
+    function onCancel() {
+      cancelled = true;
+      dialog.close?.("cancel");
+    }
+
+    function onKeyDown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCancel();
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        onCreate();
+      }
+    }
+
+    ui.createCustomPageCreateBtn?.addEventListener("click", onCreate);
+    ui.createCustomPageCancelBtn?.addEventListener("click", onCancel);
+    dialog.addEventListener("keydown", onKeyDown);
+
+    try {
+      let closeReason;
+      if (typeof dialog.uxpShowModal === "function") {
+        closeReason = await dialog.uxpShowModal({
+          title: "Create Custom Page",
+          resize: "none",
+          size: { width: 340, height: 390 }
+        });
+      } else if (typeof dialog.showModal === "function") {
+        closeReason = await dialog.showModal();
+      }
+
+      if (!cancelled && (confirmed || closeReason === "create")) {
+        resolve({ cancelled: false, ...(confirmed || readAndValidate()) });
+      } else {
+        resolve({ cancelled: true });
+      }
+    } catch (error) {
+      resolve({ cancelled: true, error });
+    } finally {
+      ui.createCustomPageCreateBtn?.removeEventListener("click", onCreate);
+      ui.createCustomPageCancelBtn?.removeEventListener("click", onCancel);
+      dialog.removeEventListener("keydown", onKeyDown);
+      if (ui.createCustomPageError) {
+        ui.createCustomPageError.hidden = true;
+        ui.createCustomPageError.textContent = "";
+      }
+    }
+  });
+}
+
+async function handleCreatePagePreset(presetId) {
+  if (running) return;
+  running = true;
+  setButtonsDisabled(true);
+  toast.dismiss();
+
+  try {
+    let customOptions;
+    if (presetId === "custom") {
+      const customResult = await promptForCustomPageOptions();
+      if (customResult.cancelled) {
+        return { outcome: "cancelled" };
+      }
+      customOptions = customResult;
+    }
+
+    setStatus("Creating page...");
+    const { runCreatePage, buildCreatePageToast } = require("./src/tools/createPage");
+    const result = await runCreatePage({ presetId, customOptions });
+    setStatus(null);
+    const summary = buildCreatePageToast(result);
+    toast.show(summary.message, summary.type);
+    return result;
+  } catch (error) {
+    console.error("Create Page error:", error);
+    setStatus(null);
+    toast.show("Create Page failed", "error");
+    return { outcome: "error", success: false, error };
+  } finally {
+    running = false;
+    setButtonsDisabled(false);
+  }
+}
+
+// -------------------------------------------------------------
+// Add Frame Dialog & Handler
+// -------------------------------------------------------------
+async function promptForAddFrameDialog({ folder = null, folderPath = "", message = "" } = {}) {
+  const dialog = ui.addFrameDialog;
+  if (!dialog) return { action: "cancel" };
+  const hasFolder = Boolean(folder);
+  ui.addFrameFolderPath.textContent = hasFolder ? folderPath || folder.nativePath || folder.name : "No frame folder selected";
+  ui.addFrameFolderPath.setAttribute("title", hasFolder ? ui.addFrameFolderPath.textContent : "");
+  ui.addFrameMessage.textContent = message;
+  ui.addFrameMessage.hidden = !message;
+  ui.addFrameFolderBtn.textContent = hasFolder ? "CHANGE FOLDER" : "SET FOLDER";
+  ui.addFrameSelectBtn.disabled = !hasFolder;
+  ui.addFrameSelectBtn.setAttribute("aria-disabled", String(!hasFolder));
+  const cleanup = [];
+  let closed = false, chosenAction = "cancel", resolveClose;
+  const closePromise = new Promise(resolve => { resolveClose = resolve; });
+  function listen(element, event, handler) {
+    element.addEventListener(event, handler);
+    cleanup.push(() => element.removeEventListener(event, handler));
+  }
+  function close(action) {
+    if (closed) return;
+    closed = true; chosenAction = action;
+    try { dialog.close(action); } finally { resolveClose(); }
+  }
+  function bindButton(element, action) {
+    const activate = () => { if (!element.disabled) close(action); };
+    listen(element, "click", activate);
+    listen(element, "keydown", event => {
+      if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+        event.preventDefault(); event.stopPropagation(); activate();
+      }
+    });
+  }
+  bindButton(ui.addFrameFolderBtn, hasFolder ? "change-folder" : "set-folder");
+  bindButton(ui.addFrameSelectBtn, "select");
+  bindButton(ui.addFrameCancelBtn, "cancel");
+  listen(dialog, "keydown", event => { if (event.key === "Escape") { event.preventDefault(); close("cancel"); } });
+  listen(dialog, "cancel", event => { event.preventDefault(); close("cancel"); });
+  listen(dialog, "close", () => { closed = true; resolveClose(); });
+  try {
+    dialog.hidden = false;
+    let shown;
+    if (typeof dialog.uxpShowModal === "function") {
+      shown = dialog.uxpShowModal({ title: "Add Frame", resize: "none", size: { width: 360, height: message ? 350 : 300 } });
+    } else if (typeof dialog.showModal === "function") shown = dialog.showModal();
+    else throw new Error("ADD FRAME dialog API is not available.");
+    (hasFolder ? ui.addFrameSelectBtn : ui.addFrameFolderBtn).focus?.();
+    if (shown && typeof shown.then === "function") await shown;
+    else await closePromise;
+    return { action: chosenAction };
+  } finally {
+    dialog.hidden = true;
+    for (const remove of cleanup) remove();
+  }
+}
+async function handleAddFrame() {
+  if (running) return;
+  running = true;
+  setButtonsDisabled(true);
+  toast.dismiss();
+
+  try {
+    let uxp = null;
+    try {
+      uxp = require("uxp");
+    } catch (_) {}
+
+    let photoshop = null;
+    try {
+      photoshop = require("photoshop");
+    } catch (_) {}
+
+    const localFileSystem = uxp?.storage?.localFileSystem || null;
+    const storage = typeof localStorage !== "undefined" ? localStorage : null;
+
+    const { runAddFrame, buildAddFrameToast } = require("./src/tools/addFrame");
+    const result = await runAddFrame({
+      promptForFolder: async () => {
+        if (!localFileSystem || typeof localFileSystem.getFolder !== "function") {
+          throw new Error("Folder selection API is not available.");
+        }
+        return localFileSystem.getFolder();
+      },
+      showAddFrameDialog: promptForAddFrameDialog,
+      onResult: result => {
+        const summary = buildAddFrameToast(result);
+        if (summary?.message) toast.show(summary.message, summary.type);
+      },
+      photoshop,
+      localFileSystem,
+      storage
+    });
+
+    if (result && result.outcome !== "cancelled") {
+      const summary = buildAddFrameToast(result);
+      if (summary?.message) {
+        toast.show(summary.message, summary.type);
+      }
+    }
+    return result;
+  } catch (error) {
+    console.error("Add Frame error:", error);
+    toast.show(error?.message || "Add Frame failed", "error");
+    return { outcome: "error", success: false, error };
+  } finally {
+    running = false;
+    setButtonsDisabled(false);
+  }
+}
+
+// -------------------------------------------------------------
 // Tool Handlers
 // -------------------------------------------------------------
+async function promptForAssetDialog({ config, folder = null, folderPath = "", message = "" } = {}) {
+  const dialog = ui.assetDialog;
+  if (!dialog) return { action: "cancel" };
+  const hasFolder = Boolean(folder);
+  ui.assetDialogTitle.textContent = config.title;
+  ui.assetFolderPath.textContent = hasFolder ? folderPath || folder.nativePath || folder.name : "No folder selected";
+  ui.assetFolderPath.setAttribute("title", hasFolder ? ui.assetFolderPath.textContent : "");
+  ui.assetMessage.textContent = message; ui.assetMessage.hidden = !message;
+  ui.assetFolderBtn.textContent = hasFolder ? "CHANGE FOLDER" : "SET FOLDER";
+  ui.assetSelectBtn.textContent = config.selectLabel;
+  ui.assetSelectBtn.disabled = !hasFolder;
+  ui.assetSelectBtn.setAttribute("aria-disabled", String(!hasFolder));
+  const cleanup = [];
+  let closed = false, chosenAction = "cancel", resolveClose;
+  const closePromise = new Promise(resolve => { resolveClose = resolve; });
+  function listen(element, event, handler) {
+    element.addEventListener(event, handler); cleanup.push(() => element.removeEventListener(event, handler));
+  }
+  function close(action) {
+    if (closed) return;
+    closed = true; chosenAction = action;
+    try { dialog.close(action); } finally { resolveClose(); }
+  }
+  function bindButton(element, action) {
+    const activate = () => { if (!element.disabled) close(action); };
+    listen(element, "click", activate);
+    listen(element, "keydown", event => {
+      if (["Enter", " ", "Spacebar"].includes(event.key)) { event.preventDefault(); event.stopPropagation(); activate(); }
+    });
+  }
+  bindButton(ui.assetFolderBtn, hasFolder ? "change-folder" : "set-folder");
+  bindButton(ui.assetSelectBtn, "select"); bindButton(ui.assetCancelBtn, "cancel");
+  listen(dialog, "keydown", event => { if (event.key === "Escape") { event.preventDefault(); close("cancel"); } });
+  listen(dialog, "cancel", event => { event.preventDefault(); close("cancel"); });
+  listen(dialog, "close", () => { closed = true; resolveClose(); });
+  try {
+    dialog.hidden = false;
+    let shown;
+    if (typeof dialog.uxpShowModal === "function") shown = dialog.uxpShowModal({ title: config.title, resize: "none", size: { width: 360, height: message ? 350 : 300 } });
+    else if (typeof dialog.showModal === "function") shown = dialog.showModal();
+    else throw new Error("Asset dialog API is not available.");
+    (hasFolder ? ui.assetSelectBtn : ui.assetFolderBtn).focus?.();
+    if (shown && typeof shown.then === "function") await shown;
+    else await closePromise;
+    return { action: chosenAction };
+  } finally {
+    dialog.hidden = true;
+    for (const remove of cleanup) remove();
+  }
+}
+async function handleAddAsset(type) {
+  if (running) return;
+  running = true; setButtonsDisabled(true); toast.dismiss();
+  let config;
+  try {
+    const { getAssetConfig, runAddAsset, buildAssetToast } = require("./src/tools/addAsset");
+    config = getAssetConfig(type);
+    const localFileSystem = require("uxp").storage.localFileSystem, photoshop = require("photoshop");
+    const report = result => { const summary = buildAssetToast(result); if (summary?.message) toast.show(summary.message, summary.type); };
+    const result = await runAddAsset({ config, showAssetDialog: promptForAssetDialog, onResult: report,
+      localFileSystem, photoshop, storage: typeof localStorage !== "undefined" ? localStorage : null });
+    report(result);
+    return result;
+  } catch (error) {
+    console.error(`[${config?.title || "ASSET"}]`, error);
+    const message = `${config?.errorMessage || "Could not add asset."} ${error?.message || "Please try again."}`;
+    toast.show(message, "error");
+    return { outcome: "error", success: false, error, message };
+  } finally {
+    running = false; setButtonsDisabled(false);
+  }
+}
 async function handleOpenPsd() {
   if (running) return;
   running = true;
@@ -1081,9 +1500,16 @@ async function handleRemovePhotos() {
 // -------------------------------------------------------------
 // Licensing Gating & UI Management
 // -------------------------------------------------------------
+let customLicenseManagerSet = false;
+
 function setLicenseManager(manager) {
   licenseManager = manager;
+  customLicenseManagerSet = true;
   return licenseManager;
+}
+
+function setDevLicenseBypass(val) {
+  DEV_LICENSE_BYPASS = Boolean(val);
 }
 
 function getLicenseManagerInstance() {
@@ -1091,6 +1517,7 @@ function getLicenseManagerInstance() {
 }
 
 async function ensureLicenseOperational() {
+  if (DEV_LICENSE_BYPASS && !customLicenseManagerSet) return true;
   if (!licenseManager) return true;
   try {
     await licenseManager.initialize();
@@ -1103,6 +1530,22 @@ async function ensureLicenseOperational() {
 }
 
 function updateLicenseDialogUI() {
+  if (DEV_LICENSE_BYPASS) {
+    if (ui.licenseStateLabel) ui.licenseStateLabel.textContent = "DEV BYPASS";
+    if (ui.licenseStatusMessage) {
+      ui.licenseStatusMessage.textContent = "Development testing mode - license checks are temporarily bypassed.";
+    }
+    if (ui.licenseDeviceLabel) ui.licenseDeviceLabel.textContent = "Development copy";
+    if (ui.licensePlanRow) ui.licensePlanRow.hidden = true;
+    if (ui.licenseNextRefreshRow) ui.licenseNextRefreshRow.hidden = true;
+
+    const formGroup = $("licenseActivationForm") || (ui.licenseKeyInput ? ui.licenseKeyInput.parentElement : null);
+    if (formGroup) formGroup.hidden = true;
+    if (ui.licenseActivateBtn) ui.licenseActivateBtn.hidden = true;
+    if (ui.licenseDeactivateBtn) ui.licenseDeactivateBtn.hidden = true;
+    return;
+  }
+
   if (!licenseManager) return;
   const snapshot = licenseManager.getSnapshot();
 
@@ -1284,6 +1727,13 @@ function wrapProtectedAction(handler) {
 }
 
 // Attach action handlers (click + Enter/Space) with central license gating
+attachActionHandler(ui.createPageBtn, wrapProtectedAction(toggleCreatePagePanel));
+attachActionHandler(ui.createAlbum12x36Btn, wrapProtectedAction(() => handleCreatePagePreset("album-12x36")));
+attachActionHandler(ui.createAlbum12x18Btn, wrapProtectedAction(() => handleCreatePagePreset("album-12x18")));
+attachActionHandler(ui.createInstagramBtn, wrapProtectedAction(() => handleCreatePagePreset("instagram-post")));
+attachActionHandler(ui.createFacebookBtn, wrapProtectedAction(() => handleCreatePagePreset("facebook-post")));
+attachActionHandler(ui.createYouTubeBtn, wrapProtectedAction(() => handleCreatePagePreset("youtube-thumbnail")));
+attachActionHandler(ui.createCustomBtn, wrapProtectedAction(() => handleCreatePagePreset("custom")));
 attachActionHandler(ui.openPsdBtn, wrapProtectedAction(handleOpenPsd));
 attachActionHandler(ui.autoPhotoFillBtn, wrapProtectedAction(handleAutoPhotoFill));
 attachActionHandler(ui.swapPhotosBtn, wrapProtectedAction(handleSwapPhotos));
@@ -1292,9 +1742,20 @@ attachActionHandler(ui.savePageBtn, wrapProtectedAction(handleSavePage));
 attachActionHandler(ui.saveEditedPhotosBtn, wrapProtectedAction(handleSaveEditedPhotos));
 attachActionHandler(ui.savePsdCategoryBtn, wrapProtectedAction(handleSavePsdCategory));
 attachActionHandler(ui.removePhotosBtn, wrapProtectedAction(handleRemovePhotos));
+attachActionHandler(ui.addFrameBtn, wrapProtectedAction(handleAddFrame));
+attachActionHandler(ui.pngMaskBtn, wrapProtectedAction(() => handleAddAsset("png-mask")));
+attachActionHandler(ui.pngTextBtn, wrapProtectedAction(() => handleAddAsset("png-text")));
+attachActionHandler(ui.clipArtBtn, wrapProtectedAction(() => handleAddAsset("clip-art")));
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
+    toggleCreatePagePanel,
+    promptForCustomPageOptions,
+    handleCreatePagePreset,
+    handleAddFrame,
+    promptForAddFrameDialog,
+    promptForAssetDialog,
+    handleAddAsset,
     buildAutoPhotoFillToast,
     buildOpenPsdToast,
     buildFlipPhotoToast,
@@ -1324,6 +1785,8 @@ if (typeof module !== "undefined" && module.exports) {
     wrapProtectedAction,
     setLicenseManager,
     getLicenseManagerInstance,
+    DEV_LICENSE_BYPASS,
+    setDevLicenseBypass,
     toast,
     ui,
     licenseManager

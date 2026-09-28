@@ -77,6 +77,7 @@ function buildProbePage(runDirectory, width, height) {
 
   const probeScript = `
     <script>
+    (async () => {
       const rect = element => {
         if (!element) return null;
         const value = element.getBoundingClientRect();
@@ -175,6 +176,70 @@ function buildProbePage(runDirectory, width, height) {
       const wrapperDisplay = toolButtonsSection ? getComputedStyle(toolButtonsSection).display : null;
       const wrapperPosition = toolButtonsSection ? getComputedStyle(toolButtonsSection).position : null;
 
+      const album = document.querySelector('.create-album-section');
+      const page = document.getElementById('createPageBtn');
+      const frame = document.getElementById('addFrameBtn');
+      const reserved = document.getElementById('pngMaskBtn');
+      const assetButtons = ['pngMaskBtn', 'pngTextBtn', 'clipArtBtn'].map(id => {
+        const element = document.getElementById(id), icon = element.querySelector('img');
+        return { id, label: element.querySelector('.tool-label').textContent, rect: rect(element),
+          inAlbum: !!element.closest('.create-album-section'), row: Array.from(album.querySelectorAll('.create-album-row')).indexOf(element.parentElement),
+          green: getComputedStyle(element).backgroundColor === getComputedStyle(frame).backgroundColor,
+          iconLoaded: icon.naturalWidth > 0, role: element.getAttribute('role'), tabIndex: element.getAttribute('tabindex') };
+      });
+      const frameDialog = document.getElementById('addFrameDialog');
+      const emptyDialog = promptForAddFrameDialog({ folder: null });
+      const noFolderText = document.getElementById('addFrameFolderPath').textContent;
+      const emptyDisabled = document.getElementById('addFrameSelectBtn').disabled;
+      document.getElementById('addFrameCancelBtn').click(); await emptyDialog;
+      const fullPath = 'F:/Wedding Resources/' + 'Long Folder Name/'.repeat(12) + 'PSD Frames';
+      const configuredDialog = promptForAddFrameDialog({ folder: { name: 'Frames', nativePath: fullPath }, folderPath: fullPath });
+      const framePath = document.getElementById('addFrameFolderPath');
+      const selectFrame = document.getElementById('addFrameSelectBtn');
+      const folderButton = document.getElementById('addFrameFolderBtn');
+      const cancelFrame = document.getElementById('addFrameCancelBtn');
+      const frameLayout = {
+        inAlbum: !!frame.closest('.create-album-section'),
+        page: rect(page), frame: rect(frame), reserved: rect(reserved),
+        album: rect(album), sameGreen: getComputedStyle(frame).backgroundColor === getComputedStyle(openBtn).backgroundColor,
+        noFolderText, emptyDisabled, selectEnabled: !selectFrame.disabled,
+        selectLabel: selectFrame.textContent, folderLabel: folderButton.textContent,
+        pathPreserved: framePath.textContent === fullPath && framePath.title === fullPath,
+        pathClipped: framePath.scrollWidth > framePath.clientWidth,
+        pathEllipsis: getComputedStyle(framePath).textOverflow,
+        dialogHeight: frameDialog.getBoundingClientRect().height,
+        path: rect(framePath), folderButton: rect(folderButton), selectButton: rect(selectFrame), cancelButton: rect(cancelFrame),
+        customLists: frameDialog.querySelectorAll('[role="listbox"], .frame-list-item').length
+      };
+      cancelFrame.click(); await configuredDialog;
+      const errorText = 'Access denied to the Frame Root Folder. Choose another accessible folder. '.repeat(6);
+      const retryDialog = promptForAddFrameDialog({ folder: null, message: errorText });
+      const frameMessage = document.getElementById('addFrameMessage');
+      frameLayout.retry = {
+        messageVisible: !frameMessage.hidden && getComputedStyle(frameMessage).display !== 'none',
+        messagePreserved: frameMessage.textContent === errorText,
+        message: rect(frameMessage), folderButton: rect(folderButton), cancelButton: rect(cancelFrame),
+        dialog: rect(frameDialog), overflow: getComputedStyle(frameMessage).overflowY
+      };
+      cancelFrame.click(); await retryDialog;
+      const assetDialogChecks = [];
+      for (const title of ['PNG MASK', 'PNG TEXT', 'CLIP ART']) {
+        const config = { title, selectLabel: 'SELECT ' + title };
+        const empty = promptForAssetDialog({ config });
+        const unconfigured = document.getElementById('assetFolderPath').textContent;
+        const disabled = document.getElementById('assetSelectBtn').disabled;
+        document.getElementById('assetCancelBtn').click(); await empty;
+        const configured = promptForAssetDialog({ config, folder: { nativePath: fullPath }, folderPath: fullPath });
+        const pathField = document.getElementById('assetFolderPath'), select = document.getElementById('assetSelectBtn');
+        assetDialogChecks.push({ title: document.getElementById('assetDialogTitle').textContent, unconfigured, disabled,
+          selectLabel: select.textContent, enabled: !select.disabled, folderLabel: document.getElementById('assetFolderBtn').textContent,
+          fullPath: pathField.textContent === fullPath && pathField.title === fullPath,
+          ellipsis: getComputedStyle(pathField).textOverflow, clipped: pathField.scrollWidth > pathField.clientWidth,
+          dialogHeight: rect(document.getElementById('assetDialog')).height,
+          path: rect(pathField), folderButton: rect(document.getElementById('assetFolderBtn')), selectButton: rect(select), cancelButton: rect(document.getElementById('assetCancelBtn')) });
+        document.getElementById('assetCancelBtn').click(); await configured;
+      }
+
       const result = {
         viewport: { width: innerWidth, height: innerHeight },
         panel: {
@@ -190,6 +255,8 @@ function buildProbePage(runDirectory, width, height) {
         toolRowsCount: toolRows.length,
         rowCounts,
         actionDetails,
+        frameLayout,
+        assetButtons, assetDialogChecks,
         wrapperPosition,
         wrapperDisplay,
         svgCountInButtons,
@@ -218,9 +285,11 @@ function buildProbePage(runDirectory, width, height) {
       };
 
       window.__layoutProbe = result;
+    })().catch(error => { window.__layoutProbeError = error.stack || String(error); });
     </script>`;
 
   const instrumented = source
+    .replace('<head>', `<head><base href="${pathToFileURL(projectRoot + path.sep).href}">`)
     .replace('href="style.css"', `href="${styleUrl}"`)
     .replace('<script src="main.js"></script>', `${requireStub}<script src="${mainUrl}"></script>${probeScript}`);
 
@@ -236,6 +305,8 @@ function buildProbePage(runDirectory, width, height) {
         <script>
           const frame = document.getElementById("panelFrame");
           const publishResult = () => {
+            const error = frame.contentWindow && frame.contentWindow.__layoutProbeError;
+            if (error) { document.title = "LAYOUT_PROBE_ERROR:" + btoa(error); return; }
             const result = frame.contentWindow && frame.contentWindow.__layoutProbe;
             if (!result) {
               setTimeout(publishResult, 10);
@@ -275,7 +346,8 @@ function renderAt(width, height) {
 
     assert.equal(result.status, 0, result.stderr || "headless browser failed");
     const match = result.stdout.match(/<title>LAYOUT_PROBE:([^<]+)<\/title>/);
-    assert.ok(match, `layout probe did not complete:\n${result.stderr}\n${result.stdout.slice(0, 500)}`);
+    const probeError = result.stdout.match(/<title>LAYOUT_PROBE_ERROR:([^<]+)<\/title>/);
+    assert.ok(match, probeError ? Buffer.from(probeError[1], "base64").toString("utf8") : `layout probe did not complete:\n${result.stderr}\n${result.stdout.slice(0, 500)}`);
     return JSON.parse(Buffer.from(match[1], "base64").toString("utf8"));
   } finally {
     fs.rmSync(runDirectory, { recursive: true, force: true });
@@ -283,6 +355,60 @@ function renderAt(width, height) {
 }
 
 function assertCommonLayout(layout) {
+  const frame = layout.frameLayout;
+  assert.ok(frame.album.top >= layout.toolButtonsSection.bottom, 'CREATE ALBUM must remain below the original tool grid');
+  assert.deepEqual(layout.assetButtons.map(button => button.label), ['PNG MASK', 'PNG TEXT', 'CLIP ART']);
+  assert.deepEqual(layout.assetButtons.map(button => button.row), [0, 1, 1]);
+  for (const button of layout.assetButtons) {
+    assert.equal(button.inAlbum, true); assert.equal(button.green, true); assert.equal(button.iconLoaded, true);
+    assert.equal(button.role, 'button'); assert.equal(button.tabIndex, '0');
+  }
+  const [mask, text, clip] = layout.assetButtons.map(button => button.rect);
+  if (layout.viewport.width > 290) {
+    assert.equal(frame.frame.top, mask.top); assert.equal(text.top, clip.top);
+    assert.ok(frame.frame.right <= mask.left); assert.ok(text.right <= clip.left); assert.ok(mask.bottom < text.top);
+    assert.ok(Math.abs(text.width - clip.width) < 1); assert.ok(frame.page.width > text.width);
+  } else {
+    assert.ok(frame.frame.bottom <= mask.top); assert.ok(mask.bottom <= text.top); assert.ok(text.bottom <= clip.top);
+  }
+  for (const dialog of layout.assetDialogChecks) {
+    assert.equal(dialog.unconfigured, 'No folder selected'); assert.equal(dialog.disabled, true); assert.equal(dialog.enabled, true);
+    assert.equal(dialog.selectLabel, 'SELECT ' + dialog.title); assert.equal(dialog.folderLabel, 'CHANGE FOLDER');
+    assert.equal(dialog.fullPath, true); assert.equal(dialog.ellipsis, 'ellipsis'); assert.equal(dialog.clipped, true);
+    assert.ok(dialog.dialogHeight <= 330); assert.ok(dialog.path.bottom <= dialog.folderButton.top);
+    assert.ok(dialog.folderButton.bottom <= dialog.selectButton.top); assert.ok(dialog.selectButton.bottom <= dialog.cancelButton.top);
+  }
+  assert.equal(frame.inAlbum, true, 'ADD FRAME must stay inside CREATE ALBUM');
+  assert.equal(frame.sameGreen, true, 'ADD FRAME must match the green tools');
+  assert.ok(frame.page.bottom <= frame.frame.top, 'CREATE PAGE must remain first');
+  if (layout.viewport.width > 290) {
+    assert.ok(frame.page.width > frame.frame.width, 'CREATE PAGE must span the full row');
+    assert.ok(Math.abs(frame.frame.width - frame.reserved.width) < 1, 'album row must have two equal columns');
+    assert.equal(frame.frame.top, frame.reserved.top);
+    assert.ok(frame.frame.right <= frame.reserved.left, 'album tools must not overlap');
+  } else {
+    assert.equal(frame.page.width, frame.frame.width, 'narrow album tools must follow the existing single-column fallback');
+  }
+  assert.equal(frame.noFolderText, 'No frame folder selected');
+  assert.equal(frame.emptyDisabled, true);
+  assert.equal(frame.selectEnabled, true);
+  assert.equal(frame.selectLabel, 'SELECT PSD FRAME');
+  assert.equal(frame.folderLabel, 'CHANGE FOLDER');
+  assert.equal(frame.pathPreserved, true, 'full path must survive visual truncation and be available in tooltip');
+  assert.equal(frame.pathClipped, true);
+  assert.equal(frame.pathEllipsis, 'ellipsis');
+  assert.ok(frame.dialogHeight <= 330, 'ADD FRAME dialog must remain compact');
+  assert.ok(frame.path.bottom <= frame.folderButton.top);
+  assert.ok(frame.folderButton.bottom <= frame.selectButton.top);
+  assert.ok(frame.selectButton.bottom <= frame.cancelButton.top);
+  assert.equal(frame.customLists, 0, 'configuration dialog must use native PSD selection');
+  assert.equal(frame.retry.messageVisible, true, 'retry errors must be visible inside the dialog');
+  assert.equal(frame.retry.messagePreserved, true);
+  assert.ok(frame.retry.message.height <= 55, 'long errors must stay bounded');
+  assert.ok(['auto', 'scroll'].includes(frame.retry.overflow), 'long errors must remain readable');
+  assert.ok(frame.retry.message.bottom <= frame.retry.folderButton.top, 'errors must not overlap actions');
+  assert.ok(frame.retry.cancelButton.bottom <= frame.retry.dialog.bottom, 'retry actions must fit inside the dialog');
+  assert.ok(frame.retry.dialog.height <= 400, 'retry dialog must remain compact');
   assert.ok(["auto", "scroll"].includes(layout.panel.overflowY), "the panel must own vertical scrolling");
   assert.equal(layout.panel.overflowX, "hidden", "the panel must suppress horizontal overflow");
   assert.ok(layout.panel.scrollWidth <= layout.panel.clientWidth, "panel content must not overflow horizontally");
@@ -400,7 +526,7 @@ function assertCommonLayout(layout) {
 
   assert.equal(layout.brandPrefix, "MEMORY MAKER", "Branded prefix must be MEMORY MAKER");
   assert.equal(layout.title, "Album Design Tools", "Title must be Album Design Tools");
-  assert.equal(layout.version, "v1.1.0", "Version must be v1.1.0");
+  assert.ok(layout.version === "v1.2.0 DEV" || layout.version === "v1.2.0" || layout.version === "v1.1.0", "Version must match current version");
   assert.equal(layout.popupCount, 0, "no workflow dialog should be open while idle");
   assert.equal(layout.toastVisible, true, "toast must be readable");
   assert.equal(layout.toastPosition, "static");

@@ -1,4 +1,4 @@
-# MM Album Design Tools v1.1.0
+# MM Album Design Tools v1.2.0 DEV
 
 A polished Photoshop UXP panel for album-design production workflows. The plugin ID remains `in.memorymaker.albumplacer`.
 
@@ -17,6 +17,71 @@ The panel presents an 8-button responsive 2-column grid with clean line icons an
 
 ---
 
+
+## What's New in v1.2.0
+
+### Create Album / Create Page
+- Adds a dedicated **Create Album** section below the existing production tools.
+- **12 × 36 Album:** creates a 10800 × 3600 px RGB page at 300 DPI.
+- **12 × 18 Album:** creates a 5400 × 3600 px RGB page at 300 DPI.
+- Album pages automatically receive a **0.25 inch outer safe margin**, a **center fold guide**, and **0.25 inch center-safe guides on both sides of the fold** (0.50 inch total center-safe zone).
+- Adds **Instagram Post** (1080 × 1080), **Facebook Post** (1200 × 1500), and **YouTube Thumbnail** (1280 × 720) presets, all at 300 DPI.
+- Adds **Custom Page** with inch/pixel dimensions and White/Black/Transparent background; resolution remains fixed at 300 DPI.
+- Page creation runs inside Photoshop `executeAsModal`, is protected by the existing license gate, and participates in the shared button-locking state.
+
+### CREATE ALBUM assets
+
+CREATE PAGE remains the full-width first action below the original eight-tool grid. The green asset buttons use two rows: **ADD FRAME / PNG MASK**, then **PNG TEXT / CLIP ART**, with the existing single-column fallback for narrow panels.
+
+| Action | Asset / result | Independent root key | Select label |
+| --- | --- | --- | --- |
+| CREATE PAGE | Preset or custom album/social canvas | None | Existing page presets |
+| ADD FRAME | PSD contents as editable grouped layers | `mm_add_frame_folder_token` | SELECT PSD FRAME |
+| PNG MASK | Transparent PNG as an embedded Smart Object | `mm_png_mask_folder_token` | SELECT PNG MASK |
+| PNG TEXT | Transparent PNG graphic as an embedded Smart Object | `mm_png_text_folder_token` | SELECT PNG TEXT |
+| CLIP ART | Transparent PNG as an embedded Smart Object | `mm_clip_art_folder_token` | SELECT CLIP ART |
+
+Every asset root can be changed independently. The three PNG tools share `src/tools/addAsset.js` and one category-configured compact dialog. The heading identifies the category; **ROOT FOLDER**, **No folder selected**, **SET FOLDER / CHANGE FOLDER**, the exact category SELECT label, and **CANCEL** follow the same interaction pattern as ADD FRAME. SELECT stays disabled until a valid root is saved. Long paths use ellipsis while retaining the full tooltip; warnings/errors remain visible inside the reopened dialog.
+
+SET/CHANGE uses native UXP folder selection and persistent tokens, preserving existing roots on cancellation or storage failure. Each root survives panel reopen, plugin reload and Photoshop restart. Invalid tokens clear only that category. File selection uses `{ initialLocation: rememberedRoot, types: ["png"], allowMultiple: false }`; cancelling or navigating elsewhere never changes the saved root. No document means **Create or open a page first.**, with no file picker.
+
+PNG placement uses an embedded `placeEvent` with a UXP session token and `linked: false`, without opening or saving the source PNG. Each new layer receives the filename without `.png`, stays independent of existing groups, is uniformly scaled down only if it exceeds 80% of the canvas width or height, and is centered and selected for Ctrl+T. Small assets are not enlarged. PNG MASK does not create a clipping mask; PNG TEXT remains a graphic, with no OCR or editable-text conversion; CLIP ART has no special clipping behavior. ADD FRAME continues using its separate editable PSD group importer.
+
+Each PNG import runs in one modal/history operation: **Add PNG Mask**, **Add PNG Text**, or **Add Clip Art**. Failed placement/transforms roll back partial additions and log the native error. The existing license gate, running lock, DEV bypass and v1.2.0 version apply to all three tools; no production CCX is generated.
+
+#### PNG asset manual Photoshop verification
+
+1. Reload the unpackaged plugin and confirm CREATE PAGE spans the first row, followed by ADD FRAME / PNG MASK and PNG TEXT / CLIP ART below the original tools. Confirm all original tools and ADD FRAME still work.
+2. For each PNG category, open its dialog with no saved root. Confirm its exact heading and SELECT label, **No folder selected**, SET FOLDER, disabled SELECT, CANCEL, Escape and Enter/Space behavior. Cancel SET FOLDER and confirm no token is saved.
+3. Set three different roots; confirm the immediate path/tooltip, CHANGE FOLDER and enabled SELECT. Reopen the panel, reload the plugin and restart Photoshop; confirm all three roots and the ADD FRAME root remain independent. Cancel CHANGE, then successfully change one root, and confirm the other roots are untouched. Move/delete one root and confirm only that category returns to SET FOLDER.
+4. Confirm each native picker starts at its own root, filters PNG and allows one selection. Cancel to return to configuration. Navigate elsewhere and import a PNG; reopen and confirm the original configured root is unchanged. With no page open, confirm the exact warning and no picker.
+5. Import transparent PNGs in all three categories, including PNG text artwork and a mask. Confirm filename layer names, transparent edges, Embedded Smart Object status, no clipping or OCR, independence from an already-selected album group/clipping stack, preservation of existing clipping relationships, and that source PNGs remain unchanged.
+6. Test large landscape/portrait and small PNGs. Confirm equal X/Y scaling down only, 80% maximum coverage, centering and selection. Use Ctrl+T to move/resize/rotate; undo the transform, then undo the category import once and confirm the complete asset disappears.
+7. Try a corrupt PNG and simulate a placement/transform failure in DEV. Confirm a category-specific error, native console diagnostics, no broken new layers and the original album still active. Attempt another tool during import and confirm the shared lock prevents conflicting operations.
+
+### ADD FRAME
+- **CREATE PAGE** remains the first full-width action in **CREATE ALBUM**; **ADD FRAME** stays in the two-column tool row below it. The existing narrow-panel fallback is retained.
+- ADD FRAME opens a compact dark configuration dialog with **FRAME ROOT FOLDER**, its remembered path, **SET FOLDER** or **CHANGE FOLDER**, **SELECT PSD FRAME**, and **CANCEL**. Without a root, it displays **No frame folder selected** and disables SELECT PSD FRAME. No native picker opens until an action is chosen.
+- SET FOLDER uses the native UXP folder picker and persists the selected root under `mm_add_frame_folder_token`. The root survives panel reopen, plugin reload, and Photoshop restart. Paths come from the UXP folder Entry, are visually ellipsized when long, and retain their complete text in a tooltip.
+- CHANGE FOLDER replaces the root only after a readable selection and successful persistent-token storage. Cancelling either folder action returns to the same configuration dialog without changing the token. Stale or inaccessible tokens clear only ADD FRAME's root and return to SET FOLDER; other tools' settings are untouched.
+- **SELECT PSD FRAME** opens `localFileSystem.getFileForOpening` with `{ initialLocation: rememberedRoot, types: ["psd"], allowMultiple: false }`. Every picker starts at the configured root. Navigating to another folder or selecting a PSD elsewhere never changes that root. Cancelling file selection returns to the configuration dialog without importing. The previous custom PSD list has been removed; no custom browser or thumbnails are generated.
+- A selected PSD imports into the active album as one **editable Photoshop group**, named from its filename without `.psd`. The tool opens the PSD temporarily and duplicates whole top-level layers/groups individually, bottom-to-top, with `layer.duplicate(target)`, using one `source.duplicateLayers([layer], target)` fallback if necessary. It groups **only those target copies** with `target.createLayerGroup({ name, fromLayers: copies })`. Native duplication preserves nested groups, text, shapes, existing Smart Objects, masks, effects, stacking order, opacity, blend modes, clipping relationships, and adjustment layers wherever Photoshop supports them.
+- The whole PSD is never flattened, rasterized, merged, or converted to a Smart Object. The temporary source is closed **without saving**, and the target page is restored. Selecting the album itself or a source PSD that was already open is refused, so existing user documents are not discarded; close an already-open source before importing its saved asset.
+- The group is proportionally scaled **down** only when its bounds exceed **80% of the target width or height**, then centered on that canvas. Smaller groups are not enlarged. The group stays selected for **Ctrl+T / Cmd+T** resizing, moving, and rotating; expand it to edit the original layer structure.
+- The successful import closes the configuration workflow and returns to the target page. With no active page, the warning is **Create or open a page first.** Warnings and errors show a useful toast and remain visible inside the reopened configuration dialog for retry. Cancellation and Escape stop the workflow. Native pickers run outside Photoshop's modal document-editing scope and after releasing the configuration dialog.
+- Import, grouping, fitting, and selection run inside one `executeAsModal` scope with a target history suspension named **Add PSD Frame**. One undo removes the new group. Failures roll back all target changes, including duplication that fails after creating some layers; source cleanup and target restoration run on both success and failure.
+- ADD FRAME uses the existing central action handlers, button locking, licensing, and DEV bypass. No network calls or production CCX are introduced. This remains **v1.2.0 DEV**.
+
+#### Photoshop manual verification
+1. Reload the unpackaged plugin. Verify the existing CREATE ALBUM layout, CREATE PAGE presets/custom page, and all eight original tools. Keep the current DEV bypass and version.
+2. Clear only ADD FRAME's token for a first-use check. Opening ADD FRAME should show **No frame folder selected**, SET FOLDER, disabled SELECT PSD FRAME, and CANCEL. Cancel SET FOLDER; nothing should be stored. Then select a root and confirm the path, tooltip, CHANGE FOLDER label, and enabled SELECT PSD FRAME update immediately.
+3. Close/reopen the panel, reload the plugin, and restart Photoshop. Confirm the same root appears without a folder picker. Test long paths, spaces, and non-ASCII names. Cancel CHANGE FOLDER and confirm the old root remains; choose a new root and confirm replacement. Move/rename/delete the saved root and confirm SET FOLDER returns without affecting other tools' folder memory.
+4. With an album open, press SELECT PSD FRAME repeatedly and confirm the native picker starts in the configured root each time. Cancel and confirm the dialog returns. Navigate elsewhere and select a PSD; confirm the configured root remains unchanged afterward. With no document open, confirm **Create or open a page first.**
+5. Import a layered test PSD containing nested groups, editable text, shapes, pixel layers, an existing Smart Object, masks/vector masks, effects, clipping, adjustments, opacity, and blend modes. Confirm one filename-named group contains all source layers in the correct order, and the pre-existing album layers remain outside it. Expand the group and edit its contents.
+6. Test large landscape/portrait and small frames. Confirm uniform downscale to roughly 80%, centering, no small-frame enlargement, and selection of the new group. Use Ctrl+T to resize/move/rotate, then undo the transform and undo **Add PSD Frame** once; the entire imported group should disappear.
+7. Confirm the temporary source closes, the album is active, and the original PSD on disk remains unchanged. Selecting an already-open source or the album itself should safely refuse import. Test an invalid PSD or a host import failure and confirm no partial layers remain, the source is closed if opened by ADD FRAME, and a useful error appears. Node tests simulate Photoshop; native PSD fidelity and real undo behavior require these checks.
+
+---
 ## What's New in v1.1.0
 
 ### Production Licensing Runtime
@@ -123,6 +188,9 @@ Natively ported from legacy JSX (`SAVE_PSD_CATEGORYV 5.0.JSX`) to modular UXP:
 - `index.html` / `style.css` — 2-column responsive layout, inline SVG icons, dialog modals
 - `main.js` — Panel event handling, button locking, dialog flow orchestration
 - `src/folderMemory.js` — Independent per-tool persistent folder token storage and restoration
+- `src/tools/createPage.js` — Creates 300-DPI album/social/custom pages and album-safe guides
+- `src/tools/addFrame.js` — Remembered Frame Root Folder, native PSD picker, and editable-group import with fit/center and rollback
+- `src/tools/addAsset.js` — Shared PNG MASK / PNG TEXT / CLIP ART configuration, independent folder memory, native PNG selection, embedded placement, fitting and cleanup
 - `src/tools/openPsd.js` — Open PSD workflow with folder memory
 - `src/tools/autoPhotoFill.js` — Auto Photo Fill workflow with folder memory
 - `src/tools/swapPhotos.js` — Smart Object content swap
@@ -169,5 +237,4 @@ Run all unit tests:
 node --test
 ```
 
-All automated unit tests pass across all tool suites, licensing foundation tests, and layout probes.
-
+The suite includes ADD FRAME persistence/editable-import tests (`tests/addFrame.test.js`), frame dialog tests (`tests/addFrameUi.test.js`), shared PNG import/folder tests (`tests/addAsset.test.js`), category dialog/action tests (`tests/addAssetUi.test.js`), all existing tool and licensing suites, and headless browser layout probes. Photoshop-native transparency/editability, undo and cross-restart persistence also require the manual checks above.

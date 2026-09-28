@@ -13,8 +13,9 @@
         <div class="eyebrow header-brand-prefix">MEMORY MAKER</div>
         <h1>Album Design Tools</h1>
       </div>
-      <span class="version">v1.1.0</span>
+      <span class="version">v1.2.0</span>
     </header>
+
 
     <section class="tool-section" aria-label="Album Design Tools">
       <!-- Row 1: OPEN PSD, AUTO PHOTO FILL -->
@@ -90,6 +91,85 @@
       </div>
     </section>
 
+    <section class="create-album-section" aria-label="Create Album">
+      <div class="section-heading-row">
+        <div>
+          <div class="section-eyebrow">CREATE ALBUM</div>
+          <div class="section-helper">New page at 300 DPI</div>
+        </div>
+      </div>
+
+      <div id="createPageBtn" class="create-page-toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="createPagePresetPanel">
+        <span class="create-page-toggle-mark" aria-hidden="true">+</span>
+        <span class="create-page-toggle-label">CREATE PAGE</span>
+        <span id="createPageChevron" class="create-page-chevron" aria-hidden="true">›</span>
+      </div>
+
+      <div id="createPagePresetPanel" class="create-page-preset-panel" hidden>
+        <div class="create-page-grid" role="group" aria-label="Create Page Presets">
+          <div class="create-page-row">
+            <div id="createAlbum12x36Btn" class="page-preset-action page-preset-album" role="button" tabindex="0" data-preset="album-12x36">
+              <span class="page-preset-name">12 × 36</span>
+              <span class="page-preset-meta">Album · 300 DPI</span>
+            </div>
+            <div id="createAlbum12x18Btn" class="page-preset-action page-preset-album" role="button" tabindex="0" data-preset="album-12x18">
+              <span class="page-preset-name">12 × 18</span>
+              <span class="page-preset-meta">Album · 300 DPI</span>
+            </div>
+          </div>
+          <div class="create-page-row">
+            <div id="createInstagramBtn" class="page-preset-action" role="button" tabindex="0" data-preset="instagram-post">
+              <span class="page-preset-name">INSTA POST</span>
+              <span class="page-preset-meta">1080 × 1080</span>
+            </div>
+            <div id="createFacebookBtn" class="page-preset-action" role="button" tabindex="0" data-preset="facebook-post">
+              <span class="page-preset-name">FB POST</span>
+              <span class="page-preset-meta">1200 × 1500</span>
+            </div>
+          </div>
+          <div class="create-page-row">
+            <div id="createYouTubeBtn" class="page-preset-action" role="button" tabindex="0" data-preset="youtube-thumbnail">
+              <span class="page-preset-name">YOUTUBE</span>
+              <span class="page-preset-meta">1280 × 720</span>
+            </div>
+            <div id="createCustomBtn" class="page-preset-action" role="button" tabindex="0" data-preset="custom">
+              <span class="page-preset-name">CUSTOM</span>
+              <span class="page-preset-meta">Width × Height</span>
+            </div>
+          </div>
+        </div>
+        <div class="album-guide-note">Album pages: 0.25&quot; safe margin + center fold + 0.50&quot; center safe zone</div>
+      </div>
+
+      <div class="create-album-row">
+        <div id="addFrameBtn" class="album-tool-action" role="button" tabindex="0" data-tool="add-frame">
+          <span class="tool-icon-slot">
+            <img class="tool-icon" src="assets/icons/add-frame.png" alt="" draggable="false" />
+          </span>
+          <span class="tool-label">ADD FRAME</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+        <div id="pngMaskBtn" class="album-tool-action" role="button" tabindex="0" data-tool="png-mask">
+          <span class="tool-icon-slot"><img class="tool-icon" src="assets/icons/png-mask.png" alt="" draggable="false" /></span>
+          <span class="tool-label">PNG MASK</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+      </div>
+      <div class="create-album-row">
+        <div id="pngTextBtn" class="album-tool-action" role="button" tabindex="0" data-tool="png-text">
+          <span class="tool-icon-slot"><img class="tool-icon" src="assets/icons/png-text.png" alt="" draggable="false" /></span>
+          <span class="tool-label">PNG TEXT</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+        <div id="clipArtBtn" class="album-tool-action" role="button" tabindex="0" data-tool="clip-art">
+          <span class="tool-icon-slot"><img class="tool-icon" src="assets/icons/clip-art.png" alt="" draggable="false" /></span>
+          <span class="tool-label">CLIP ART</span>
+          <span class="tool-balance-slot" aria-hidden="true"></span>
+        </div>
+      </div>
+    </section>
+
+
     <div id="statusText" class="status-text" aria-live="polite" hidden></div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
@@ -102,6 +182,51 @@
     </div>
   </main>
 
+
+  <!-- Create Custom Page Dialog -->
+  <dialog id="createCustomPageDialog">
+    <div class="dialog-content create-custom-dialog">
+      <div class="dialog-header">
+        <h2>Create Custom Page</h2>
+        <p class="dialog-subtext">Resolution is fixed at 300 DPI.</p>
+      </div>
+      <div class="custom-size-row">
+        <div class="dialog-form-group">
+          <label for="createCustomWidthInput">Width</label>
+          <input id="createCustomWidthInput" type="number" min="0.01" step="0.01" value="12" />
+        </div>
+        <div class="dialog-form-group">
+          <label for="createCustomHeightInput">Height</label>
+          <input id="createCustomHeightInput" type="number" min="0.01" step="0.01" value="12" />
+        </div>
+      </div>
+      <div class="dialog-form-group">
+        <label for="createCustomUnitSelect">Unit</label>
+        <select id="createCustomUnitSelect" class="form-select">
+          <option value="in">INCH</option>
+          <option value="px">PIXEL</option>
+        </select>
+      </div>
+      <div class="dialog-form-group">
+        <label for="createCustomBackgroundSelect">Background</label>
+        <select id="createCustomBackgroundSelect" class="form-select">
+          <option value="white">WHITE</option>
+          <option value="black">BLACK</option>
+          <option value="transparent">TRANSPARENT</option>
+        </select>
+      </div>
+      <div class="fixed-resolution-row">
+        <span>Resolution</span>
+        <strong>300 DPI</strong>
+      </div>
+      <div id="createCustomPageError" class="create-custom-error" hidden></div>
+      <div class="dialog-actions-row">
+        <button id="createCustomPageCreateBtn" class="btn primary" type="button">CREATE</button>
+        <button id="createCustomPageCancelBtn" class="btn btn-cancel" type="button">CANCEL</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="folderBrowserDialog" hidden>
     <div class="folder-browser-content">
       <h2>SELECT SAVE FOLDER</h2>
@@ -111,6 +236,38 @@
       <div id="folderBrowserSelectBtn" class="folder-confirm-primary" role="button" tabindex="0">SELECT THIS FOLDER</div>
       <div id="folderBrowserOtherBtn" class="folder-confirm-secondary" role="button" tabindex="0">CHOOSE OTHER LOCATION</div>
       <div id="folderBrowserCancelBtn" class="folder-confirm-cancel" role="button" tabindex="0">CANCEL</div>
+    </div>
+  </dialog>
+
+  <!-- ADD FRAME Root Configuration Dialog -->
+  <dialog id="addFrameDialog" hidden>
+    <div class="dialog-content add-frame-dialog-content">
+      <div class="dialog-header">
+        <h2>ADD FRAME</h2>
+      </div>
+      <div class="frame-root-label">FRAME ROOT FOLDER</div>
+      <p id="addFrameFolderPath" class="frame-root-path" title="">No frame folder selected</p>
+      <p id="addFrameMessage" class="add-frame-message" role="status" aria-live="polite" hidden></p>
+      <div class="add-frame-actions">
+        <button id="addFrameFolderBtn" class="btn full" type="button">SET FOLDER</button>
+        <button id="addFrameSelectBtn" class="btn primary full" type="button" disabled aria-disabled="true">SELECT PSD FRAME</button>
+        <button id="addFrameCancelBtn" class="btn btn-cancel full" type="button">CANCEL</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Shared PNG MASK / PNG TEXT / CLIP ART Root Configuration Dialog -->
+  <dialog id="assetDialog" hidden>
+    <div class="dialog-content add-frame-dialog-content">
+      <div class="dialog-header"><h2 id="assetDialogTitle">PNG MASK</h2></div>
+      <div class="frame-root-label">ROOT FOLDER</div>
+      <p id="assetFolderPath" class="frame-root-path" title="">No folder selected</p>
+      <p id="assetMessage" class="add-frame-message" role="status" aria-live="polite" hidden></p>
+      <div class="add-frame-actions">
+        <button id="assetFolderBtn" class="btn full" type="button">SET FOLDER</button>
+        <button id="assetSelectBtn" class="btn primary full" type="button" disabled aria-disabled="true">SELECT PNG MASK</button>
+        <button id="assetCancelBtn" class="btn btn-cancel full" type="button">CANCEL</button>
+      </div>
     </div>
   </dialog>
 

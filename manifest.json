@@ -2,16 +2,23 @@
   "manifestVersion": 5,
   "id": "in.memorymaker.albumplacer",
   "name": "MM Album Design Tools",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "main": "index.html",
   "icons": [
     {
       "width": 24,
       "height": 24,
       "path": "assets/plugin-icons/plugin-icon.png",
-      "scale": [1, 2],
-      "theme": ["all"],
-      "species": ["pluginList"]
+      "scale": [
+        1,
+        2
+      ],
+      "theme": [
+        "all"
+      ],
+      "species": [
+        "pluginList"
+      ]
     }
   ],
   "host": {
@@ -26,7 +33,7 @@
       "type": "panel",
       "id": "memoryMakerAlbumPlacerPanel",
       "label": {
-          "default": "MM Album Design Tools"
+        "default": "MM Album Design Tools"
       },
       "minimumSize": {
         "width": 240,
@@ -49,7 +56,10 @@
           "width": 23,
           "height": 23,
           "path": "assets/panel-icons/panel-icon.png",
-          "scale": [1, 2]
+          "scale": [
+            1,
+            2
+          ]
         }
       ]
     }
