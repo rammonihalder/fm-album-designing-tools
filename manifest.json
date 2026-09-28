@@ -55,6 +55,11 @@
     }
   ],
   "requiredPermissions": {
-    "localFileSystem": "fullAccess"
+    "localFileSystem": "fullAccess",
+    "network": {
+      "domains": [
+        "https://mm-license-server.rammonihalder.workers.dev"
+      ]
+    }
   }
 }

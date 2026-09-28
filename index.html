@@ -95,7 +95,10 @@
 
     <div class="plugin-footer">
       <div class="footer-divider"></div>
-      <div class="footer-credit">Developed by Rammoni Halder</div>
+      <div class="footer-bottom-row">
+        <div class="footer-credit">Developed by Rammoni Halder</div>
+        <button id="manageLicenseBtn" class="footer-license-link" type="button">License</button>
+      </div>
     </div>
   </main>
 
@@ -263,6 +266,52 @@
       <div class="dialog-actions-vertical">
         <button id="savePsdDeleteConfirmBtn" class="btn btn-destructive full" type="button">DELETE ORIGINAL</button>
         <button id="savePsdDeleteCancelBtn" class="btn full" type="button">CANCEL DELETE</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- License Status / Activation Dialog -->
+  <dialog id="licenseDialog">
+    <div class="dialog-content license-dialog">
+      <div class="dialog-header">
+        <h2>MM Album Design Tools</h2>
+        <p class="dialog-subtext">License Status &amp; Activation</p>
+      </div>
+      <div id="licenseActivationForm" class="dialog-form-group">
+        <label for="licenseKeyInput">License Key:</label>
+        <input
+          id="licenseKeyInput"
+          type="text"
+          placeholder="XXXX-XXXX-XXXX-XXXX"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+      <div id="licenseStatusMessage" class="license-status-message" aria-live="polite">
+        Unactivated
+      </div>
+      <div id="licenseInfoArea" class="license-info-area">
+        <div class="license-info-row">
+          <span class="license-info-label">Status:</span>
+          <span id="licenseStateLabel" class="license-info-value">UNACTIVATED</span>
+        </div>
+        <div class="license-info-row" id="licensePlanRow" hidden>
+          <span class="license-info-label">Plan:</span>
+          <span id="licensePlanLabel" class="license-info-value">Standard</span>
+        </div>
+        <div class="license-info-row">
+          <span class="license-info-label">Device:</span>
+          <span id="licenseDeviceLabel" class="license-info-value">Not bound</span>
+        </div>
+        <div class="license-info-row" id="licenseNextRefreshRow" hidden>
+          <span class="license-info-label">Next Validation:</span>
+          <span id="licenseNextRefreshLabel" class="license-info-value">-</span>
+        </div>
+      </div>
+      <div class="dialog-actions-vertical">
+        <button id="licenseActivateBtn" class="btn primary full" type="button">ACTIVATE</button>
+        <button id="licenseDeactivateBtn" class="btn btn-destructive full" type="button" hidden>DEACTIVATE THIS COMPUTER</button>
+        <button id="licenseDialogCloseBtn" class="btn btn-cancel full" type="button">CLOSE</button>
       </div>
     </div>
   </dialog>
