@@ -32,19 +32,38 @@ const {
   createLicenseManager
 } = require("../src/licensing/licenseManager");
 
+function toMockBytes(v) {
+  if (v == null) return null;
+  if (v instanceof Uint8Array) return v;
+  if (typeof v === "string") {
+    return new TextEncoder().encode(v);
+  }
+  if (ArrayBuffer.isView(v)) {
+    return new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+  }
+  return v;
+}
+
 /**
  * Creates an in-memory mock implementation of UXP secureStorage.
+ * Mimics real Adobe UXP secureStorage by storing and returning Uint8Array.
  * @param {object} [initial={}]
  * @returns {object}
  */
 function createMockSecureStorage(initial = {}) {
-  const store = new Map(Object.entries(initial));
+  const store = new Map();
+  for (const [key, value] of Object.entries(initial)) {
+    if (value == null) continue;
+    store.set(key, toMockBytes(value));
+  }
   return {
     async getItem(key) {
-      return store.has(key) ? store.get(key) : null;
+      if (!store.has(key)) return null;
+      const val = store.get(key);
+      return val != null ? toMockBytes(val) : null;
     },
     async setItem(key, value) {
-      store.set(key, value);
+      store.set(key, toMockBytes(value));
     },
     async removeItem(key) {
       store.delete(key);
@@ -183,16 +202,19 @@ test("7. normalized license state values and helpers", () => {
     "GRACE",
     "INVALID",
     "REVOKED",
+    "SUSPENDED",
     "UNACTIVATED"
   ].sort());
 
   assert.equal(isValidState(LICENSE_STATES.ACTIVE), true);
   assert.equal(isValidState(LICENSE_STATES.UNACTIVATED), true);
+  assert.equal(isValidState(LICENSE_STATES.SUSPENDED), true);
   assert.equal(isValidState("RANDOM_STATE"), false);
   assert.equal(isValidState(null), false);
   assert.equal(isValidState(undefined), false);
 
   assert.equal(normalizeState("ACTIVE"), "ACTIVE");
+  assert.equal(normalizeState("SUSPENDED"), "SUSPENDED");
   assert.equal(normalizeState("UNKNOWN_STATE"), "INVALID");
   assert.equal(normalizeState(null, "UNACTIVATED"), "UNACTIVATED");
 
@@ -201,6 +223,7 @@ test("7. normalized license state values and helpers", () => {
   assert.equal(isOperationalState("UNACTIVATED"), false);
   assert.equal(isOperationalState("EXPIRED"), false);
   assert.equal(isOperationalState("REVOKED"), false);
+  assert.equal(isOperationalState("SUSPENDED"), false);
   assert.equal(isOperationalState("INVALID"), false);
 });
 
@@ -408,13 +431,18 @@ test("16. manifest plugin ID remains unchanged", () => {
 });
 
 // -----------------------------------------------------------------------------
-// 17. manifest does not gain network permissions
+// 17. manifest network permissions strictly restricted to Worker domain
 // -----------------------------------------------------------------------------
-test("17. manifest does not gain network permissions or network:all", () => {
+test("17. manifest network permissions are strictly limited to Worker domain and not 'all'", () => {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8")
   );
-  assert.equal(manifest.requiredPermissions?.network, undefined, "Manifest must not contain network permission in Phase 1");
+  assert.ok(manifest.requiredPermissions?.network, "Manifest must define requiredPermissions.network");
+  assert.notEqual(manifest.requiredPermissions.network.domains, "all", "network.domains must NOT be 'all'");
+  assert.deepEqual(
+    manifest.requiredPermissions.network.domains,
+    ["https://mm-license-server.rammonihalder.workers.dev"]
+  );
 });
 
 // -----------------------------------------------------------------------------
@@ -459,16 +487,19 @@ test("19. Clear cached license resets storage and state", async () => {
 });
 
 // -----------------------------------------------------------------------------
-// 20. Hidden licensing UI foundation elements exist in index.html
+// 20. Licensing UI foundation elements exist in index.html
 // -----------------------------------------------------------------------------
-test("20. Hidden licensing UI foundation elements exist in index.html", () => {
+test("20. Licensing UI foundation elements exist in index.html", () => {
   const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes('<dialog id="licenseDialog"'), "Hidden licenseDialog must exist");
+  assert.ok(html.includes('<dialog id="licenseDialog"'), "licenseDialog must exist");
   assert.ok(html.includes('id="licenseKeyInput"'), "License key input must exist");
   assert.ok(html.includes('id="licenseActivateBtn"'), "Activate button must exist");
   assert.ok(html.includes('id="licenseStatusMessage"'), "Status message placeholder must exist");
   assert.ok(html.includes('id="licenseInfoArea"'), "License info area must exist");
-  assert.match(html, /<dialog id="licenseDialog"[^>]*hidden/, "License dialog must be hidden by default");
+  // Root dialog must NOT have hidden attribute (UXP uxpShowModal controls modal presentation)
+  assert.equal(/<dialog id="licenseDialog"[^>]*hidden/.test(html), false, "Root license dialog must not have hidden attribute");
+  // State-specific controls retain hidden attribute by default
+  assert.match(html, /id="licenseDeactivateBtn"[^>]*hidden/, "Deactivate button is hidden by default");
 });
 
 // -----------------------------------------------------------------------------

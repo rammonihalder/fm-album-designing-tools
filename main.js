@@ -90,15 +90,21 @@ const ui = {
   savePsdDeleteConfirmBtn: $("savePsdDeleteConfirmBtn"),
   savePsdDeleteCancelBtn: $("savePsdDeleteCancelBtn"),
 
-  // License Dialog (Phase 1 Foundation)
+  // License Dialog & Management UI
   licenseDialog: $("licenseDialog"),
   licenseKeyInput: $("licenseKeyInput"),
   licenseActivateBtn: $("licenseActivateBtn"),
+  licenseDeactivateBtn: $("licenseDeactivateBtn"),
   licenseStatusMessage: $("licenseStatusMessage"),
   licenseInfoArea: $("licenseInfoArea"),
   licenseStateLabel: $("licenseStateLabel"),
+  licensePlanRow: $("licensePlanRow"),
+  licensePlanLabel: $("licensePlanLabel"),
   licenseDeviceLabel: $("licenseDeviceLabel"),
+  licenseNextRefreshRow: $("licenseNextRefreshRow"),
+  licenseNextRefreshLabel: $("licenseNextRefreshLabel"),
   licenseDialogCloseBtn: $("licenseDialogCloseBtn"),
+  manageLicenseBtn: $("manageLicenseBtn"),
 
   statusText: $("statusText"),
   toast: $("toast")
@@ -1072,15 +1078,220 @@ async function handleRemovePhotos() {
   }
 }
 
-// Attach action handlers (click + Enter/Space)
-attachActionHandler(ui.openPsdBtn, handleOpenPsd);
-attachActionHandler(ui.autoPhotoFillBtn, handleAutoPhotoFill);
-attachActionHandler(ui.swapPhotosBtn, handleSwapPhotos);
-attachActionHandler(ui.flipPhotoBtn, handleFlipPhoto);
-attachActionHandler(ui.savePageBtn, handleSavePage);
-attachActionHandler(ui.saveEditedPhotosBtn, handleSaveEditedPhotos);
-attachActionHandler(ui.savePsdCategoryBtn, handleSavePsdCategory);
-attachActionHandler(ui.removePhotosBtn, handleRemovePhotos);
+// -------------------------------------------------------------
+// Licensing Gating & UI Management
+// -------------------------------------------------------------
+function setLicenseManager(manager) {
+  licenseManager = manager;
+  return licenseManager;
+}
+
+function getLicenseManagerInstance() {
+  return licenseManager;
+}
+
+async function ensureLicenseOperational() {
+  if (!licenseManager) return true;
+  try {
+    await licenseManager.initialize();
+  } catch (err) {
+    console.warn("[MM License] Initialization check error:", err?.message || err);
+  }
+  return typeof licenseManager.isOperational === "function"
+    ? licenseManager.isOperational()
+    : true;
+}
+
+function updateLicenseDialogUI() {
+  if (!licenseManager) return;
+  const snapshot = licenseManager.getSnapshot();
+
+  if (ui.licenseStateLabel) {
+    ui.licenseStateLabel.textContent = snapshot.state;
+  }
+  if (ui.licenseStatusMessage) {
+    ui.licenseStatusMessage.textContent = snapshot.userMessage || snapshot.state;
+  }
+  if (ui.licenseDeviceLabel) {
+    ui.licenseDeviceLabel.textContent = snapshot.deviceId ? "Bound (This Computer)" : "Not bound";
+  }
+
+  const isOperational = licenseManager.isOperational();
+
+  if (ui.licensePlanRow && ui.licensePlanLabel) {
+    if (isOperational && snapshot.plan) {
+      ui.licensePlanLabel.textContent = snapshot.plan.toUpperCase();
+      ui.licensePlanRow.hidden = false;
+    } else {
+      ui.licensePlanRow.hidden = true;
+    }
+  }
+
+  if (ui.licenseNextRefreshRow && ui.licenseNextRefreshLabel) {
+    if (isOperational && snapshot.refreshAfter) {
+      const dateStr = new Date(snapshot.refreshAfter * 1000).toLocaleDateString();
+      ui.licenseNextRefreshLabel.textContent = dateStr;
+      ui.licenseNextRefreshRow.hidden = false;
+    } else {
+      ui.licenseNextRefreshRow.hidden = true;
+    }
+  }
+
+  const formGroup = $("licenseActivationForm") || (ui.licenseKeyInput ? ui.licenseKeyInput.parentElement : null);
+  if (formGroup) {
+    formGroup.hidden = isOperational;
+  }
+
+  if (ui.licenseActivateBtn) {
+    ui.licenseActivateBtn.hidden = isOperational;
+  }
+  if (ui.licenseDeactivateBtn) {
+    ui.licenseDeactivateBtn.hidden = !isOperational;
+  }
+}
+
+async function showLicenseDialog() {
+  const dialog = ui.licenseDialog;
+  if (!dialog) return;
+
+  updateLicenseDialogUI();
+
+  if (typeof dialog.uxpShowModal === "function") {
+    try {
+      await dialog.uxpShowModal({
+        title: "License Management",
+        resize: "none",
+        size: {
+          width: 380,
+          height: 520
+        },
+        minSize: {
+          width: 360,
+          height: 460
+        }
+      });
+    } catch {
+      // Dialog modal error or dismissed
+    }
+  } else if (typeof dialog.showModal === "function") {
+    try {
+      await dialog.showModal();
+    } catch {
+      // Dialog dismissed
+    }
+  } else {
+    dialog.hidden = false;
+  }
+}
+
+function closeLicenseDialog() {
+  const dialog = ui.licenseDialog;
+  if (!dialog) return;
+  if (typeof dialog.close === "function") {
+    try {
+      dialog.close();
+    } catch {
+      // Dialog close error
+    }
+  }
+}
+
+// License Activation Button Handler
+ui.licenseActivateBtn?.addEventListener("click", async () => {
+  if (!licenseManager || !ui.licenseKeyInput) return;
+  const key = ui.licenseKeyInput.value.trim();
+  if (!key) {
+    if (ui.licenseStatusMessage) {
+      ui.licenseStatusMessage.textContent = "Please enter a license key.";
+    }
+    return;
+  }
+
+  ui.licenseActivateBtn.disabled = true;
+  ui.licenseActivateBtn.textContent = "ACTIVATING...";
+  if (ui.licenseStatusMessage) {
+    ui.licenseStatusMessage.textContent = "Connecting to licensing server...";
+  }
+
+  try {
+    const result = await licenseManager.activate(key);
+    if (result.ok) {
+      ui.licenseKeyInput.value = "";
+      updateLicenseDialogUI();
+      toast.show("License activated successfully!", "success");
+    } else {
+      if (ui.licenseStatusMessage) {
+        ui.licenseStatusMessage.textContent = result.message || result.error || "Activation failed.";
+      }
+    }
+  } catch (err) {
+    if (ui.licenseStatusMessage) {
+      ui.licenseStatusMessage.textContent = "Activation failed. Please check network connection.";
+    }
+  } finally {
+    ui.licenseActivateBtn.disabled = false;
+    ui.licenseActivateBtn.textContent = "ACTIVATE";
+  }
+});
+
+// License Deactivation Button Handler
+ui.licenseDeactivateBtn?.addEventListener("click", async () => {
+  if (!licenseManager) return;
+
+  ui.licenseDeactivateBtn.disabled = true;
+  ui.licenseDeactivateBtn.textContent = "DEACTIVATING...";
+  if (ui.licenseStatusMessage) {
+    ui.licenseStatusMessage.textContent = "Deactivating license on server...";
+  }
+
+  try {
+    const result = await licenseManager.deactivate();
+    if (result.ok) {
+      updateLicenseDialogUI();
+      toast.show("Computer deactivated successfully.", "info");
+    } else {
+      if (ui.licenseStatusMessage) {
+        ui.licenseStatusMessage.textContent = result.message || result.error || "Deactivation failed.";
+      }
+    }
+  } catch (err) {
+    if (ui.licenseStatusMessage) {
+      ui.licenseStatusMessage.textContent = "Deactivation error. Please try again.";
+    }
+  } finally {
+    ui.licenseDeactivateBtn.disabled = false;
+    ui.licenseDeactivateBtn.textContent = "DEACTIVATE THIS COMPUTER";
+  }
+});
+
+ui.licenseDialogCloseBtn?.addEventListener("click", () => {
+  closeLicenseDialog();
+});
+
+ui.manageLicenseBtn?.addEventListener("click", () => {
+  showLicenseDialog();
+});
+
+function wrapProtectedAction(handler) {
+  return async function protectedAction(...args) {
+    const operational = await ensureLicenseOperational();
+    if (!operational) {
+      await showLicenseDialog();
+      return { outcome: "license-required" };
+    }
+    return handler(...args);
+  };
+}
+
+// Attach action handlers (click + Enter/Space) with central license gating
+attachActionHandler(ui.openPsdBtn, wrapProtectedAction(handleOpenPsd));
+attachActionHandler(ui.autoPhotoFillBtn, wrapProtectedAction(handleAutoPhotoFill));
+attachActionHandler(ui.swapPhotosBtn, wrapProtectedAction(handleSwapPhotos));
+attachActionHandler(ui.flipPhotoBtn, wrapProtectedAction(handleFlipPhoto));
+attachActionHandler(ui.savePageBtn, wrapProtectedAction(handleSavePage));
+attachActionHandler(ui.saveEditedPhotosBtn, wrapProtectedAction(handleSaveEditedPhotos));
+attachActionHandler(ui.savePsdCategoryBtn, wrapProtectedAction(handleSavePsdCategory));
+attachActionHandler(ui.removePhotosBtn, wrapProtectedAction(handleRemovePhotos));
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
@@ -1108,6 +1319,11 @@ if (typeof module !== "undefined" && module.exports) {
     promptForDeleteConfirmation,
     setButtonsDisabled,
     attachActionHandler,
+    ensureLicenseOperational,
+    showLicenseDialog,
+    wrapProtectedAction,
+    setLicenseManager,
+    getLicenseManagerInstance,
     toast,
     ui,
     licenseManager

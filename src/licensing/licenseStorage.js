@@ -1,6 +1,87 @@
 "use strict";
 
 const { STORAGE_KEYS, SCHEMA_VERSION, LOG_PREFIX } = require("./constants");
+const { bytesToUtf8, utf8ToBytes } = require("./crypto/base64");
+
+/**
+ * Safely converts an input to a local Uint8Array.
+ * Handles cross-realm Uint8Array, ArrayBuffer, and TypedArrays without Node Buffer.
+ * @param {*} input
+ * @returns {Uint8Array|null}
+ */
+function toUint8Array(input) {
+  if (!input) return null;
+  if (input instanceof Uint8Array) return input;
+  if (input instanceof ArrayBuffer) return new Uint8Array(input);
+  if (ArrayBuffer.isView(input)) {
+    return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+  }
+  if (typeof input === "object" && typeof input.length === "number") {
+    try {
+      return new Uint8Array(input);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * UXP-safe UTF-8 decoder.
+ * - Decodes Uint8Array / binary payloads to UTF-8 string.
+ * - Tolerates legacy/string mocks by returning strings directly.
+ * - No Node Buffer in production.
+ * - Non-throwing on corrupt binary data.
+ * @param {*} raw
+ * @returns {string|null}
+ */
+function decodeStoragePayload(raw) {
+  if (raw == null) {
+    return null;
+  }
+  if (typeof raw === "string") {
+    return raw;
+  }
+
+  const bytes = toUint8Array(raw);
+  if (!bytes) {
+    return null;
+  }
+
+  if (typeof TextDecoder !== "undefined") {
+    try {
+      return new TextDecoder("utf-8").decode(bytes);
+    } catch {
+      // Fall through to pure JS decoder
+    }
+  }
+
+  try {
+    return bytesToUtf8(bytes);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * UXP-safe UTF-8 encoder.
+ * Converts string to Uint8Array without Node Buffer.
+ * @param {string} str
+ * @returns {Uint8Array}
+ */
+function encodeStoragePayload(str) {
+  if (typeof str !== "string") {
+    str = String(str);
+  }
+  if (typeof TextEncoder !== "undefined") {
+    try {
+      return new TextEncoder().encode(str);
+    } catch {
+      // Fallback
+    }
+  }
+  return utf8ToBytes(str);
+}
 
 /**
  * Safely resolves UXP secureStorage if present in the runtime environment.
@@ -56,13 +137,9 @@ class LicenseStorage {
       return null;
     }
 
-    let text;
-    if (typeof raw === "string") {
-      text = raw;
-    } else if (raw instanceof Uint8Array || (typeof Buffer !== "undefined" && Buffer.isBuffer(raw))) {
-      text = new TextDecoder("utf-8").decode(raw);
-    } else {
-      text = String(raw);
+    const text = decodeStoragePayload(raw);
+    if (!text || typeof text !== "string") {
+      return null;
     }
 
     const trimmed = text.trim();
@@ -188,6 +265,33 @@ class LicenseStorage {
   }
 
   /**
+   * Reads cached device ID.
+   * @returns {Promise<string|null>}
+   */
+  async readDeviceId() {
+    return this.readItem(STORAGE_KEYS.DEVICE_ID);
+  }
+
+  /**
+   * Persists device ID.
+   * @param {string} deviceId
+   * @returns {Promise<boolean>}
+   */
+  async writeDeviceId(deviceId) {
+    return this.writeItem(STORAGE_KEYS.DEVICE_ID, deviceId);
+  }
+
+  /**
+   * Clears cached licensing token and metadata, while preserving stable device ID.
+   * @returns {Promise<boolean>}
+   */
+  async clearLicenseToken() {
+    const resToken = await this.deleteToken();
+    const resMeta = await this.deleteMetadata();
+    return resToken && resMeta;
+  }
+
+  /**
    * Clears all cached licensing data.
    * @returns {Promise<boolean>}
    */
@@ -209,5 +313,10 @@ function createLicenseStorage(options) {
 
 module.exports = {
   LicenseStorage,
-  createLicenseStorage
+  createLicenseStorage,
+  decodeStoragePayload,
+  encodeStoragePayload,
+  decodeUtf8: decodeStoragePayload,
+  encodeUtf8: encodeStoragePayload,
+  toUint8Array
 };

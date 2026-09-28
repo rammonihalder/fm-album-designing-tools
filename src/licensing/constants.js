@@ -12,7 +12,8 @@
 
 const STORAGE_KEYS = Object.freeze({
   SIGNED_TOKEN: "mm_license_signed_token_v1",
-  LICENSE_METADATA: "mm_license_metadata_v1"
+  LICENSE_METADATA: "mm_license_metadata_v1",
+  DEVICE_ID: "mm_license_device_id_v1"
 });
 
 const SCHEMA_VERSION = 1;

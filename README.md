@@ -128,14 +128,23 @@ Natively ported from legacy JSX (`SAVE_PSD_CATEGORYV 5.0.JSX`) to modular UXP:
 
 ---
 
-## Licensing Foundation
+## Production Licensing Architecture (Phase 2)
 
-- **Phase 1 Only:** Establishes an isolated plugin-side architectural foundation for future licensing capabilities.
-- **Secure Local Token Cache Architecture:** Built around UXP `secureStorage` as an encrypted local cache for future signed tokens rather than treating local storage as an authoritative license state.
-- **Licensing Is Not Yet Enforced:** The licensing manager operates in an unactivated baseline state without blocking or restricting any plugin actions.
-- **No Backend / Network Validation Yet:** No network permissions, backend URLs, or remote verification calls exist in this phase.
-- **Existing Tools Remain Operational:** All eight tools attach and execute normally with zero behavioral changes or performance overhead.
-- **Cryptographic Trust Boundary:** When Phase 2 introduces online activation, cryptographically verified server-issued signed tokens will serve as the sole authoritative trust boundary.
+The plugin incorporates a production-grade, cryptographically verified offline-first licensing system:
+
+- **Authoritative Backend:** Hosted on Cloudflare Workers at `https://mm-license-server.rammonihalder.workers.dev` backed by Cloudflare D1 authoritative state.
+- **Signed-Token Trust Architecture:** The backend issues cryptographically signed `MM1` tokens (`MM1.<kid>.<payloadB64Url>.<sigB64Url>`) signed with an Ed25519 private key. The serialized token header and payload bytes are verified strictly before JSON parsing or schema inspection.
+- **Pure-JavaScript Public-Key Verification:** The plugin contains only the public verification key (Ed25519 SPKI DER format) in `src/licensing/productionConfig.js`. Verification is performed locally using a zero-dependency, pure-JavaScript Ed25519 implementation (TweetNaCl) compatible with the Adobe UXP environment without relying on Node.js built-ins (`crypto`, `fs`, `Buffer`) or dynamic code evaluation (`eval`).
+- **Strict DER SPKI Parser:** Public keys in SPKI format are strictly validated against ASN.1 DER structure (`1.3.101.112` OID header, exact 44-byte length) to extract the 32-byte raw Ed25519 key.
+- **Offline Grace & Refresh Cycle:**
+  - **7-day refresh target:** When a verified token's `refreshAfter` timestamp is reached, the plugin attempts an online refresh in the background during initialization.
+  - **14-day offline grace:** If the licensing server cannot be reached due to network downtime or offline travel, the license enters `GRACE` state and protected tools remain operational until `graceUntil` expires.
+  - **Authoritative denial:** Authoritative server responses (`LICENSE_REVOKED`, `LICENSE_SUSPENDED`, `DEVICE_REVOKED`) immediately revoke access and never enter offline grace.
+- **Server-Side Device Limit Enforcement:** Device limits are strictly enforced server-side. Each installation maintains a high-entropy, privacy-friendly opaque installation ID stored in `secureStorage` (never collecting hardware serials, MAC addresses, or personal data).
+- **Secure Local Cache Boundary:** `secureStorage` acts strictly as an encrypted local cache. Tokens are verified locally before writing to cache. The plaintext license key entered by the user is never persisted to storage and is cleared from memory and input fields upon activation.
+- **Sub-millisecond Tool Execution:** Protected tools check an in-memory verified token snapshot. Normal tool operations never trigger network requests or redundant disk reads.
+- **Deactivation:** Users can deactivate their computer via the "Manage License" modal in the panel footer. Successful deactivation contacts the server to free a device activation slot, clears the cached token, and preserves the installation device ID for seamless reactivation.
+- **Entitlements Support:** Signed payloads support canonical, deduplicated entitlement arrays (`entitlements`) for optional modules without requiring license key replacements for existing features.
 
 ---
 
