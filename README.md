@@ -1,4 +1,4 @@
-# MM Album Design Tools v1.0.0
+# MM Album Design Tools v1.1.0
 
 A polished Photoshop UXP panel for album-design production workflows. The plugin ID remains `in.memorymaker.albumplacer`.
 
@@ -14,6 +14,19 @@ The panel presents an 8-button responsive 2-column grid with clean line icons an
 6. **SAVE EDITED PHOTOS**
 7. **SAVE PSD CATEGORY**
 8. **REMOVE PHOTOS** (destructive styling: dark red)
+
+---
+
+## What's New in v1.1.0
+
+### Production Licensing Runtime
+- **Production License Activation:** Online license key activation via dedicated licensing server API (`/v1/activate`) with immediate cryptographically verified binding.
+- **Max-Device Licensing:** Strict enforcement of multi-device quotas per license with friendly device limit notifications.
+- **Signed Offline Token Validation:** Offline verification of MM1 tokens signed with Ed25519; fast startup verification without mandatory network access.
+- **7-Day Refresh Target:** Background online token refresh attempted after 7 days (`REFRESH_INTERVAL_DAYS = 7`).
+- **14-Day Offline Grace:** Continued full offline operation during server downtime or travel up to 14 days (`OFFLINE_GRACE_PERIOD_DAYS = 14`).
+- **License Management UI:** Clean modal dialog accessible from the panel for activating licenses, reviewing plan and expiration status, verifying device binding, and deactivating computers.
+- **Adobe UXP secureStorage Restart Persistence:** Comprehensive cross-session persistence fix handling native Adobe UXP `Uint8Array` payloads with a UXP-safe pure JavaScript UTF-8 codec and zero Node `Buffer` runtime dependency.
 
 ---
 
@@ -106,7 +119,7 @@ Natively ported from legacy JSX (`SAVE_PSD_CATEGORYV 5.0.JSX`) to modular UXP:
 
 ## Project Structure
 
-- `manifest.json` — Photoshop UXP plugin manifest (`v1.0.0`)
+- `manifest.json` — Photoshop UXP plugin manifest (`v1.1.0`)
 - `index.html` / `style.css` — 2-column responsive layout, inline SVG icons, dialog modals
 - `main.js` — Panel event handling, button locking, dialog flow orchestration
 - `src/folderMemory.js` — Independent per-tool persistent folder token storage and restoration

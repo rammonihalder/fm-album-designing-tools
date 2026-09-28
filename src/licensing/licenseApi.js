@@ -1,6 +1,7 @@
 "use strict";
 
 const config = require("./productionConfig");
+const { PLUGIN_VERSION } = require("./constants");
 
 const DEFAULT_TIMEOUT_MS = 10000;
 
@@ -124,10 +125,10 @@ class LicenseApiClient {
    * @param {string} params.licenseKey
    * @param {string} params.deviceHash
    * @param {string} [params.deviceName] Generic platform name (e.g. "Photoshop Windows")
-   * @param {string} [params.pluginVersion] Plugin version (e.g. "1.0.0")
+   * @param {string} [params.pluginVersion] Plugin version (defaults to PLUGIN_VERSION)
    * @returns {Promise<{ ok: boolean, data?: object, error?: string, message?: string }>}
    */
-  async activate({ licenseKey, deviceHash, deviceName, pluginVersion = "1.0.0" }) {
+  async activate({ licenseKey, deviceHash, deviceName, pluginVersion = PLUGIN_VERSION }) {
     if (!licenseKey || typeof licenseKey !== "string") {
       return { ok: false, error: "INVALID_ARGUMENT", message: "License key is required." };
     }
@@ -150,10 +151,10 @@ class LicenseApiClient {
    * @param {object} params
    * @param {string} params.token Current signed token
    * @param {string} params.deviceHash
-   * @param {string} [params.pluginVersion]
+   * @param {string} [params.pluginVersion] Plugin version (defaults to PLUGIN_VERSION)
    * @returns {Promise<{ ok: boolean, data?: object, error?: string, message?: string }>}
    */
-  async refresh({ token, deviceHash, pluginVersion = "1.0.0" }) {
+  async refresh({ token, deviceHash, pluginVersion = PLUGIN_VERSION }) {
     if (!token || typeof token !== "string") {
       return { ok: false, error: "INVALID_ARGUMENT", message: "Token is required." };
     }

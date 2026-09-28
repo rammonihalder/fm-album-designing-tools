@@ -155,14 +155,14 @@ test("2. Exact button order: OPEN PSD -> AUTO PHOTO FILL -> SWAP PHOTOS -> FLIP 
   assert.ok(savePsdCategoryPos < removePos, "savePsdCategoryBtn must be before removePhotosBtn");
 });
 
-test("3. Visible version is v1.0.0 in index.html", () => {
+test("3. Visible version is v1.1.0 in index.html", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v1.0.0"), "index.html must display v1.0.0");
+  assert.ok(html.includes("v1.1.0"), "index.html must display v1.1.0");
 });
 
-test("4. Manifest version = 1.0.0", () => {
+test("4. Manifest version = 1.1.0", () => {
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "1.0.0", "manifest.json version must be 1.0.0");
+  assert.equal(manifest.version, "1.1.0", "manifest.json version must be 1.1.0");
 });
 
 test("5. Plugin ID unchanged", () => {
