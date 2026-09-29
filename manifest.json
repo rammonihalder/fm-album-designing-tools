@@ -2,7 +2,7 @@
   "manifestVersion": 5,
   "id": "in.memorymaker.albumplacer",
   "name": "MM Album Design Tools",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "main": "index.html",
   "icons": [
     {
@@ -69,6 +69,11 @@
     "network": {
       "domains": [
         "https://mm-license-server.rammonihalder.workers.dev"
+      ]
+    },
+    "openURL": {
+      "domains": [
+        "https://wa.me"
       ]
     }
   }

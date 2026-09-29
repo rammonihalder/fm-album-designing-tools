@@ -13,7 +13,7 @@
         <div class="eyebrow header-brand-prefix">MEMORY MAKER</div>
         <h1>Album Design Tools</h1>
       </div>
-      <span class="version">v1.2.0</span>
+      <span class="version">v1.3.0</span>
     </header>
 
 
@@ -198,6 +198,7 @@
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
     <div class="plugin-footer">
+      <div id="bottomLicenseStatus" class="bottom-license-status" role="button" tabindex="0" aria-label="License status">Start Trial</div>
       <div class="footer-divider"></div>
       <div class="footer-bottom-row">
         <div class="footer-credit">Developed by Rammoni Halder</div>
@@ -557,16 +558,6 @@
         <h2>MM Album Design Tools</h2>
         <p class="dialog-subtext">License Status &amp; Activation</p>
       </div>
-      <div id="licenseActivationForm" class="dialog-form-group">
-        <label for="licenseKeyInput">License Key:</label>
-        <input
-          id="licenseKeyInput"
-          type="text"
-          placeholder="XXXX-XXXX-XXXX-XXXX"
-          autocomplete="off"
-          spellcheck="false"
-        />
-      </div>
       <div id="licenseStatusMessage" class="license-status-message" aria-live="polite">
         Unactivated
       </div>
@@ -587,9 +578,49 @@
           <span class="license-info-label">Next Validation:</span>
           <span id="licenseNextRefreshLabel" class="license-info-value">-</span>
         </div>
+        <div class="license-info-row" id="licenseTrialEndsRow" hidden>
+          <span class="license-info-label">Trial Ends:</span>
+          <span id="licenseTrialEndsLabel" class="license-info-value">-</span>
+        </div>
+        <div class="license-info-row" id="licenseDaysRemainingRow" hidden>
+          <span class="license-info-label">Days Remaining:</span>
+          <span id="licenseDaysRemainingLabel" class="license-info-value">-</span>
+        </div>
+      </div>
+      <div id="licenseBuyArea" class="license-buy-area" hidden>
+        <div class="dialog-divider"></div>
+        <div id="licenseBuyTitle" class="contact-admin-title">Buy a License</div>
+        <p id="licenseBuyText" class="contact-admin-text">Contact Administrator:</p>
+        <div id="licenseBuyPhoneDisplay" class="contact-admin-phone">7001514367</div>
+        <button id="licenseBuyBtn" class="btn btn-buy-license full" type="button" aria-label="Buy MM Album Design Tools license via WhatsApp">BUY LICENSE</button>
+        <div id="licenseBuyContactError" class="contact-error-message" role="alert" hidden>Unable to open WhatsApp. Please contact 7001514367 manually.</div>
+      </div>
+      <div id="licenseContactAdminArea" class="license-contact-area" hidden>
+        <div class="dialog-divider"></div>
+        <div id="licenseContactAdminTitle" class="contact-admin-title">Need a License?</div>
+        <p id="licenseContactAdminText" class="contact-admin-text">Contact Administrator:</p>
+        <div id="licenseAdminPhoneDisplay" class="contact-admin-phone">7001514367</div>
+        <button id="licenseContactAdminBtn" class="btn btn-secondary full" type="button" aria-label="Contact administrator on WhatsApp to buy or renew a license">CONTACT ADMIN</button>
+        <div id="licenseContactError" class="contact-error-message" role="alert" hidden>Unable to open WhatsApp. Please contact 7001514367 manually.</div>
+      </div>
+      <div id="licenseAlreadyHaveKeySection" class="license-already-have-section" hidden>
+        <div class="dialog-divider"></div>
+        <div class="license-section-heading">Already Have a License?</div>
+      </div>
+      <div id="licenseActivationForm" class="dialog-form-group">
+        <label for="licenseKeyInput">License Key:</label>
+        <input
+          id="licenseKeyInput"
+          type="text"
+          placeholder="XXXX-XXXX-XXXX-XXXX"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="licenseActivateBtn" class="btn primary full" type="button">ACTIVATE LICENSE</button>
       </div>
       <div class="dialog-actions-vertical">
-        <button id="licenseActivateBtn" class="btn primary full" type="button">ACTIVATE</button>
+        <div id="licenseOrDivider" class="dialog-or-divider" hidden>OR</div>
+        <button id="licenseStartTrialBtn" class="btn btn-secondary full" type="button">START 30-DAY FREE TRIAL</button>
         <button id="licenseDeactivateBtn" class="btn btn-destructive full" type="button" hidden>DEACTIVATE THIS COMPUTER</button>
         <button id="licenseDialogCloseBtn" class="btn btn-cancel full" type="button">CLOSE</button>
       </div>

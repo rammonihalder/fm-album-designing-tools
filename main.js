@@ -12,11 +12,29 @@ const { createToastManager } = require("./src/ui/toast");
 
 // Production Licensing Runtime
 let licenseManager = null;
+let licensingConstants = {};
+try {
+  licensingConstants = require("./src/licensing/constants");
+} catch {}
+const {
+  ADMIN_CONTACT_DISPLAY = "7001514367",
+  ADMIN_CONTACT_E164 = "917001514367",
+  ADMIN_WHATSAPP_MESSAGE = "I want to buy a license for MM Album Design Tools.",
+  getAdminWhatsAppUrl = () => `https://wa.me/917001514367?text=${encodeURIComponent("I want to buy a license for MM Album Design Tools.")}`
+} = licensingConstants;
+
 try {
   const { getLicenseManager } = require("./src/licensing/licenseManager");
   licenseManager = getLicenseManager();
-  licenseManager.initialize().catch(err => {
+  licenseManager.initialize().then(() => {
+    if (typeof updateBottomLicenseStatusUI === "function") {
+      updateBottomLicenseStatusUI();
+    }
+  }).catch(err => {
     console.error("[MM License] Startup initialization non-fatal error:", err?.message || err);
+    if (typeof updateBottomLicenseStatusUI === "function") {
+      updateBottomLicenseStatusUI();
+    }
   });
 } catch (err) {
   console.error("[MM License] Failed to load licensing runtime:", err?.message || err);
@@ -172,8 +190,11 @@ const ui = {
 
   // License Dialog & Management UI
   licenseDialog: $("licenseDialog"),
+  licenseActivationForm: $("licenseActivationForm"),
   licenseKeyInput: $("licenseKeyInput"),
   licenseActivateBtn: $("licenseActivateBtn"),
+  licenseStartTrialBtn: $("licenseStartTrialBtn"),
+  licenseOrDivider: $("licenseOrDivider"),
   licenseDeactivateBtn: $("licenseDeactivateBtn"),
   licenseStatusMessage: $("licenseStatusMessage"),
   licenseInfoArea: $("licenseInfoArea"),
@@ -183,8 +204,28 @@ const ui = {
   licenseDeviceLabel: $("licenseDeviceLabel"),
   licenseNextRefreshRow: $("licenseNextRefreshRow"),
   licenseNextRefreshLabel: $("licenseNextRefreshLabel"),
+  licenseTrialEndsRow: $("licenseTrialEndsRow"),
+  licenseTrialEndsLabel: $("licenseTrialEndsLabel"),
+  licenseDaysRemainingRow: $("licenseDaysRemainingRow"),
+  licenseDaysRemainingLabel: $("licenseDaysRemainingLabel"),
   licenseDialogCloseBtn: $("licenseDialogCloseBtn"),
   manageLicenseBtn: $("manageLicenseBtn"),
+  bottomLicenseStatus: $("bottomLicenseStatus"),
+
+  licenseContactAdminArea: $("licenseContactAdminArea"),
+  licenseContactAdminTitle: $("licenseContactAdminTitle"),
+  licenseContactAdminText: $("licenseContactAdminText"),
+  licenseAdminPhoneDisplay: $("licenseAdminPhoneDisplay"),
+  licenseContactAdminBtn: $("licenseContactAdminBtn"),
+  licenseContactError: $("licenseContactError"),
+
+  licenseBuyArea: $("licenseBuyArea"),
+  licenseBuyTitle: $("licenseBuyTitle"),
+  licenseBuyText: $("licenseBuyText"),
+  licenseBuyPhoneDisplay: $("licenseBuyPhoneDisplay"),
+  licenseBuyBtn: $("licenseBuyBtn"),
+  licenseBuyContactError: $("licenseBuyContactError"),
+  licenseAlreadyHaveKeySection: $("licenseAlreadyHaveKeySection"),
 
   statusText: $("statusText"),
   toast: $("toast")
@@ -1941,6 +1982,9 @@ async function handleRemovePhotos() {
 // -------------------------------------------------------------
 function setLicenseManager(manager) {
   licenseManager = manager;
+  if (typeof updateBottomLicenseStatusUI === "function") {
+    updateBottomLicenseStatusUI();
+  }
   return licenseManager;
 }
 
@@ -1968,7 +2012,156 @@ async function ensureLicenseOperational() {
     return false;
   }
 
-  return licenseManager.isOperational() === true;
+  const operational = licenseManager.isOperational() === true;
+  if (typeof updateBottomLicenseStatusUI === "function") {
+    updateBottomLicenseStatusUI();
+  }
+  return operational;
+}
+
+function getTrialDaysRemaining(expiresAt, nowMs = Date.now()) {
+  if (!expiresAt || typeof expiresAt !== "number") return 0;
+  const msRemaining = (expiresAt * 1000) - nowMs;
+  const days = Math.ceil(msRemaining / 86400000);
+  return Math.max(0, Math.min(30, days));
+}
+
+function setElementStatusClass(el, newClass) {
+  if (!el) return;
+  const knownStatusClasses = [
+    "status-activated",
+    "status-start-trial",
+    "status-trial-active",
+    "status-license-warning",
+    "loading"
+  ];
+  if (el.classList && typeof el.classList.remove === "function") {
+    el.classList.remove(...knownStatusClasses);
+    if (newClass) {
+      el.classList.add(newClass);
+    }
+  } else if (typeof el.className === "string") {
+    let classes = el.className.split(/\s+/).filter(c => c && !knownStatusClasses.includes(c));
+    if (newClass) {
+      classes.push(newClass);
+    }
+    el.className = classes.join(" ");
+  }
+}
+
+function updateBottomLicenseStatusUI() {
+  const el = ui.bottomLicenseStatus;
+  if (!el) return;
+
+  if (!licenseManager) {
+    el.textContent = "Please Add License";
+    setElementStatusClass(el, "status-license-warning");
+    if (typeof el.setAttribute === "function") {
+      el.setAttribute("aria-label", "Please Add License");
+    }
+    return;
+  }
+
+  const snapshot = typeof licenseManager.getSnapshot === "function"
+    ? licenseManager.getSnapshot()
+    : { state: "ERROR" };
+
+  const state = snapshot.state || "UNACTIVATED";
+
+  if (state === "ACTIVE" || state === "GRACE") {
+    el.textContent = "Activated License";
+    setElementStatusClass(el, "status-activated");
+    if (typeof el.setAttribute === "function") {
+      el.setAttribute("aria-label", "Activated License");
+    }
+  } else if (state === "TRIAL") {
+    const daysLeft = getTrialDaysRemaining(snapshot.expiresAt);
+    el.textContent = `Trial Active • ${daysLeft} Days Left`;
+    setElementStatusClass(el, "status-trial-active");
+    if (typeof el.setAttribute === "function") {
+      el.setAttribute("aria-label", `Trial Active, ${daysLeft} days left`);
+    }
+  } else if (state === "UNACTIVATED") {
+    el.textContent = "Start Trial";
+    setElementStatusClass(el, "status-start-trial");
+    if (typeof el.setAttribute === "function") {
+      el.setAttribute("aria-label", "Start Trial");
+    }
+  } else {
+    // TRIAL_EXPIRED, EXPIRED, INVALID, REVOKED, SUSPENDED, ERROR
+    el.textContent = "Please Add License";
+    setElementStatusClass(el, "status-license-warning");
+    if (typeof el.setAttribute === "function") {
+      el.setAttribute("aria-label", "Please Add License");
+    }
+  }
+}
+
+let isStartingTrial = false;
+
+async function handleStartTrialFlow() {
+  if (isStartingTrial) return;
+  if (!licenseManager || typeof licenseManager.startTrial !== "function") return;
+
+  isStartingTrial = true;
+
+  const bottomEl = ui.bottomLicenseStatus;
+  const startTrialBtn = ui.licenseStartTrialBtn;
+
+  if (bottomEl) {
+    bottomEl.textContent = "Starting Trial...";
+    if (bottomEl.classList && typeof bottomEl.classList.add === "function") {
+      bottomEl.classList.add("loading");
+    } else if (typeof bottomEl.className === "string") {
+      bottomEl.className = `${bottomEl.className} loading`.trim();
+    }
+  }
+  if (startTrialBtn) {
+    startTrialBtn.disabled = true;
+    startTrialBtn.textContent = "STARTING TRIAL...";
+  }
+  if (ui.licenseStatusMessage) {
+    ui.licenseStatusMessage.textContent = "Connecting to licensing server...";
+  }
+
+  try {
+    const result = await licenseManager.startTrial();
+    if (result.ok) {
+      toast.show("30-day free trial started.", "success");
+    } else {
+      const msg = result.message || result.error || "Failed to start trial.";
+      if (ui.licenseStatusMessage) {
+        ui.licenseStatusMessage.textContent = msg;
+      }
+      toast.show(msg, "error");
+    }
+  } catch (err) {
+    console.error("[MM License] Start trial error:", err);
+    if (ui.licenseStatusMessage) {
+      ui.licenseStatusMessage.textContent = "Failed to start trial. Please check network connection.";
+    }
+    toast.show("Failed to start trial. Check connection.", "error");
+  } finally {
+    isStartingTrial = false;
+    if (startTrialBtn) {
+      startTrialBtn.disabled = false;
+      startTrialBtn.textContent = "START 30-DAY FREE TRIAL";
+    }
+    updateLicenseDialogUI();
+    updateBottomLicenseStatusUI();
+  }
+}
+
+function handleBottomLicenseClick() {
+  const snapshot = licenseManager && typeof licenseManager.getSnapshot === "function"
+    ? licenseManager.getSnapshot()
+    : { state: "ERROR" };
+
+  if (snapshot.state === "UNACTIVATED") {
+    handleStartTrialFlow();
+  } else {
+    showLicenseDialog();
+  }
 }
 
 function updateLicenseDialogUI() {
@@ -1980,10 +2173,18 @@ function updateLicenseDialogUI() {
     if (ui.licenseDeviceLabel) ui.licenseDeviceLabel.textContent = "Unavailable";
     if (ui.licensePlanRow) ui.licensePlanRow.hidden = true;
     if (ui.licenseNextRefreshRow) ui.licenseNextRefreshRow.hidden = true;
+    if (ui.licenseTrialEndsRow) ui.licenseTrialEndsRow.hidden = true;
+    if (ui.licenseDaysRemainingRow) ui.licenseDaysRemainingRow.hidden = true;
+
+    if (ui.licenseBuyArea) ui.licenseBuyArea.hidden = true;
+    if (ui.licenseContactAdminArea) ui.licenseContactAdminArea.hidden = true;
+    if (ui.licenseAlreadyHaveKeySection) ui.licenseAlreadyHaveKeySection.hidden = true;
 
     const formGroup = $("licenseActivationForm") || (ui.licenseKeyInput ? ui.licenseKeyInput.parentElement : null);
     if (formGroup) formGroup.hidden = true;
     if (ui.licenseActivateBtn) ui.licenseActivateBtn.hidden = true;
+    if (ui.licenseOrDivider) ui.licenseOrDivider.hidden = true;
+    if (ui.licenseStartTrialBtn) ui.licenseStartTrialBtn.hidden = true;
     if (ui.licenseDeactivateBtn) ui.licenseDeactivateBtn.hidden = true;
     return;
   }
@@ -1992,20 +2193,138 @@ function updateLicenseDialogUI() {
     ? licenseManager.getSnapshot()
     : { state: "ERROR", userMessage: "Licensing runtime error." };
 
+  const state = snapshot.state || "UNACTIVATED";
+  const isPaidActive = state === "ACTIVE" || state === "GRACE";
+  const isTrial = state === "TRIAL";
+  const isUnactivated = state === "UNACTIVATED";
+  const isExpiredOrBlocked = state === "TRIAL_EXPIRED" || state === "EXPIRED" || state === "INVALID" || state === "REVOKED" || state === "SUSPENDED" || state === "ERROR";
+
+  // Toggle state classes for flexbox layout ordering
+  const dialogContent = ui.licenseDialog?.querySelector?.(".license-dialog") || ui.licenseDialog;
+  if (dialogContent?.classList && typeof dialogContent.classList.toggle === "function") {
+    dialogContent.classList.toggle("state-unactivated", isUnactivated);
+    dialogContent.classList.toggle("state-trial", isTrial);
+    dialogContent.classList.toggle("state-expired", state === "TRIAL_EXPIRED" || state === "EXPIRED");
+  }
+  if (ui.licenseDialog?.classList && typeof ui.licenseDialog.classList.toggle === "function") {
+    ui.licenseDialog.classList.toggle("state-unactivated", isUnactivated);
+    ui.licenseDialog.classList.toggle("state-trial", isTrial);
+    ui.licenseDialog.classList.toggle("state-expired", state === "TRIAL_EXPIRED" || state === "EXPIRED");
+  }
+
   if (ui.licenseStateLabel) {
-    ui.licenseStateLabel.textContent = snapshot.state || "UNACTIVATED";
+    if (state === "TRIAL_EXPIRED") {
+      ui.licenseStateLabel.textContent = "TRIAL EXPIRED";
+    } else if (state === "EXPIRED") {
+      ui.licenseStateLabel.textContent = "LICENSE EXPIRED";
+    } else {
+      ui.licenseStateLabel.textContent = state;
+    }
   }
   if (ui.licenseStatusMessage) {
-    ui.licenseStatusMessage.textContent = snapshot.userMessage || snapshot.state || "Unactivated";
+    if (state === "TRIAL_EXPIRED") {
+      ui.licenseStatusMessage.textContent = "Your 30-day free trial has ended. Activate a license to continue.";
+    } else if (state === "EXPIRED") {
+      ui.licenseStatusMessage.textContent = "Your license has expired. Please renew or activate a valid license to continue.";
+    } else if (state === "UNACTIVATED") {
+      ui.licenseStatusMessage.textContent = snapshot.userMessage || "Unactivated";
+    } else {
+      ui.licenseStatusMessage.textContent = snapshot.userMessage || state;
+    }
   }
   if (ui.licenseDeviceLabel) {
     ui.licenseDeviceLabel.textContent = snapshot.deviceId ? "Bound (This Computer)" : "Not bound";
   }
 
-  const isOperational = typeof licenseManager.isOperational === "function" && licenseManager.isOperational() === true;
+  // Always keep phone display populated with ADMIN_CONTACT_DISPLAY
+  if (ui.licenseAdminPhoneDisplay) {
+    ui.licenseAdminPhoneDisplay.textContent = ADMIN_CONTACT_DISPLAY;
+  }
+  if (ui.licenseBuyPhoneDisplay) {
+    ui.licenseBuyPhoneDisplay.textContent = ADMIN_CONTACT_DISPLAY;
+  }
+
+  // Buy Area Visibility & Content (UNACTIVATED & ACTIVE TRIAL)
+  if (ui.licenseBuyArea) {
+    if (isUnactivated) {
+      ui.licenseBuyArea.hidden = false;
+      if (ui.licenseBuyTitle) ui.licenseBuyTitle.textContent = "Buy a License";
+      if (ui.licenseBuyText) ui.licenseBuyText.textContent = "Contact Administrator:";
+      if (ui.licenseBuyBtn) {
+        ui.licenseBuyBtn.textContent = "BUY LICENSE";
+        if (typeof ui.licenseBuyBtn.setAttribute === "function") {
+          ui.licenseBuyBtn.setAttribute("aria-label", "Buy MM Album Design Tools license via WhatsApp");
+        }
+      }
+      if (ui.licenseBuyContactError) ui.licenseBuyContactError.hidden = true;
+    } else if (isTrial) {
+      ui.licenseBuyArea.hidden = false;
+      if (ui.licenseBuyTitle) ui.licenseBuyTitle.textContent = "Want to Buy a License?";
+      if (ui.licenseBuyText) ui.licenseBuyText.textContent = "Contact Administrator:";
+      if (ui.licenseBuyBtn) {
+        ui.licenseBuyBtn.textContent = "BUY LICENSE";
+        if (typeof ui.licenseBuyBtn.setAttribute === "function") {
+          ui.licenseBuyBtn.setAttribute("aria-label", "Buy MM Album Design Tools license via WhatsApp");
+        }
+      }
+      if (ui.licenseBuyContactError) ui.licenseBuyContactError.hidden = true;
+    } else {
+      // ACTIVE, GRACE, TRIAL_EXPIRED, EXPIRED, REVOKED, SUSPENDED, ERROR -> hidden
+      ui.licenseBuyArea.hidden = true;
+      if (ui.licenseBuyContactError) ui.licenseBuyContactError.hidden = true;
+    }
+  }
+
+  // Contact Admin / Purchase Area Visibility & Content (TRIAL_EXPIRED, EXPIRED, BLOCKED)
+  if (ui.licenseContactAdminArea) {
+    if (state === "TRIAL_EXPIRED") {
+      ui.licenseContactAdminArea.hidden = false;
+      if (ui.licenseContactAdminTitle) ui.licenseContactAdminTitle.textContent = "Need a License?";
+      if (ui.licenseContactAdminText) ui.licenseContactAdminText.textContent = "Contact Administrator:";
+      if (ui.licenseAdminPhoneDisplay) ui.licenseAdminPhoneDisplay.textContent = ADMIN_CONTACT_DISPLAY;
+      if (ui.licenseContactAdminBtn) {
+        ui.licenseContactAdminBtn.textContent = "CONTACT ADMIN";
+        if (typeof ui.licenseContactAdminBtn.setAttribute === "function") {
+          ui.licenseContactAdminBtn.setAttribute("aria-label", "Contact administrator on WhatsApp to buy or renew a license");
+        }
+      }
+      if (ui.licenseContactError) ui.licenseContactError.hidden = true;
+    } else if (state === "EXPIRED") {
+      ui.licenseContactAdminArea.hidden = false;
+      if (ui.licenseContactAdminTitle) ui.licenseContactAdminTitle.textContent = "Buy or Renew License";
+      if (ui.licenseContactAdminText) ui.licenseContactAdminText.textContent = "Contact Administrator:";
+      if (ui.licenseAdminPhoneDisplay) ui.licenseAdminPhoneDisplay.textContent = ADMIN_CONTACT_DISPLAY;
+      if (ui.licenseContactAdminBtn) {
+        ui.licenseContactAdminBtn.textContent = "CONTACT ADMIN";
+        if (typeof ui.licenseContactAdminBtn.setAttribute === "function") {
+          ui.licenseContactAdminBtn.setAttribute("aria-label", "Contact administrator on WhatsApp to buy or renew a license");
+        }
+      }
+      if (ui.licenseContactError) ui.licenseContactError.hidden = true;
+    } else if (isExpiredOrBlocked) {
+      ui.licenseContactAdminArea.hidden = false;
+      if (ui.licenseContactAdminTitle) ui.licenseContactAdminTitle.textContent = "Need a License?";
+      if (ui.licenseContactAdminText) ui.licenseContactAdminText.textContent = "Contact Administrator:";
+      if (ui.licenseAdminPhoneDisplay) ui.licenseAdminPhoneDisplay.textContent = ADMIN_CONTACT_DISPLAY;
+      if (ui.licenseContactAdminBtn) {
+        ui.licenseContactAdminBtn.textContent = "CONTACT ADMIN";
+        if (typeof ui.licenseContactAdminBtn.setAttribute === "function") {
+          ui.licenseContactAdminBtn.setAttribute("aria-label", "Contact administrator on WhatsApp to buy or renew a license");
+        }
+      }
+      if (ui.licenseContactError) ui.licenseContactError.hidden = true;
+    } else {
+      // ACTIVE, GRACE, TRIAL, UNACTIVATED -> hidden
+      ui.licenseContactAdminArea.hidden = true;
+      if (ui.licenseContactError) ui.licenseContactError.hidden = true;
+    }
+  }
 
   if (ui.licensePlanRow && ui.licensePlanLabel) {
-    if (isOperational && snapshot.plan) {
+    if (isTrial) {
+      ui.licensePlanLabel.textContent = "30-Day Full Trial";
+      ui.licensePlanRow.hidden = false;
+    } else if (isPaidActive && snapshot.plan) {
       ui.licensePlanLabel.textContent = String(snapshot.plan).toUpperCase();
       ui.licensePlanRow.hidden = false;
     } else {
@@ -2014,7 +2333,7 @@ function updateLicenseDialogUI() {
   }
 
   if (ui.licenseNextRefreshRow && ui.licenseNextRefreshLabel) {
-    if (isOperational && snapshot.refreshAfter) {
+    if (isPaidActive && snapshot.refreshAfter) {
       const dateStr = new Date(snapshot.refreshAfter * 1000).toLocaleDateString();
       ui.licenseNextRefreshLabel.textContent = dateStr;
       ui.licenseNextRefreshRow.hidden = false;
@@ -2023,16 +2342,77 @@ function updateLicenseDialogUI() {
     }
   }
 
-  const formGroup = $("licenseActivationForm") || (ui.licenseKeyInput ? ui.licenseKeyInput.parentElement : null);
+  if (ui.licenseTrialEndsRow && ui.licenseTrialEndsLabel) {
+    if (isTrial && snapshot.expiresAt) {
+      const dateStr = new Date(snapshot.expiresAt * 1000).toLocaleDateString();
+      ui.licenseTrialEndsLabel.textContent = dateStr;
+      ui.licenseTrialEndsRow.hidden = false;
+    } else {
+      ui.licenseTrialEndsRow.hidden = true;
+    }
+  }
+
+  if (ui.licenseDaysRemainingRow && ui.licenseDaysRemainingLabel) {
+    if (isTrial && snapshot.expiresAt) {
+      const days = getTrialDaysRemaining(snapshot.expiresAt);
+      ui.licenseDaysRemainingLabel.textContent = String(days);
+      ui.licenseDaysRemainingRow.hidden = false;
+    } else {
+      ui.licenseDaysRemainingRow.hidden = true;
+    }
+  }
+
+  if (ui.licenseAlreadyHaveKeySection) {
+    ui.licenseAlreadyHaveKeySection.hidden = isPaidActive;
+  }
+
+  const formGroup = ui.licenseActivationForm || $("licenseActivationForm") || (ui.licenseKeyInput ? ui.licenseKeyInput.parentElement : null);
   if (formGroup) {
-    formGroup.hidden = isOperational;
+    formGroup.hidden = isPaidActive;
   }
 
   if (ui.licenseActivateBtn) {
-    ui.licenseActivateBtn.hidden = isOperational;
+    ui.licenseActivateBtn.hidden = isPaidActive;
+  }
+  if (ui.licenseOrDivider) {
+    ui.licenseOrDivider.hidden = !isUnactivated;
+  }
+  if (ui.licenseStartTrialBtn) {
+    ui.licenseStartTrialBtn.hidden = !isUnactivated;
   }
   if (ui.licenseDeactivateBtn) {
-    ui.licenseDeactivateBtn.hidden = !isOperational;
+    ui.licenseDeactivateBtn.hidden = !isPaidActive;
+  }
+}
+
+/**
+ * Safely opens an external URL using Adobe UXP shell.openExternal.
+ * Does not spawn processes or invoke shell commands.
+ * Falls back gracefully without throwing.
+ *
+ * @param {string} url
+ * @returns {Promise<boolean>} true if opened successfully, false otherwise.
+ */
+async function openExternalUrl(url) {
+  try {
+    let uxp = null;
+    try {
+      uxp = require("uxp");
+    } catch {}
+
+    if (uxp?.shell && typeof uxp.shell.openExternal === "function") {
+      await uxp.shell.openExternal(url);
+      return true;
+    }
+
+    if (typeof window !== "undefined" && typeof window.open === "function") {
+      window.open(url, "_blank");
+      return true;
+    }
+
+    return false;
+  } catch (err) {
+    return false;
   }
 }
 
@@ -2104,6 +2484,7 @@ ui.licenseActivateBtn?.addEventListener("click", async () => {
     if (result.ok) {
       ui.licenseKeyInput.value = "";
       updateLicenseDialogUI();
+      updateBottomLicenseStatusUI();
       toast.show("License activated successfully!", "success");
     } else {
       if (ui.licenseStatusMessage) {
@@ -2116,8 +2497,13 @@ ui.licenseActivateBtn?.addEventListener("click", async () => {
     }
   } finally {
     ui.licenseActivateBtn.disabled = false;
-    ui.licenseActivateBtn.textContent = "ACTIVATE";
+    ui.licenseActivateBtn.textContent = "ACTIVATE LICENSE";
   }
+});
+
+// Start Trial Button Handler in Dialog
+ui.licenseStartTrialBtn?.addEventListener("click", () => {
+  handleStartTrialFlow();
 });
 
 // License Deactivation Button Handler
@@ -2134,6 +2520,7 @@ ui.licenseDeactivateBtn?.addEventListener("click", async () => {
     const result = await licenseManager.deactivate();
     if (result.ok) {
       updateLicenseDialogUI();
+      updateBottomLicenseStatusUI();
       toast.show("Computer deactivated successfully.", "info");
     } else {
       if (ui.licenseStatusMessage) {
@@ -2154,8 +2541,73 @@ ui.licenseDialogCloseBtn?.addEventListener("click", () => {
   closeLicenseDialog();
 });
 
+// Contact Admin (WhatsApp) Handler
+async function handleContactAdminAction() {
+  if (ui.licenseContactError) {
+    ui.licenseContactError.hidden = true;
+  }
+  const url = getAdminWhatsAppUrl();
+  const success = await openExternalUrl(url);
+  if (!success) {
+    if (ui.licenseContactError) {
+      ui.licenseContactError.hidden = false;
+      ui.licenseContactError.textContent = `Unable to open WhatsApp. Please contact ${ADMIN_CONTACT_DISPLAY} manually.`;
+    }
+  }
+  return success;
+}
+
+ui.licenseContactAdminBtn?.addEventListener("click", () => {
+  handleContactAdminAction();
+});
+
+ui.licenseContactAdminBtn?.addEventListener("keydown", async (e) => {
+  if (e.key === "Enter" || e.key === " " || e.code === "Space") {
+    e.preventDefault();
+    await handleContactAdminAction();
+  }
+});
+
+// Buy License (WhatsApp) Handler during Active Trial
+async function handleBuyLicenseAction() {
+  if (ui.licenseBuyContactError) {
+    ui.licenseBuyContactError.hidden = true;
+  }
+  const url = getAdminWhatsAppUrl();
+  const success = await openExternalUrl(url);
+  if (!success) {
+    if (ui.licenseBuyContactError) {
+      ui.licenseBuyContactError.hidden = false;
+      ui.licenseBuyContactError.textContent = `Unable to open WhatsApp. Please contact ${ADMIN_CONTACT_DISPLAY} manually.`;
+    }
+  }
+  return success;
+}
+
+ui.licenseBuyBtn?.addEventListener("click", () => {
+  handleBuyLicenseAction();
+});
+
+ui.licenseBuyBtn?.addEventListener("keydown", async (e) => {
+  if (e.key === "Enter" || e.key === " " || e.code === "Space") {
+    e.preventDefault();
+    await handleBuyLicenseAction();
+  }
+});
+
 ui.manageLicenseBtn?.addEventListener("click", () => {
   showLicenseDialog();
+});
+
+ui.bottomLicenseStatus?.addEventListener("click", () => {
+  handleBottomLicenseClick();
+});
+
+ui.bottomLicenseStatus?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " " || e.code === "Space") {
+    e.preventDefault();
+    handleBottomLicenseClick();
+  }
 });
 
 function wrapProtectedAction(handler) {
@@ -2237,11 +2689,24 @@ if (typeof module !== "undefined" && module.exports) {
     attachActionHandler,
     ensureLicenseOperational,
     showLicenseDialog,
+    closeLicenseDialog,
     wrapProtectedAction,
     setLicenseManager,
     getLicenseManagerInstance,
+    updateLicenseDialogUI,
+    updateBottomLicenseStatusUI,
+    handleStartTrialFlow,
+    handleBottomLicenseClick,
+    getTrialDaysRemaining,
     toast,
     ui,
+    openExternalUrl,
+    getAdminWhatsAppUrl,
+    ADMIN_CONTACT_DISPLAY,
+    ADMIN_CONTACT_E164,
+    ADMIN_WHATSAPP_MESSAGE,
+    handleBuyLicenseAction,
+    handleContactAdminAction,
     get licenseManager() {
       return licenseManager;
     }

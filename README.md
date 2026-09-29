@@ -1,4 +1,4 @@
-# MM Album Design Tools v1.2.0
+# MM Album Design Tools v1.3.0
 
 A polished Photoshop UXP panel for album-design production workflows. The plugin ID remains `in.memorymaker.albumplacer`.
 
@@ -17,6 +17,44 @@ The panel presents an 8-button responsive 2-column grid with clean line icons an
 
 ---
 
+## What's New in v1.3.0
+
+### 30-Day Full-Feature Free Trial
+- **Explicit User Activation:** Trial starts only when the user explicitly clicks **START TRIAL** (or **START 30-DAY FREE TRIAL** in the License Management dialog).
+- **Online Initialization:** Internet connectivity is required to start the trial; server time is strictly authoritative.
+- **Exact 30-Day Duration:** Trial duration is exactly 30 days from the moment of activation (`started_at` to `expires_at = started_at + 30 days`).
+- **Device-Bound Protection:** Each trial is bound to one opaque installation device identity. Reopening Photoshop or reloading the plugin does not reset trial time.
+- **Anti-Reset Expiry Enforcement:** Re-requesting trial start or refreshing an active trial token returns the original server-controlled expiry; trial duration can never be extended by token refreshes or repeated clicks.
+- **Offline Resilience:** Once started, the trial continues to work completely offline until its original signed 30-day expiry date.
+- **Strict Expiry & Zero Grace:** The trial has zero extra grace period after day 30. Once expired, operational access is immediately blocked until a license is activated.
+- **Full Feature Parity:** The trial provides unrestricted access to all plugin features and tools without watermarks or per-tool locks.
+- **Seamless Paid Upgrades:** Users can activate a paid license key at any time during an active trial without needing to deactivate the trial first.
+- **Backward Compatibility:** Existing paid v1.2.0 users remain fully activated and operational upon upgrading to v1.3.0 without re-entering license keys.
+
+### Compact Bottom License Status UI
+A compact, user-friendly status area is located at the bottom of the main plugin panel:
+- **`Activated License` (Green):** Indicates an active or grace-period paid license. Clickable to open License Management.
+- **`Start Trial` (Green Button):** Displayed on unactivated installations where a trial has not yet been started. Clicking starts the 30-day trial with real-time feedback.
+- **`Trial Active • N Days Left` (Amber/Orange):** Informational status displaying the remaining days of an active trial (clamped 0 to 30). Clickable to open License Management.
+- **`Please Add License` (Red):** Displayed when a trial has ended or when license activation is required to unlock tools. Clickable to open License Management dialog.
+- **Privacy & Accessibility:** Keyboard-navigable (Enter/Space activation), high-contrast, compact, and free of technical internal error codes or hardware fingerprints.
+
+### Paid-Deactivation Trial Restoration
+- **Intelligent Trial History:** The plugin maintains a non-authoritative local history marker (`trialPreviouslyStarted`) to safely determine post-deactivation behavior without granting local authority.
+- **Never-Used-Trial Devices:** Users who activate a paid license without ever starting a trial return to `UNACTIVATED` upon deactivation, displaying `Start Trial`. No trial is consumed or started automatically.
+- **Active Trial Resumption:** If an active trial was superseded by a paid license, deactivating the paid license before the trial's original expiration safely restores the original trial with its exact original expiry date (no extra days granted).
+- **Expired Trial Handling:** If the original trial expired while the paid license was active, deactivation correctly transitions to `TRIAL_EXPIRED`, displaying `Please Add License` in red, hiding `Start Trial`, and blocking tool access.
+- **Fail-Closed Security:** In the event of network failure during trial restoration, the plugin fails closed, keeping tools securely locked until online validation succeeds.
+
+### Purchase & Renewal Contact UI (WhatsApp Integration)
+- **Direct Administrator Contact:** When a trial or paid license expires, the License Management dialog provides a clear contact and renewal area displaying the administrator phone number: `7001514367`.
+- **CONTACT ADMIN Action:** A dedicated, keyboard-accessible button launches WhatsApp with the administrator (`+91 7001514367`) and pre-fills the message:
+  `I want to buy a license for MM Album Design Tools.`
+- **Programmatic URL Generation:** Constructed safely via standard UXP external opening protocols (`https://wa.me/917001514367?text=...`) using `encodeURIComponent` without invoking command shells or spawning external processes.
+- **Non-Fatal Fallback:** If WhatsApp fails to launch, the dialog displays a friendly fallback notice (`Unable to open WhatsApp. Please contact 7001514367 manually.`) while keeping the phone number clearly visible.
+- **Manual Send Protection:** The user retains full control and must manually click "Send" within WhatsApp; the plugin never auto-sends messages.
+
+---
 
 ## What's New in v1.2.0
 
@@ -318,7 +356,16 @@ The plugin incorporates a production-grade, cryptographically verified offline-f
 - **Signed-Token Trust Architecture:** The backend issues cryptographically signed `MM1` tokens (`MM1.<kid>.<payloadB64Url>.<sigB64Url>`) signed with an Ed25519 private key. The serialized token header and payload bytes are verified strictly before JSON parsing or schema inspection.
 - **Pure-JavaScript Public-Key Verification:** The plugin contains only the public verification key (Ed25519 SPKI DER format) in `src/licensing/productionConfig.js`. Verification is performed locally using a zero-dependency, pure-JavaScript Ed25519 implementation (TweetNaCl) compatible with the Adobe UXP environment without relying on Node.js built-ins (`crypto`, `fs`, `Buffer`) or dynamic code evaluation (`eval`).
 - **Strict DER SPKI Parser:** Public keys in SPKI format are strictly validated against ASN.1 DER structure (`1.3.101.112` OID header, exact 44-byte length) to extract the 32-byte raw Ed25519 key.
-- **Offline Grace & Refresh Cycle:**
+- **30-Day Full-Feature Free Trial:**
+  - Started exclusively via user action (**START TRIAL** or dialog action).
+  - Online requirement for initialization with server-authoritative timestamps.
+  - Exactly 30 days of full, unrestricted access to all plugin features (`expiresAt = started_at + 30 days`).
+  - Bound to one persistent opaque installation device identity.
+  - Anti-reset protection: repeated start requests or token refreshes retain original server-side expiry and never grant additional days.
+  - Zero extra grace period after day 30: `graceUntil` equals `expiresAt`, blocking tools immediately upon expiry.
+  - Offline operation supported throughout the 30-day window without continuous network requirements.
+  - Upgrade-ready: users can activate a full paid license at any time to transition directly to `ACTIVE` status.
+- **Offline Grace & Refresh Cycle (Paid Licenses):**
   - **7-day refresh target:** When a verified token's `refreshAfter` timestamp is reached, the plugin attempts an online refresh in the background during initialization.
   - **14-day offline grace:** If the licensing server cannot be reached due to network downtime or offline travel, the license enters `GRACE` state and protected tools remain operational until `graceUntil` expires.
   - **Authoritative denial:** Authoritative server responses (`LICENSE_REVOKED`, `LICENSE_SUSPENDED`, `DEVICE_REVOKED`) immediately revoke access and never enter offline grace.
