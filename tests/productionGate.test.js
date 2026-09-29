@@ -610,11 +610,11 @@ test("25. invalid signed token never becomes operational", async () => {
   assert.equal(isOperationalState(manager.getState()), false);
 });
 
-test("26. plugin ID remains in.memorymaker.albumplacer", () => {
+test("26. plugin ID in manifest is 9beaddeb", () => {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8")
   );
-  assert.equal(manifest.id, "in.memorymaker.albumplacer");
+  assert.equal(manifest.id, "9beaddeb");
 });
 
 test("27. manifest version and PLUGIN_VERSION are both 1.4.0", () => {

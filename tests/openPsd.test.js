@@ -68,7 +68,7 @@ test("4. Visible version is present in index.html and manifest.json", () => {
 
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
   assert.equal(manifest.version, "1.4.0", "manifest.json version must be valid");
-  assert.equal(manifest.id, "in.memorymaker.albumplacer", "plugin ID must remain in.memorymaker.albumplacer");
+  assert.equal(manifest.id, "9beaddeb", "plugin ID must be 9beaddeb for Adobe Marketplace build");
 });
 
 test("5. Panel contains no long descriptive tool cards or permanent result panels", () => {

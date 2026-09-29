@@ -1742,7 +1742,7 @@ test("75. visible UI version = v1.4.0", () => {
 
 test("76. plugin ID remains unchanged", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.id, "in.memorymaker.albumplacer");
+  assert.equal(manifest.id, "9beaddeb");
 });
 
 test("77. production API URL unchanged", () => {

@@ -426,7 +426,7 @@ test("16. manifest plugin ID remains unchanged", () => {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8")
   );
-  assert.equal(manifest.id, "in.memorymaker.albumplacer");
+  assert.equal(manifest.id, "9beaddeb");
   assert.equal(manifest.version, "1.4.0");
   assert.equal(manifest.manifestVersion, 5);
   assert.equal(manifest.requiredPermissions?.localFileSystem, "fullAccess");

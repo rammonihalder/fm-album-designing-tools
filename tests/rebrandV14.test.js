@@ -12,7 +12,7 @@ test("v1.4 manifest uses the Frame Mitra product name and version without changi
   const manifest = JSON.parse(read("manifest.json"));
   assert.equal(manifest.name, "FM Album Designing Tools");
   assert.equal(manifest.version, "1.4.0");
-  assert.equal(manifest.id, "in.memorymaker.albumplacer");
+  assert.equal(manifest.id, "9beaddeb");
   assert.equal(manifest.entrypoints[0].label.default, "FM Album Designing Tools");
 });
 

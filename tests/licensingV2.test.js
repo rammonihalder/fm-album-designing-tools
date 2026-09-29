@@ -91,7 +91,7 @@ test("V2-1. manifest network permissions are strictly limited to Worker domain a
   const manifest = JSON.parse(
     fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8")
   );
-  assert.equal(manifest.id, "in.memorymaker.albumplacer");
+  assert.equal(manifest.id, "9beaddeb");
   assert.equal(manifest.version, "1.4.0");
   assert.equal(PLUGIN_VERSION, manifest.version, "runtime PLUGIN_VERSION must match manifest.version");
 
