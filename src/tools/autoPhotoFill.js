@@ -129,29 +129,55 @@ async function executeAutoPhotoFill(ui, dependencies) {
       return { outcome: "invalid-placeholders", placeholderFailures };
     }
 
-    const storage = dependencies.storage || (typeof localStorage !== "undefined" ? localStorage : null);
-    const localFileSystem = dependencies.localFileSystem || null;
+    const storage = dependencies.storage !== undefined
+      ? dependencies.storage
+      : (typeof localStorage !== "undefined" ? localStorage : null);
+    let localFileSystem = dependencies.localFileSystem !== undefined
+      ? dependencies.localFileSystem
+      : null;
+    if (!localFileSystem) {
+      try {
+        const uxp = require("uxp");
+        localFileSystem = uxp?.storage?.localFileSystem || null;
+      } catch (_) {}
+    }
 
     let restoredFolder = null;
     if (localFileSystem && storage) {
       try {
-        restoredFolder = await restoreFolderFromToken(TOKEN_KEYS.AUTO_PHOTO_FILL, localFileSystem, storage);
+        const restore = dependencies.restoreFolderFromToken || restoreFolderFromToken;
+        restoredFolder = await restore(TOKEN_KEYS.AUTO_PHOTO_FILL, localFileSystem, storage);
       } catch (_) {}
     }
 
-    const selectedFiles = await dependencies.selectImageFiles({ initialLocation: restoredFolder });
+    const pickerOptions = {};
+    if (restoredFolder) {
+      pickerOptions.initialLocation = restoredFolder;
+    }
+
+    const selectedFiles = await dependencies.selectImageFiles(pickerOptions);
     if (!selectedFiles || !selectedFiles.length) {
       setStatus("Cancelled.");
       return { outcome: "cancelled" };
     }
 
-    if (localFileSystem && storage && selectedFiles.length > 0) {
+    if (selectedFiles.length > 0 && localFileSystem && storage) {
       try {
-        const parentFolder = await getParentFolder(selectedFiles[0], localFileSystem);
-        if (parentFolder) {
-          await saveFolderToken(TOKEN_KEYS.AUTO_PHOTO_FILL, parentFolder, localFileSystem, storage);
+        const firstPhoto = selectedFiles[0];
+        let parentFolder = null;
+        if (firstPhoto && firstPhoto.parent && (firstPhoto.parent.isFolder || !firstPhoto.parent.isFile)) {
+          parentFolder = firstPhoto.parent;
+        } else if (firstPhoto) {
+          const getParent = dependencies.getParentFolder || getParentFolder;
+          parentFolder = await getParent(firstPhoto, localFileSystem);
         }
-      } catch (_) {}
+        if (parentFolder) {
+          const save = dependencies.saveFolderToken || saveFolderToken;
+          await save(TOKEN_KEYS.AUTO_PHOTO_FILL, parentFolder, localFileSystem, storage);
+        }
+      } catch (saveErr) {
+        console.warn("[MM Auto Photo Fill] Could not save folder token:", saveErr);
+      }
     }
 
     setStatus(`Analyzing ${selectedFiles.length} ${selectedFiles.length === 1 ? "photo" : "photos"}...`);

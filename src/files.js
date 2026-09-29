@@ -1,5 +1,8 @@
-const { storage } = require("uxp");
-const fs = storage.localFileSystem;
+let fs = null;
+try {
+  const { storage } = require("uxp");
+  fs = storage ? storage.localFileSystem : null;
+} catch (_) {}
 const SUPPORTED_IMAGE_TYPES = Object.freeze(["jpg", "jpeg", "png"]);
 
 async function selectImageFiles(options = {}) {

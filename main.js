@@ -10,25 +10,17 @@ const { runSavePsdCategory, buildSavePsdCategoryToast } = require("./src/tools/s
 const { runRemovePhotos, buildRemovePhotosToast } = require("./src/tools/removePhotos");
 const { createToastManager } = require("./src/ui/toast");
 
-// DEVELOPMENT TESTING ONLY.
-// Keep this true only while running the unpackaged plugin from UXP Developer Tool.
-// Set to false (or remove this block) before building/distributing the production CCX.
-let DEV_LICENSE_BYPASS = true;
-
-if (DEV_LICENSE_BYPASS) {
-  console.warn("[MM DEV] License gate bypass ENABLED - development testing only. Do not package this build.");
-}
-
-// Licensing Foundation (Phase 1 - Non-enforcing)
+// Production Licensing Runtime
 let licenseManager = null;
 try {
   const { getLicenseManager } = require("./src/licensing/licenseManager");
   licenseManager = getLicenseManager();
   licenseManager.initialize().catch(err => {
-    console.warn("[MM License] Startup initialization non-fatal error:", err?.message || err);
+    console.error("[MM License] Startup initialization non-fatal error:", err?.message || err);
   });
-} catch {
-  // Test sandboxes that strictly whitelist required modules (e.g. dialog.test.js, removePhotos.test.js)
+} catch (err) {
+  console.error("[MM License] Failed to load licensing runtime:", err?.message || err);
+  licenseManager = null;
 }
 
 const $ = id => (typeof document !== "undefined" && typeof document.getElementById === "function" ? document.getElementById(id) : null);
@@ -198,12 +190,6 @@ const ui = {
   toast: $("toast")
 };
 
-if (DEV_LICENSE_BYPASS && typeof document !== "undefined") {
-  const versionBadge = document.querySelector?.(".version");
-  if (versionBadge && !String(versionBadge.textContent || "").includes("DEV")) {
-    versionBadge.textContent = `${versionBadge.textContent} DEV`;
-  }
-}
 
 console.log("[MM UI] main.js loaded");
 
@@ -1953,16 +1939,9 @@ async function handleRemovePhotos() {
 // -------------------------------------------------------------
 // Licensing Gating & UI Management
 // -------------------------------------------------------------
-let customLicenseManagerSet = false;
-
 function setLicenseManager(manager) {
   licenseManager = manager;
-  customLicenseManagerSet = true;
   return licenseManager;
-}
-
-function setDevLicenseBypass(val) {
-  DEV_LICENSE_BYPASS = Boolean(val);
 }
 
 function getLicenseManagerInstance() {
@@ -1970,25 +1949,35 @@ function getLicenseManagerInstance() {
 }
 
 async function ensureLicenseOperational() {
-  if (DEV_LICENSE_BYPASS && !customLicenseManagerSet) return true;
-  if (!licenseManager) return true;
+  if (!licenseManager) {
+    console.error("[MM License] Licensing runtime unavailable.");
+    return false;
+  }
+
   try {
     await licenseManager.initialize();
-  } catch (err) {
-    console.warn("[MM License] Initialization check error:", err?.message || err);
+  } catch (error) {
+    console.error(
+      "[MM License] Initialization failed:",
+      error?.message || error
+    );
+    return false;
   }
-  return typeof licenseManager.isOperational === "function"
-    ? licenseManager.isOperational()
-    : true;
+
+  if (typeof licenseManager.isOperational !== "function") {
+    return false;
+  }
+
+  return licenseManager.isOperational() === true;
 }
 
 function updateLicenseDialogUI() {
-  if (DEV_LICENSE_BYPASS) {
-    if (ui.licenseStateLabel) ui.licenseStateLabel.textContent = "DEV BYPASS";
+  if (!licenseManager) {
+    if (ui.licenseStateLabel) ui.licenseStateLabel.textContent = "LICENSE ERROR";
     if (ui.licenseStatusMessage) {
-      ui.licenseStatusMessage.textContent = "Development testing mode - license checks are temporarily bypassed.";
+      ui.licenseStatusMessage.textContent = "License service is unavailable. Please restart Photoshop or reinstall the plugin.";
     }
-    if (ui.licenseDeviceLabel) ui.licenseDeviceLabel.textContent = "Development copy";
+    if (ui.licenseDeviceLabel) ui.licenseDeviceLabel.textContent = "Unavailable";
     if (ui.licensePlanRow) ui.licensePlanRow.hidden = true;
     if (ui.licenseNextRefreshRow) ui.licenseNextRefreshRow.hidden = true;
 
@@ -1999,24 +1988,25 @@ function updateLicenseDialogUI() {
     return;
   }
 
-  if (!licenseManager) return;
-  const snapshot = licenseManager.getSnapshot();
+  const snapshot = typeof licenseManager.getSnapshot === "function"
+    ? licenseManager.getSnapshot()
+    : { state: "ERROR", userMessage: "Licensing runtime error." };
 
   if (ui.licenseStateLabel) {
-    ui.licenseStateLabel.textContent = snapshot.state;
+    ui.licenseStateLabel.textContent = snapshot.state || "UNACTIVATED";
   }
   if (ui.licenseStatusMessage) {
-    ui.licenseStatusMessage.textContent = snapshot.userMessage || snapshot.state;
+    ui.licenseStatusMessage.textContent = snapshot.userMessage || snapshot.state || "Unactivated";
   }
   if (ui.licenseDeviceLabel) {
     ui.licenseDeviceLabel.textContent = snapshot.deviceId ? "Bound (This Computer)" : "Not bound";
   }
 
-  const isOperational = licenseManager.isOperational();
+  const isOperational = typeof licenseManager.isOperational === "function" && licenseManager.isOperational() === true;
 
   if (ui.licensePlanRow && ui.licensePlanLabel) {
     if (isOperational && snapshot.plan) {
-      ui.licensePlanLabel.textContent = snapshot.plan.toUpperCase();
+      ui.licensePlanLabel.textContent = String(snapshot.plan).toUpperCase();
       ui.licensePlanRow.hidden = false;
     } else {
       ui.licensePlanRow.hidden = true;
@@ -2250,10 +2240,10 @@ if (typeof module !== "undefined" && module.exports) {
     wrapProtectedAction,
     setLicenseManager,
     getLicenseManagerInstance,
-    DEV_LICENSE_BYPASS,
-    setDevLicenseBypass,
     toast,
     ui,
-    licenseManager
+    get licenseManager() {
+      return licenseManager;
+    }
   };
 }

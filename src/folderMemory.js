@@ -32,7 +32,7 @@ function removeStoredValue(key, storageRef = typeof localStorage !== "undefined"
   } catch (_) {}
 }
 
-async function restoreFolderFromToken(tokenKey, localFileSystem, storageRef) {
+async function restoreFolderFromToken(tokenKey, localFileSystem, storageRef = typeof localStorage !== "undefined" ? localStorage : null) {
   const token = getStoredValue(tokenKey, storageRef);
   if (!token || !localFileSystem || typeof localFileSystem.getEntryForPersistentToken !== "function") {
     return null;
@@ -40,6 +40,14 @@ async function restoreFolderFromToken(tokenKey, localFileSystem, storageRef) {
   try {
     const entry = await localFileSystem.getEntryForPersistentToken(token);
     if (entry && (entry.isFolder || !entry.isFile)) {
+      if (typeof entry.getEntries === "function") {
+        try {
+          await entry.getEntries();
+        } catch (_) {
+          removeStoredValue(tokenKey, storageRef);
+          return null;
+        }
+      }
       return entry;
     }
     removeStoredValue(tokenKey, storageRef);
@@ -50,7 +58,7 @@ async function restoreFolderFromToken(tokenKey, localFileSystem, storageRef) {
   }
 }
 
-async function saveFolderToken(tokenKey, folderEntry, localFileSystem, storageRef) {
+async function saveFolderToken(tokenKey, folderEntry, localFileSystem, storageRef = typeof localStorage !== "undefined" ? localStorage : null) {
   if (!folderEntry || !localFileSystem || typeof localFileSystem.createPersistentToken !== "function") {
     return null;
   }

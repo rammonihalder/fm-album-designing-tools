@@ -113,9 +113,9 @@ for (const mode of ["Escape", "cancel", "close", "Space"]) test(`${mode} cancels
 });
 test("ADD FRAME retains license gate and locks existing tools until completed", async () => {
   let finish; const h = harness({ runTool: () => new Promise(resolve => { finish = resolve; }) });
-  h.main.setDevLicenseBypass(false); h.main.setLicenseManager({ initialize: async () => {}, isOperational: () => false, getSnapshot: () => ({ state: "UNLICENSED" }) });
+  h.main.setLicenseManager({ initialize: async () => {}, isOperational: () => false, getSnapshot: () => ({ state: "UNACTIVATED" }) });
   await h.main.ui.addFrameBtn.fire("click"); assert.equal(h.toolCalls, 0);
-  h.main.setDevLicenseBypass(true); h.main.setLicenseManager(null);
+  h.main.setLicenseManager({ initialize: async () => {}, isOperational: () => true, getSnapshot: () => ({ state: "ACTIVE" }) });
   const pending = h.main.ui.addFrameBtn.fire("keydown", { key: "Enter" }); await h.tick(); assert.equal(h.toolCalls, 1);
   await h.main.ui.createPageBtn.fire("click"); assert.equal(h.main.ui.createPagePresetPanel.hidden, true);
   await h.main.ui.addFrameBtn.fire("click"); assert.equal(h.toolCalls, 1);

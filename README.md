@@ -1,4 +1,4 @@
-# MM Album Design Tools v1.2.0 DEV
+# MM Album Design Tools v1.2.0
 
 A polished Photoshop UXP panel for album-design production workflows. The plugin ID remains `in.memorymaker.albumplacer`.
 
@@ -107,7 +107,7 @@ The **ADD ASSET** and **SAVE ASSET** tools form a unified reusable asset-library
 
 PNG placement uses an embedded `placeEvent` with a UXP session token and `linked: false`, without opening or saving the source PNG. Each new layer receives the filename without `.png`, stays independent of existing groups, is uniformly scaled down only if it exceeds 80% of the canvas width or height, and is centered and selected for Ctrl+T. Small assets are not enlarged. PNG MASK does not create a clipping mask; PNG TEXT remains a graphic, with no OCR or editable-text conversion; CLIP ART has no special clipping behavior. ADD FRAME continues using its separate editable PSD group importer.
 
-Each PNG import runs in one modal/history operation: **Add PNG Mask**, **Add PNG Text**, or **Add Clip Art**. Failed placement/transforms roll back partial additions and log the native error. The existing license gate, running lock, DEV bypass and v1.2.0 version apply to all three tools; no production CCX is generated.
+Each PNG import runs in one modal/history operation: **Add PNG Mask**, **Add PNG Text**, or **Add Clip Art**. Failed placement/transforms roll back partial additions and log the native error. The central license gate, running lock, and v1.2.0 production release apply to all three tools.
 
 #### CHANGE BACKGROUND
 
@@ -129,11 +129,11 @@ Open a market/source PSD and select the frame layers or groups to keep. **SAVE F
 
 Set the library root with the native UXP folder picker. Its dedicated persistent key, `mm_save_frame_root_folder_token`, is independent of every other tool. Cancelled folder changes keep the old root; successful changes update the path immediately. Stale roots clear only this key. The chosen photo count survives folder changes within the dialog.
 
-Saving to **5 PHOTOS**, for example, uses `<root>/5 PHOTOS/`, automatically creating that subfolder if missing and reusing it otherwise. Each folder has its own sequence: **Frame 001.psd**, **Frame 002.psd**, etc. The highest matching PSD number plus one is padded to at least three digits; existing files are never overwritten. The optional custom prefix is omitted in this development version.
+Saving to **5 PHOTOS**, for example, uses `<root>/5 PHOTOS/`, automatically creating that subfolder if missing and reusing it otherwise. Each folder has its own sequence: **Frame 001.psd**, **Frame 002.psd**, etc. The highest matching PSD number plus one is padded to at least three digits; existing files are never overwritten. The optional custom prefix is omitted in this release.
 
 `src/tools/saveFrame.js` captures the source/selection before configuration, creates a transparent temporary document with the source's full width, height, PPI and practical color mode, and duplicates only the selected native layers/groups individually from bottom to top. A selected group includes its nested content; selecting both a group and its descendant does not duplicate the child twice. Native duplication retains editable text, Smart Objects, masks, effects and other supported layer properties. The exporter preserves positions without scaling, flattening or rasterizing, removes the temporary empty layer, trims the temporary document's transparent canvas to the actual visible non-transparent content bounds (equivalent to Photoshop `Image > Trim > Transparent Pixels` on Top, Bottom, Left, and Right), preserving all selected layers/groups as editable layers and preserving visible drop shadows, outer glows, strokes, masks, and transformed content without preserving unnecessary empty 12x36, 12x18 or source-document canvas size, and calls Photoshop `saveAs.psd(file, { layers: true, embedColorProfile: true }, true)`. RGB, CMYK, grayscale and Lab are supported creation modes; unsupported modes use RGB without changing the source. Supported 8/16/32-bit depth, color profile and pixel aspect ratio are also carried over. Clipping is retained when its actual base is also selected and the original relationship can be preserved; otherwise the selected content exports standalone without borrowing unselected layers. Adjustment appearance also depends on which related layers are selected.
 
-Only the owned temporary document is closed without further saving. Source layers remain unchanged, and source focus and original selection are restored. Failed saves clean up their unfinished file and temporary document, log native errors, and retain a useful error in the configuration dialog for retry. No document reports **Open a PSD first.**; no selection reports **Select one or more frame layers first.** Success closes the workflow and reports, for example, **Saved frame: 3 PHOTOS / Frame 004.psd**. SAVE FRAME uses the existing shared running lock, license gate and unchanged DEV bypass; the version remains **v1.2.0 DEV** and no CCX is generated.
+Only the owned temporary document is closed without further saving. Source layers remain unchanged, and source focus and original selection are restored. Failed saves clean up their unfinished file and temporary document, log native errors, and retain a useful error in the configuration dialog for retry. No document reports **Open a PSD first.**; no selection reports **Select one or more frame layers first.** Success closes the workflow and reports, for example, **Saved frame: 3 PHOTOS / Frame 004.psd**. SAVE FRAME uses the existing shared running lock, central license gate, and production licensing in **v1.2.0**.
 
 #### SAVE FRAME manual Photoshop verification
 
@@ -146,7 +146,7 @@ Only the owned temporary document is closed without further saving. Source layer
 7. Export editable text, embedded/linked Smart Objects, masks/vector masks, effects, opacity/blends, adjustment layers and clipping stacks with their bases selected. Check editability and appearance in the saved PSD, transparent areas around/inside the frame, trimmed canvas bounds (no fixed 12x36, 12x18 or source dimensions), preserved drop shadows/glows/strokes/masks, PPI and practical RGB/CMYK/grayscale/Lab modes (including 16/32-bit where PSD supports them).
 8. Confirm the source tab, original selection, layer hierarchy/names/positions, dirty state and history remain unchanged after success/cancellation/errors. Confirm other open documents stay open and no export document remains.
 9. Use a read-only/unavailable destination, a conflicting file named `N PHOTOS`, and unsupported/oversize PSD content. Confirm useful errors, native console details, no corrupted replacement of an existing frame, temporary cleanup, retry/cancel and button unlocking.
-10. Recheck CREATE PAGE, ADD FRAME, all three PNG tools and the original eight actions. While SAVE FRAME is open/saving, confirm conflicting buttons stay locked; verify normal licensing with DEV bypass disabled for the check, then restore the DEV setting.
+10. Recheck CREATE PAGE, ADD FRAME, all three PNG tools and the original eight actions. While SAVE FRAME is open/saving, confirm conflicting buttons stay locked; verify normal licensing with active and unlicensed states.
 
 #### PNG asset manual Photoshop verification
 
@@ -156,7 +156,7 @@ Only the owned temporary document is closed without further saving. Source layer
 4. Confirm each native picker starts at its own root, filters PNG and allows one selection. Cancel to return to configuration. Navigate elsewhere and import a PNG; reopen and confirm the original configured root is unchanged. With no page open, confirm the exact warning and no picker.
 5. Import transparent PNGs in all three categories, including PNG text artwork and a mask. Confirm filename layer names, transparent edges, Embedded Smart Object status, no clipping or OCR, independence from an already-selected album group/clipping stack, preservation of existing clipping relationships, and that source PNGs remain unchanged.
 6. Test large landscape/portrait and small PNGs. Confirm equal X/Y scaling down only, 80% maximum coverage, centering and selection. Use Ctrl+T to move/resize/rotate; undo the transform, then undo the category import once and confirm the complete asset disappears.
-7. Try a corrupt PNG and simulate a placement/transform failure in DEV. Confirm a category-specific error, native console diagnostics, no broken new layers and the original album still active. Attempt another tool during import and confirm the shared lock prevents conflicting operations.
+7. Try a corrupt PNG and simulate a placement/transform failure. Confirm a category-specific error, native console diagnostics, no broken new layers and the original album still active. Attempt another tool during import and confirm the shared lock prevents conflicting operations.
 
 ### ADD FRAME
 - **CREATE PAGE** remains the first full-width action in **CREATE ALBUM**; **ADD FRAME** stays in the two-column tool row below it. The existing narrow-panel fallback is retained.
@@ -169,10 +169,10 @@ Only the owned temporary document is closed without further saving. Source layer
 - The group is proportionally scaled **down** only when its bounds exceed **80% of the target width or height**, then centered on that canvas. Smaller groups are not enlarged. The group stays selected for **Ctrl+T / Cmd+T** resizing, moving, and rotating; expand it to edit the original layer structure.
 - The successful import closes the configuration workflow and returns to the target page. With no active page, the warning is **Create or open a page first.** Warnings and errors show a useful toast and remain visible inside the reopened configuration dialog for retry. Cancellation and Escape stop the workflow. Native pickers run outside Photoshop's modal document-editing scope and after releasing the configuration dialog.
 - Import, grouping, fitting, and selection run inside one `executeAsModal` scope with a target history suspension named **Add PSD Frame**. One undo removes the new group. Failures roll back all target changes, including duplication that fails after creating some layers; source cleanup and target restoration run on both success and failure.
-- ADD FRAME uses the existing central action handlers, button locking, licensing, and DEV bypass. No network calls or production CCX are introduced. This remains **v1.2.0 DEV**.
+- ADD FRAME uses the existing central action handlers, button locking, and production licensing. This is **v1.2.0**.
 
 #### Photoshop manual verification
-1. Reload the unpackaged plugin. Verify the existing CREATE ALBUM layout, CREATE PAGE presets/custom page, and all eight original tools. Keep the current DEV bypass and version.
+1. Reload the unpackaged plugin. Verify the existing CREATE ALBUM layout, CREATE PAGE presets/custom page, all eight original tools, and v1.2.0 version.
 2. Clear only ADD FRAME's token for a first-use check. Opening ADD FRAME should show **No frame folder selected**, SET FOLDER, disabled SELECT PSD FRAME, and CANCEL. Cancel SET FOLDER; nothing should be stored. Then select a root and confirm the path, tooltip, CHANGE FOLDER label, and enabled SELECT PSD FRAME update immediately.
 3. Close/reopen the panel, reload the plugin, and restart Photoshop. Confirm the same root appears without a folder picker. Test long paths, spaces, and non-ASCII names. Cancel CHANGE FOLDER and confirm the old root remains; choose a new root and confirm replacement. Move/rename/delete the saved root and confirm SET FOLDER returns without affecting other tools' folder memory.
 4. With an album open, press SELECT PSD FRAME repeatedly and confirm the native picker starts in the configured root each time. Cancel and confirm the dialog returns. Navigate elsewhere and select a PSD; confirm the configured root remains unchanged afterward. With no document open, confirm **Create or open a page first.**
@@ -205,8 +205,9 @@ Only the owned temporary document is closed without further saving. Source layer
 
 ### 2. Per-Tool Folder Memory
 Each tool independently remembers its own folder location using UXP persistent tokens:
-- **OPEN PSD:** Next file picker opens at that tool's previous PSD folder (`mm_open_psd_last_folder_token`).
-- **AUTO PHOTO FILL:** Next photo picker opens at that tool's previous photo folder (`mm_auto_photo_fill_last_folder_token`).
+- **OPEN PSD:** remembers the last successfully selected PSD folder (`mm_open_psd_last_folder_token`).
+- **AUTO PHOTO FILL:** remembers the last successfully selected photo folder (`mm_auto_photo_fill_last_folder_token`).
+The two memories are independent and survive panel/plugin/Photoshop restart through UXP persistent folder tokens.
 - **SAVE PAGE:** Normal activation opens the compact confirmation dialog at its exact remembered base folder (`mm_save_page_last_folder_token`). A valid token under the former `mm_save_page_base_folder_token` key is migrated once; the old key is removed only after the canonical token is stored successfully.
 - **SAVE EDITED PHOTOS:** Normal activation opens the confirmation dialog at its exact remembered destination (`mm_save_edited_photos_folder_token`).
 - **SAVE PSD CATEGORY:** Normal activation opens the confirmation dialog at its exact remembered base folder (`mm_save_psd_category_base_folder_token`).
@@ -299,7 +300,7 @@ Natively ported from legacy JSX (`SAVE_PSD_CATEGORYV 5.0.JSX`) to modular UXP:
 - `src/tools/saveEditedPhotos.js` — Save Edited Photos with folder memory
 - `src/tools/savePsdCategory.js` — Save PSD Category with auto-count, orientation, and folder memory
 - `src/tools/removePhotos.js` — Document-wide clipped photo removal
-- `src/licensing/` — Licensing architecture foundation (Phase 1, non-enforcing)
+- `src/licensing/` — Production licensing runtime and verification
   - `constants.js` — Central licensing keys, intervals, and schema version
   - `licenseState.js` — Explicit states and pure normalization helpers
   - `licenseStorage.js` — Fault-tolerant UXP secureStorage abstraction
@@ -309,7 +310,7 @@ Natively ported from legacy JSX (`SAVE_PSD_CATEGORYV 5.0.JSX`) to modular UXP:
 
 ---
 
-## Production Licensing Architecture (Phase 2)
+## Production Licensing Architecture
 
 The plugin incorporates a production-grade, cryptographically verified offline-first licensing system:
 

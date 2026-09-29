@@ -84,11 +84,11 @@ for (const mode of ["Escape", "cancel", "close", "Space"]) test(`SAVE FRAME ${mo
     for (const element of [h.dialog, h.elements.get("saveFrameFolderBtn"), h.elements.get("saveFrameSaveBtn"), h.elements.get("saveFrameCancelBtn")]) for (const listeners of element.listeners.values()) assert.equal(listeners.size, 0);
   }
 });
-test("license gate protects SAVE FRAME; DEV bypass and keyboard activation keep shared lock", async () => {
+test("license gate protects SAVE FRAME; keyboard activation keeps shared lock", async () => {
   let finish; const h = harness({ runTool: () => new Promise(resolve => { finish = resolve; }) });
-  h.main.setDevLicenseBypass(false); h.main.setLicenseManager({ initialize: async () => {}, isOperational: () => false, getSnapshot: () => ({ state: "UNLICENSED" }) });
+  h.main.setLicenseManager({ initialize: async () => {}, isOperational: () => false, getSnapshot: () => ({ state: "UNACTIVATED" }) });
   await h.elements.get("saveFrameBtn").fire("click"); assert.equal(h.toolCalls, 0);
-  h.main.setDevLicenseBypass(true); h.main.setLicenseManager(null);
+  h.main.setLicenseManager({ initialize: async () => {}, isOperational: () => true, getSnapshot: () => ({ state: "ACTIVE" }) });
   const pending = h.elements.get("saveFrameBtn").fire("keydown", { key: "Enter" }); await h.tick();
   const ids = ["saveFrameBtn", "addFrameBtn", "pngMaskBtn", "pngTextBtn", "clipArtBtn", "createPageBtn", "openPsdBtn", "savePageBtn"];
   for (const id of ids) { assert.equal(h.elements.get(id).disabled, true); assert.equal(h.elements.get(id).getAttribute("aria-disabled"), "true"); await h.elements.get(id).fire("click"); }

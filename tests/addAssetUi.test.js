@@ -73,9 +73,9 @@ for (const [type, buttonId] of Object.entries(buttons)) {
   });
   test(`${config.title} uses license protection, keyboard binding and shared operation lock`, async () => {
     let finish; const h = harness({ runTool: args => { assert.equal(args.config.type, type); return new Promise(resolve => { finish = resolve; }); } });
-    h.main.setDevLicenseBypass(false); h.main.setLicenseManager({ initialize: async () => {}, isOperational: () => false, getSnapshot: () => ({ state: "UNLICENSED" }) });
+    h.main.setLicenseManager({ initialize: async () => {}, isOperational: () => false, getSnapshot: () => ({ state: "UNACTIVATED" }) });
     await h.elements.get(buttonId).fire("click"); assert.equal(h.toolCalls, 0);
-    h.main.setDevLicenseBypass(true); h.main.setLicenseManager(null);
+    h.main.setLicenseManager({ initialize: async () => {}, isOperational: () => true, getSnapshot: () => ({ state: "ACTIVE" }) });
     const pending = h.elements.get(buttonId).fire("keydown", { key: "Enter" }); await h.tick(); assert.equal(h.toolCalls, 1);
     for (const id of [...Object.values(buttons), "addFrameBtn", "openPsdBtn", "createPageBtn"]) {
       assert.equal(h.elements.get(id).disabled, true); assert.equal(h.elements.get(id).getAttribute("aria-disabled"), "true");

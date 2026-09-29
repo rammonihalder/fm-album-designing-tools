@@ -215,6 +215,15 @@ function harness({ count = 6, placeholders = 5, moveFails = false } = {}) {
       if (name === "./src/ui/toast") {
         return require("../src/ui/toast");
       }
+      if (name === "./src/licensing/licenseManager") {
+        return {
+          getLicenseManager: () => ({
+            initialize: async () => {},
+            isOperational: () => true,
+            getSnapshot: () => ({ state: "ACTIVE" })
+          })
+        };
+      }
       throw new Error("Unexpected require: " + name);
     }
   };
