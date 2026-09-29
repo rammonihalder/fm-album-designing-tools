@@ -1,4 +1,6 @@
-# MM Album Design Tools v1.3.0
+# FM Album Designing Tools v1.4.0
+
+**Brand:** Frame Mitra | **Developer:** Hridita Innovations
 
 A polished Photoshop UXP panel for album-design production workflows. The plugin ID remains `in.memorymaker.albumplacer`.
 
@@ -49,7 +51,7 @@ A compact, user-friendly status area is located at the bottom of the main plugin
 ### Purchase & Renewal Contact UI (WhatsApp Integration)
 - **Direct Administrator Contact:** When a trial or paid license expires, the License Management dialog provides a clear contact and renewal area displaying the administrator phone number: `7001514367`.
 - **CONTACT ADMIN Action:** A dedicated, keyboard-accessible button launches WhatsApp with the administrator (`+91 7001514367`) and pre-fills the message:
-  `I want to buy a license for MM Album Design Tools.`
+  `I want to buy a license for FM Album Designing Tools.`
 - **Programmatic URL Generation:** Constructed safely via standard UXP external opening protocols (`https://wa.me/917001514367?text=...`) using `encodeURIComponent` without invoking command shells or spawning external processes.
 - **Non-Fatal Fallback:** If WhatsApp fails to launch, the dialog displays a friendly fallback notice (`Unable to open WhatsApp. Please contact 7001514367 manually.`) while keeping the phone number clearly visible.
 - **Manual Send Protection:** The user retains full control and must manually click "Send" within WhatsApp; the plugin never auto-sends messages.

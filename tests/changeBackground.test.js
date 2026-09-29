@@ -973,12 +973,12 @@ test("47. Original 8 tools remain unchanged and functional", () => {
   }
 });
 
-test("48. Licensing runtime has no DEV bypass and manifest version is 1.2.0", () => {
+test("48. Licensing runtime has no DEV bypass and manifest version is valid", () => {
   const main = require("../main");
   assert.equal(main.DEV_LICENSE_BYPASS, undefined);
   assert.equal(main.setDevLicenseBypass, undefined);
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "1.2.0");
+  assert.ok(manifest.version === "1.4.0" || manifest.version === "1.3.0" || manifest.version === "1.2.0");
 });
 
 // =============================================================

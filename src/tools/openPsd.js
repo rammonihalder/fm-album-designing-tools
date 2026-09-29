@@ -134,7 +134,7 @@ function smartRenameContainer(container, counterRef, docName) {
           try {
             layer.name = newName;
           } catch (renameErr) {
-            console.warn("[MM Open PSD] Could not rename layer:", {
+            console.warn("[FM Open PSD] Could not rename layer:", {
               documentName: docName || "unknown",
               layerName: layer.name,
               layerId: layer.id,
@@ -308,7 +308,7 @@ async function executeOpenPsd(dependencies = {}, options = {}) {
         await save(TOKEN_KEYS.OPEN_PSD, parentFolder, localFileSystem, storage);
       }
     } catch (saveErr) {
-      console.warn("[MM Open PSD] Could not save folder token:", saveErr);
+            console.warn("[FM Open PSD] Could not save folder token:", saveErr);
     }
   }
 
@@ -479,7 +479,7 @@ async function executeOpenPsd(dependencies = {}, options = {}) {
       };
 
       if (typeof executeModal === "function") {
-        await executeModal(processDocModal, `MM Open PSD - ${documentName}`);
+        await executeModal(processDocModal, `FM Open PSD - ${documentName}`);
       } else {
         await processDocModal();
       }
@@ -584,7 +584,7 @@ function getDefaultDependencies() {
       }
       if (core && typeof core.executeAsModal === "function") {
         return core.executeAsModal(async (executionContext) => fn(executionContext), {
-          commandName: commandName || "MM Open PSD"
+          commandName: commandName || "FM Open PSD"
         });
       }
       return fn();

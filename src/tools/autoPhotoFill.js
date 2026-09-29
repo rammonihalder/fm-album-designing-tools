@@ -176,7 +176,7 @@ async function executeAutoPhotoFill(ui, dependencies) {
           await save(TOKEN_KEYS.AUTO_PHOTO_FILL, parentFolder, localFileSystem, storage);
         }
       } catch (saveErr) {
-        console.warn("[MM Auto Photo Fill] Could not save folder token:", saveErr);
+        console.warn("[FM Auto Photo Fill] Could not save folder token:", saveErr);
       }
     }
 

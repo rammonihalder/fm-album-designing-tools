@@ -425,7 +425,7 @@ async function executeSavePsdCategory(dependencies = {}, options = {}) {
     : async (fn, name) => {
         if (core && typeof core.executeAsModal === "function") {
           return core.executeAsModal(async executionContext => fn(executionContext), {
-            commandName: name || "MM Save PSD Category"
+            commandName: name || "FM Save PSD Category"
           });
         }
         return fn({});
@@ -438,7 +438,7 @@ async function executeSavePsdCategory(dependencies = {}, options = {}) {
         if (!currentDoc) throw new Error("Source document is no longer open");
       }
       await saveDocumentCopy(currentDoc, targetFileEntry, { embedColorProfile: true, layers: true });
-    }, "MM Save PSD Category");
+    }, "FM Save PSD Category");
   } catch (saveErr) {
     console.error("[Save PSD Category] PSD copy save error:", saveErr);
     return { outcome: "psd-failed", error: saveErr };
@@ -453,7 +453,7 @@ async function executeSavePsdCategory(dependencies = {}, options = {}) {
       if (app?.documents && docFinder(targetDocId, app)) {
         throw new Error("Source document did not close");
       }
-    }, "MM Close Category Source");
+    }, "FM Close Category Source");
   }
   if (!deleteOriginal) {
     try {

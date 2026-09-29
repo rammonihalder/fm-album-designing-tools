@@ -12,14 +12,14 @@ const CLOCK_ROLLBACK_TOLERANCE_SECONDS = 300;
 
 // User-friendly safe error messages
 const SAFE_USER_MESSAGES = Object.freeze({
-  UNACTIVATED: "Activate MM Album Design Tools to continue.",
+  UNACTIVATED: "Activate FM Album Designing Tools to continue.",
   ACTIVE: "License Active",
   GRACE: "License in Offline Grace. Please connect to the internet to refresh.",
   TRIAL: "30-day free trial active.",
   TRIAL_EXPIRED: "Your 30-day free trial has ended. Activate a license to continue.",
   EXPIRED: "License validation is required. Connect to the internet and try again.",
   REVOKED: "This license is no longer active.",
-  SUSPENDED: "This license is temporarily unavailable. Please contact Memory Maker.",
+  SUSPENDED: "This license is temporarily unavailable. Please contact Frame Mitra.",
   DEVICE_LIMIT_REACHED: "This license is already active on the maximum number of computers.",
   DEVICE_REVOKED: "This device activation has been revoked.",
   INVALID_LICENSE: "Invalid license key. Please check and try again.",

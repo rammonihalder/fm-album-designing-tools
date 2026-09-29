@@ -92,7 +92,7 @@ test("V2-1. manifest network permissions are strictly limited to Worker domain a
     fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8")
   );
   assert.equal(manifest.id, "in.memorymaker.albumplacer");
-  assert.ok(manifest.version === "1.2.0" || manifest.version === "1.1.0");
+  assert.equal(manifest.version, "1.4.0");
   assert.equal(PLUGIN_VERSION, manifest.version, "runtime PLUGIN_VERSION must match manifest.version");
 
   const indexHtml = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
@@ -1342,7 +1342,7 @@ test("V2-32. license dialog CSS layout, sizing, and structural invariants", () =
 
   // 9. duplicate "License Management" heading is avoided
   assert.equal(dialogInnerHtml.includes("<h2>License Management</h2>"), false, "Duplicate 'License Management' heading must be avoided");
-  assert.ok(dialogInnerHtml.includes("<h2>MM Album Design Tools</h2>"), "Internal heading must show product title");
+  assert.ok(dialogInnerHtml.includes("<h2>FM Album Designing Tools</h2>"), "Internal heading must show product title");
 
   // 10. existing state-specific hidden controls remain functional
   assert.ok(dialogInnerHtml.includes('id="licenseDeactivateBtn" class="btn btn-destructive full" type="button" hidden'), "Deactivate button has initial hidden attribute");

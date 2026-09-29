@@ -1,4 +1,4 @@
-MM Album Design Tools v1.2.0 DEV UI Fix
+FM Album Designing Tools v1.4.0 DEV UI Fix
 
 Changes:
 - Moves CREATE ALBUM section below the existing 8-tool action grid.

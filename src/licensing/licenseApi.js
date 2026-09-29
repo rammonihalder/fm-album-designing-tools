@@ -24,7 +24,7 @@ function validateConfig(cfg = config) {
 validateConfig();
 
 /**
- * License API Client for MM License Server.
+ * License API Client for the Frame Mitra license server.
  * Communicates with production backend endpoints using standard fetch.
  *
  * Endpoints:

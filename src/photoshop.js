@@ -107,7 +107,7 @@ async function placePhotoOnPlaceholder(fileEntry, placeholder, options) {
     }
 
     if (options.renameLayer) {
-      placed.name = `Memory Maker ${fileEntry.name}`;
+      placed.name = `Frame Mitra ${fileEntry.name}`;
     }
 
     return placed;
@@ -189,7 +189,7 @@ async function inspectImageFiles(fileEntries, onProgress) {
         if (onProgress) onProgress(i + 1, fileEntries.length);
       }
     }
-  }, { commandName: "MM Album Design Tools - Analyze Photos" });
+  }, { commandName: "FM Album Designing Tools - Analyze Photos" });
 
   return { photos, errors };
 }
@@ -198,7 +198,7 @@ async function runPlacement(items, options, onProgress) {
   return core.executeAsModal(async executionContext => {
     const suspension = await executionContext.hostControl.suspendHistory({
       documentID: app.activeDocument.id,
-      name: "MM Album Design Tools - Auto Photo Fill"
+      name: "FM Album Designing Tools - Auto Photo Fill"
     });
     const placedItems = [];
     const failedItems = [];
@@ -218,7 +218,7 @@ async function runPlacement(items, options, onProgress) {
     }
 
     return { placedItems, failedItems };
-  }, { commandName: "MM Album Design Tools - Auto Photo Fill" });
+  }, { commandName: "FM Album Designing Tools - Auto Photo Fill" });
 }
 
 async function selectLayerById(layerId) {
@@ -321,10 +321,10 @@ async function replaceSmartObjectContents(layer, tempFile) {
 async function executeSwapModal(operationFn) {
   return core.executeAsModal(async executionContext => {
     return operationFn(executionContext);
-  }, { commandName: "MM Swap Photos" });
+  }, { commandName: "FM Swap Photos" });
 }
 
-async function executeOpenPsdModal(operationFn, commandName = "MM Open PSD") {
+async function executeOpenPsdModal(operationFn, commandName = "FM Open PSD") {
   return core.executeAsModal(async executionContext => {
     return operationFn(executionContext);
   }, { commandName });
@@ -715,7 +715,7 @@ async function saveDocumentCopyPng(doc, fileEntry, options = {}) {
   throw new Error("Photoshop saveAs.png API is not available on this document.");
 }
 
-async function executeSavePageModal(operationFn, commandName = "MM Save Page") {
+async function executeSavePageModal(operationFn, commandName = "FM Save Page") {
   if (core && typeof core.executeAsModal === "function") {
     return core.executeAsModal(async executionContext => {
       return operationFn(executionContext);
@@ -796,7 +796,7 @@ async function selectLayersByIds(layerIds) {
   }
 }
 
-async function executeSaveEditedPhotosModal(operationFn, commandName = "MM Save Edited Photos") {
+async function executeSaveEditedPhotosModal(operationFn, commandName = "FM Save Edited Photos") {
   if (core && typeof core.executeAsModal === "function") {
     return core.executeAsModal(async executionContext => {
       return operationFn(executionContext);
@@ -844,7 +844,7 @@ async function deleteLayerById(layerId, doc) {
   }
 }
 
-async function executeRemovePhotosModal(operationFn, commandName = "MM Remove Photos") {
+async function executeRemovePhotosModal(operationFn, commandName = "FM Remove Photos") {
   if (core && typeof core.executeAsModal === "function") {
     return core.executeAsModal(async executionContext => {
       return operationFn(executionContext);

@@ -91,7 +91,7 @@ function createMockStorage(initial = {}) {
   };
 }
 
-function createMainHarness({ defaultPrefix = "", runSavePageOutcome = { outcome: "success", fileName: "MMRLT1" } } = {}) {
+function createMainHarness({ defaultPrefix = "", runSavePageOutcome = { outcome: "success", fileName: "FMRLT1" } } = {}) {
   const elements = new Map();
   const ids = [
     "openPsdBtn", "autoPhotoFillBtn", "swapPhotosBtn", "flipPhotoBtn", "savePageBtn", "saveEditedPhotosBtn", "savePsdCategoryBtn", "removePhotosBtn", "statusText", "toast",
@@ -247,10 +247,10 @@ test("2. Exact button order: OPEN PSD -> AUTO PHOTO FILL -> SWAP PHOTOS -> SAVE 
 
 test("3. Visible version is present in index.html and manifest.json", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v1.2.0") || html.includes("v1.1.0"), "index.html must display version");
+  assert.ok(html.includes("v1.4.0") || html.includes("v1.3.0") || html.includes("v1.2.0") || html.includes("v1.1.0"), "index.html must display version");
 
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.ok(manifest.version === "1.2.0" || manifest.version === "1.1.0", "manifest.json version must be valid");
+  assert.ok(manifest.version === "1.4.0" || manifest.version === "1.3.0" || manifest.version === "1.2.0" || manifest.version === "1.1.0", "manifest.json version must be valid");
   assert.equal(manifest.id, "in.memorymaker.albumplacer", "plugin ID must remain in.memorymaker.albumplacer");
 });
 
@@ -503,7 +503,7 @@ test("UI 14. Dialog does not permanently change panel height", () => {
 
 test("UI 15. Buttons unlock after successful save", async () => {
   const h = createMainHarness({
-    runSavePageOutcome: { outcome: "success", fileName: "MMRLT1" }
+    runSavePageOutcome: { outcome: "success", fileName: "FMRLT1" }
   });
   const savePageBtn = h.elements.get("savePageBtn");
   const openPsdBtn = h.elements.get("openPsdBtn");
@@ -725,24 +725,29 @@ test("18. Clearing prefix persists empty string", () => {
 // TESTS — SERIAL PARSER
 // ==========================================
 
-test("19. extractAlbumSerial('MMRLT1.psd') -> 1", () => {
-  assert.equal(extractAlbumSerial("MMRLT1.psd"), 1);
+test("19. extractAlbumSerial('FMRLT1.psd') -> 1", () => {
+  assert.equal(extractAlbumSerial("FMRLT1.psd"), 1);
 });
 
-test("20. extractAlbumSerial('Riya_MMRLT8.psd') -> 8", () => {
-  assert.equal(extractAlbumSerial("Riya_MMRLT8.psd"), 8);
+test("20. extractAlbumSerial('Riya_FMRLT8.psd') -> 8", () => {
+  assert.equal(extractAlbumSerial("Riya_FMRLT8.psd"), 8);
 });
 
-test("21. extractAlbumSerial('ABC_MMRLT15.jpg') -> 15", () => {
-  assert.equal(extractAlbumSerial("ABC_MMRLT15.jpg"), 15);
+test("21. extractAlbumSerial('ABC_FMRLT15.jpg') -> 15", () => {
+  assert.equal(extractAlbumSerial("ABC_FMRLT15.jpg"), 15);
 });
 
-test("22. extractAlbumSerial('ABC_MMRLT16.jpeg') -> 16", () => {
-  assert.equal(extractAlbumSerial("ABC_MMRLT16.jpeg"), 16);
+test("22. extractAlbumSerial('ABC_FMRLT16.jpeg') -> 16", () => {
+  assert.equal(extractAlbumSerial("ABC_FMRLT16.jpeg"), 16);
 });
 
-test("23. extractAlbumSerial('MMRLTfoo.psd') -> ignored (null)", () => {
-  assert.equal(extractAlbumSerial("MMRLTfoo.psd"), null);
+test("23. extractAlbumSerial('FMRLTfoo.psd') -> ignored (null)", () => {
+  assert.equal(extractAlbumSerial("FMRLTfoo.psd"), null);
+});
+
+test("23b. extractAlbumSerial ignores legacy MMRLT files: 'MMRLT1.psd' -> null", () => {
+  assert.equal(extractAlbumSerial("MMRLT1.psd"), null);
+  assert.equal(extractAlbumSerial("Riya_MMRLT8.psd"), null);
 });
 
 test("24. extractAlbumSerial('random.jpg') -> ignored (null)", () => {
@@ -755,25 +760,35 @@ test("24. extractAlbumSerial('random.jpg') -> ignored (null)", () => {
 // ==========================================
 
 test("getNextPageNumber correctly finds max across PSD and JPEG folders: next = max + 1", () => {
-  const psdNames = ["MMRLT2.psd", "Riya_MMRLT8.psd"];
-  const jpegNames = ["MMRLT4.jpg", "ABC_MMRLT11.jpeg"];
+  const psdNames = ["FMRLT2.psd", "Riya_FMRLT8.psd"];
+  const jpegNames = ["FMRLT4.jpg", "ABC_FMRLT11.jpeg"];
   const next = getNextPageNumber(psdNames, jpegNames);
   assert.equal(next, 12);
+});
+
+test("getNextPageNumber serial scan: FMRLT8 + FMRLT10 -> next FMRLT11", () => {
+  const psdNames = ["FMRLT8.psd"];
+  const jpegNames = ["Riya_FMRLT10.jpg"];
+  const next = getNextPageNumber(psdNames, jpegNames);
+  assert.equal(next, 11);
+  const baseName = buildPageBaseName("", next);
+  assert.equal(baseName, "FMRLT11");
 });
 
 test("getNextPageNumber defaults to 1 when no files match", () => {
   assert.equal(getNextPageNumber([], []), 1);
   assert.equal(getNextPageNumber(["foo.psd"], ["bar.jpg"]), 1);
+  assert.equal(getNextPageNumber(["MMRLT10.psd"], ["MMRLT10.jpg"]), 1, "Legacy MMRLT files are ignored");
 });
 
-test("Global serial is independent of prefix: existing ABC_MMRLT8.psd with prefix XYZ gives XYZ_MMRLT9", () => {
-  const psdNames = ["ABC_MMRLT8.psd"];
-  const jpegNames = ["ABC_MMRLT8.jpg"];
+test("Global serial is independent of prefix: existing ABC_FMRLT8.psd with prefix XYZ gives XYZ_FMRLT9", () => {
+  const psdNames = ["ABC_FMRLT8.psd"];
+  const jpegNames = ["ABC_FMRLT8.jpg"];
   const nextSerial = getNextPageNumber(psdNames, jpegNames);
   assert.equal(nextSerial, 9);
   const baseName = buildPageBaseName("XYZ", nextSerial);
-  assert.equal(baseName, "XYZ_MMRLT9");
-  assert.notEqual(baseName, "XYZ_MMRLT1");
+  assert.equal(baseName, "XYZ_FMRLT9");
+  assert.notEqual(baseName, "XYZ_FMRLT1");
 });
 
 // ==========================================
@@ -822,18 +837,18 @@ test("29. No duplicate or suffixed folders created (no PSD_2 or JPEG Copy)", asy
 // TESTS — FILE NAMES
 // ==========================================
 
-test("30. No prefix, first serial: MMRLT1.psd and MMRLT1.jpg", () => {
+test("30. No prefix, first serial: FMRLT1.psd and FMRLT1.jpg", () => {
   const base = buildPageBaseName("", 1);
-  assert.equal(base, "MMRLT1");
-  assert.equal(`${base}.psd`, "MMRLT1.psd");
-  assert.equal(`${base}.jpg`, "MMRLT1.jpg");
+  assert.equal(base, "FMRLT1");
+  assert.equal(`${base}.psd`, "FMRLT1.psd");
+  assert.equal(`${base}.jpg`, "FMRLT1.jpg");
 });
 
-test("31. Prefix Riya, serial 8: Riya_MMRLT8.psd and Riya_MMRLT8.jpg", () => {
+test("31. Prefix Riya, serial 8: Riya_FMRLT8.psd and Riya_FMRLT8.jpg", () => {
   const base = buildPageBaseName("Riya", 8);
-  assert.equal(base, "Riya_MMRLT8");
-  assert.equal(`${base}.psd`, "Riya_MMRLT8.psd");
-  assert.equal(`${base}.jpg`, "Riya_MMRLT8.jpg");
+  assert.equal(base, "Riya_FMRLT8");
+  assert.equal(`${base}.psd`, "Riya_FMRLT8.psd");
+  assert.equal(`${base}.jpg`, "Riya_FMRLT8.jpg");
 });
 
 // ==========================================
@@ -864,7 +879,7 @@ test("32-37. PSD Save uses intended doc, created PSD entry, saveAs.psd, asCopy=t
 
   assert.equal(result.outcome, "success");
   assert.equal(docPassed.id, 77, "32. PSD save must use intended document");
-  assert.equal(psdCall.entry.name, "Riya_MMRLT1.psd", "33. PSD save must use created PSD entry");
+  assert.equal(psdCall.entry.name, "Riya_FMRLT1.psd", "33. PSD save must use created PSD entry");
   assert.equal(psdCall.opts.embedColorProfile, true, "36. embedColorProfile must be true");
   assert.equal(psdCall.opts.alphaChannels, true, "37. alphaChannels must be true");
 });
@@ -900,7 +915,7 @@ test("38-42. JPEG save occurs after PSD success, quality 12, asCopy=true, no fla
 
   assert.equal(result.outcome, "success");
   assert.deepEqual(callOrder, ["psd", "jpeg"], "38. JPEG save occurs after PSD success");
-  assert.equal(jpegCall.entry.name, "Wedding_MMRLT1.jpg", "39. JPEG save uses correct entry");
+  assert.equal(jpegCall.entry.name, "Wedding_FMRLT1.jpg", "39. JPEG save uses correct entry");
   assert.equal(jpegCall.opts.quality, 12, "40. JPEG quality must be exactly 12");
   assert.equal(flattened, false, "42. Working document must NOT be flattened");
 });
@@ -977,25 +992,25 @@ test("45-47. Collision safety: calculated serial occupied before save triggers a
   const psdFolder = createMockFolder("PSD");
   const jpegFolder = createMockFolder("JPEG");
 
-  // Suppose MMRLT1 already exists on disk in PSD folder
-  await psdFolder.createFile("MMRLT1.psd");
+  // Suppose FMRLT1 already exists on disk in PSD folder
+  await psdFolder.createFile("FMRLT1.psd");
 
   const safe = await resolveSafeFileEntries(psdFolder, jpegFolder, "");
-  assert.equal(safe.serial, 2, "must skip occupied MMRLT1 and use serial 2");
-  assert.equal(safe.psdFileName, "MMRLT2.psd");
-  assert.equal(safe.jpegFileName, "MMRLT2.jpg");
+  assert.equal(safe.serial, 2, "must skip occupied FMRLT1 and use serial 2");
+  assert.equal(safe.psdFileName, "FMRLT2.psd");
+  assert.equal(safe.jpegFileName, "FMRLT2.jpg");
 });
 
 test("resolveSafeFileEntries handles prefix collisions without overwriting existing files", async () => {
   const psdFolder = createMockFolder("PSD");
   const jpegFolder = createMockFolder("JPEG");
 
-  // Riya_MMRLT5 exists in JPEG folder
-  await jpegFolder.createFile("Riya_MMRLT5.jpg");
+  // Riya_FMRLT5 exists in JPEG folder
+  await jpegFolder.createFile("Riya_FMRLT5.jpg");
 
   const safe = await resolveSafeFileEntries(psdFolder, jpegFolder, "Riya");
   assert.equal(safe.serial, 6);
-  assert.equal(safe.baseName, "Riya_MMRLT6");
+  assert.equal(safe.baseName, "Riya_FMRLT6");
 });
 
 test("output modes save only requested formats and BOTH shares one serial", async () => {
@@ -1016,20 +1031,20 @@ test("output modes save only requested formats and BOTH shares one serial", asyn
     });
     return { result, calls };
   }
-  const psdOnly = await run("psd", ["MMRLT05.psd"], ["MMRLT09.jpg"]);
-  assert.deepEqual(psdOnly.calls, [["psd", "Bride_MMRLT10.psd"]]);
-  const jpegOnly = await run("jpeg", ["MMRLT05.psd"], ["MMRLT09.jpg"]);
-  assert.deepEqual(jpegOnly.calls, [["jpeg", "Bride_MMRLT10.jpg", 12]]);
-  const both = await run("both", ["MMRLT05.psd"], ["MMRLT09.jpg"]);
-  assert.deepEqual(both.calls, [["psd", "Bride_MMRLT10.psd"], ["jpeg", "Bride_MMRLT10.jpg", 12]]);
+  const psdOnly = await run("psd", ["FMRLT05.psd"], ["FMRLT09.jpg"]);
+  assert.deepEqual(psdOnly.calls, [["psd", "Bride_FMRLT10.psd"]]);
+  const jpegOnly = await run("jpeg", ["FMRLT05.psd"], ["FMRLT09.jpg"]);
+  assert.deepEqual(jpegOnly.calls, [["jpeg", "Bride_FMRLT10.jpg", 12]]);
+  const both = await run("both", ["FMRLT05.psd"], ["FMRLT09.jpg"]);
+  assert.deepEqual(both.calls, [["psd", "Bride_FMRLT10.psd"], ["jpeg", "Bride_FMRLT10.jpg", 12]]);
 });
 
 test("global scan and collision protection advance across PSD and JPEG namespaces", async () => {
   const base = createMockFolder("Album");
   const psd = await base.createFolder("PSD");
   const jpeg = await base.createFolder("JPEG");
-  await psd.createFile("Bride_MMRLT10.psd");
-  await jpeg.createFile("Groom_MMRLT12.jpg");
+  await psd.createFile("Bride_FMRLT10.psd");
+  await jpeg.createFile("Groom_FMRLT12.jpg");
   const calls = [];
   const result = await executeSavePage({
     app: { activeDocument: { id: 1, name: "Page.psd" } }, localFileSystem: {}, storage: createMockStorage(), selectFolder: async () => base,
@@ -1038,7 +1053,7 @@ test("global scan and collision protection advance across PSD and JPEG namespace
     saveDocumentCopyPsd: async (_d, e) => calls.push(e.name), saveDocumentCopyJpeg: async (_d, e) => calls.push(e.name)
   });
   assert.equal(result.serial, 13);
-  assert.deepEqual(calls, ["Groom_MMRLT13.psd", "Groom_MMRLT13.jpg"]);
+  assert.deepEqual(calls, ["Groom_FMRLT13.psd", "Groom_FMRLT13.jpg"]);
 });
 
 // ==========================================
@@ -1068,7 +1083,7 @@ test("48-51. Modal boundaries: folder picker and prefix UI outside modal, save o
       return { cancelled: false, prefix: "Test" };
     },
     executeModal: async (fn, cmdName) => {
-      assert.equal(cmdName, "MM Save Page");
+      assert.equal(cmdName, "FM Save Page");
       inModal = true;
       try {
         return await fn();
@@ -1178,13 +1193,13 @@ test("buildSavePageToast generates all required user-facing toasts accurately", 
     type: "warning"
   });
 
-  assert.deepEqual(buildSavePageToast({ outcome: "success", fileName: "Riya_MMRLT8" }), {
-    message: "Saved: Riya_MMRLT8",
+  assert.deepEqual(buildSavePageToast({ outcome: "success", fileName: "Riya_FMRLT8" }), {
+    message: "Saved: Riya_FMRLT8",
     type: "success"
   });
 
-  assert.deepEqual(buildSavePageToast({ outcome: "success", fileName: "MMRLT8" }), {
-    message: "Saved: MMRLT8",
+  assert.deepEqual(buildSavePageToast({ outcome: "success", fileName: "FMRLT8" }), {
+    message: "Saved: FMRLT8",
     type: "success"
   });
 

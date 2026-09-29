@@ -25,9 +25,9 @@ const REFRESH_INTERVAL_MS = REFRESH_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
 const OFFLINE_GRACE_PERIOD_DAYS = 14;
 const OFFLINE_GRACE_PERIOD_MS = OFFLINE_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000;
 
-const LOG_PREFIX = "[MM License]";
+const LOG_PREFIX = "[FM License]";
 
-const PLUGIN_VERSION = "1.3.0";
+const PLUGIN_VERSION = "1.4.0";
 
 const TRIAL_DURATION_DAYS = 30;
 const TRIAL_DURATION_MS = TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000;
@@ -35,7 +35,7 @@ const TRIAL_DURATION_MS = TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000;
 // Public Admin Contact Constants
 const ADMIN_CONTACT_DISPLAY = "7001514367";
 const ADMIN_CONTACT_E164 = "917001514367";
-const ADMIN_WHATSAPP_MESSAGE = "I want to buy a license for MM Album Design Tools.";
+const ADMIN_WHATSAPP_MESSAGE = "I want to buy a license for FM Album Designing Tools.";
 
 function getAdminWhatsAppUrl() {
   return `https://wa.me/${ADMIN_CONTACT_E164}?text=${encodeURIComponent(ADMIN_WHATSAPP_MESSAGE)}`;

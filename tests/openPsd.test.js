@@ -64,10 +64,10 @@ test("3. AUTO PHOTO FILL appears BEFORE SWAP PHOTOS", () => {
 
 test("4. Visible version is present in index.html and manifest.json", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v1.2.0") || html.includes("v1.1.0"), "index.html must display version");
+  assert.ok(html.includes("v1.4.0"), "index.html must display version");
 
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.ok(manifest.version === "1.2.0" || manifest.version === "1.1.0", "manifest.json version must be valid");
+  assert.equal(manifest.version, "1.4.0", "manifest.json version must be valid");
   assert.equal(manifest.id, "in.memorymaker.albumplacer", "plugin ID must remain in.memorymaker.albumplacer");
 });
 
@@ -525,17 +525,17 @@ test("28. Multi-PSD processing is sequential and does not run concurrently", asy
   assert.equal(maxConcurrent, 1, "Must never run documents concurrently");
 
   // Verify strict sequential order inside per-document modals
-  assert.equal(order[0], "modalStart:MM Open PSD - Page01.psd");
+  assert.equal(order[0], "modalStart:FM Open PSD - Page01.psd");
   assert.equal(order[1], "open:Page01.psd");
   assert.equal(order[2], "setActive:Page01.psd");
-  const p1EndIdx = order.indexOf("modalEnd:MM Open PSD - Page01.psd");
-  const p2StartIdx = order.indexOf("modalStart:MM Open PSD - Page02.psd");
+  const p1EndIdx = order.indexOf("modalEnd:FM Open PSD - Page01.psd");
+  const p2StartIdx = order.indexOf("modalStart:FM Open PSD - Page02.psd");
   const p2OpenIdx = order.indexOf("open:Page02.psd");
   assert.ok(p1EndIdx < p2StartIdx, "Page01 modal must finish before Page02 modal starts");
   assert.ok(p2StartIdx < p2OpenIdx, "Page02 modal must start before Page02 opens");
 
-  const p2EndIdx = order.indexOf("modalEnd:MM Open PSD - Page02.psd");
-  const p3StartIdx = order.indexOf("modalStart:MM Open PSD - Page03.psd");
+  const p2EndIdx = order.indexOf("modalEnd:FM Open PSD - Page02.psd");
+  const p3StartIdx = order.indexOf("modalStart:FM Open PSD - Page03.psd");
   const p3OpenIdx = order.indexOf("open:Page03.psd");
   assert.ok(p2EndIdx < p3StartIdx, "Page02 modal must finish before Page03 modal starts");
   assert.ok(p3StartIdx < p3OpenIdx, "Page03 modal must start before Page03 opens");
@@ -727,8 +727,8 @@ test("34. Modal Orchestration: Each PSD gets its own executeAsModal call", async
   });
 
   assert.equal(modalCalls.length, 2, "Must execute modal exactly once per PSD");
-  assert.equal(modalCalls[0], "MM Open PSD - A.psd");
-  assert.equal(modalCalls[1], "MM Open PSD - B.psd");
+  assert.equal(modalCalls[0], "FM Open PSD - A.psd");
+  assert.equal(modalCalls[1], "FM Open PSD - B.psd");
 });
 
 test("35. Modal Orchestration: app.open occurs inside executeAsModal", async () => {
@@ -895,12 +895,12 @@ test("40. Modal Orchestration: 3 PSD files produce exactly 3 sequential modal ex
   });
 
   assert.deepEqual(events, [
-    "start:MM Open PSD - 1.psd",
-    "end:MM Open PSD - 1.psd",
-    "start:MM Open PSD - 2.psd",
-    "end:MM Open PSD - 2.psd",
-    "start:MM Open PSD - 3.psd",
-    "end:MM Open PSD - 3.psd"
+    "start:FM Open PSD - 1.psd",
+    "end:FM Open PSD - 1.psd",
+    "start:FM Open PSD - 2.psd",
+    "end:FM Open PSD - 2.psd",
+    "start:FM Open PSD - 3.psd",
+    "end:FM Open PSD - 3.psd"
   ]);
 });
 
@@ -933,9 +933,9 @@ test("41. Modal Orchestration: PSD 2 modal failure does not abort PSD 3 modal ex
     assert.equal(result.successCount, 2);
     assert.equal(result.failureCount, 1);
     assert.deepEqual(executedFiles, [
-      "MM Open PSD - PSD1.psd",
-      "MM Open PSD - PSD2_Fails.psd",
-      "MM Open PSD - PSD3.psd"
+      "FM Open PSD - PSD1.psd",
+      "FM Open PSD - PSD2_Fails.psd",
+      "FM Open PSD - PSD3.psd"
     ]);
   } finally {
     console.error = origError;

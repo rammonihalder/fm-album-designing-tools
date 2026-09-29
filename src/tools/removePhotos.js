@@ -188,7 +188,7 @@ async function executeRemovePhotos(dependencies = {}, options = {}) {
     : async (fn, cmd) => {
         if (core && typeof core.executeAsModal === "function") {
           return core.executeAsModal(async executionContext => fn(executionContext), {
-            commandName: cmd || "MM Remove Photos"
+            commandName: cmd || "FM Remove Photos"
           });
         }
         return fn();
@@ -263,7 +263,7 @@ async function executeRemovePhotos(dependencies = {}, options = {}) {
           }
         }
       }
-    }, "MM Remove Photos");
+    }, "FM Remove Photos");
   } catch (modalError) {
     logDiagnostic({
       stage: "execute-deletion",

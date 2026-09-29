@@ -19,8 +19,8 @@ try {
 const {
   ADMIN_CONTACT_DISPLAY = "7001514367",
   ADMIN_CONTACT_E164 = "917001514367",
-  ADMIN_WHATSAPP_MESSAGE = "I want to buy a license for MM Album Design Tools.",
-  getAdminWhatsAppUrl = () => `https://wa.me/917001514367?text=${encodeURIComponent("I want to buy a license for MM Album Design Tools.")}`
+  ADMIN_WHATSAPP_MESSAGE = "I want to buy a license for FM Album Designing Tools.",
+  getAdminWhatsAppUrl = () => `https://wa.me/917001514367?text=${encodeURIComponent("I want to buy a license for FM Album Designing Tools.")}`
 } = licensingConstants;
 
 try {
@@ -31,13 +31,13 @@ try {
       updateBottomLicenseStatusUI();
     }
   }).catch(err => {
-    console.error("[MM License] Startup initialization non-fatal error:", err?.message || err);
+    console.error("[FM License] Startup initialization non-fatal error:", err?.message || err);
     if (typeof updateBottomLicenseStatusUI === "function") {
       updateBottomLicenseStatusUI();
     }
   });
 } catch (err) {
-  console.error("[MM License] Failed to load licensing runtime:", err?.message || err);
+  console.error("[FM License] Failed to load licensing runtime:", err?.message || err);
   licenseManager = null;
 }
 
@@ -232,9 +232,9 @@ const ui = {
 };
 
 
-console.log("[MM UI] main.js loaded");
+console.log("[FM UI] main.js loaded");
 
-console.log("[MM UI] buttons", {
+console.log("[FM UI] buttons", {
   createPage: !!ui.createPageBtn,
   openPsd: !!ui.openPsdBtn,
   autoPhotoFill: !!ui.autoPhotoFillBtn,
@@ -281,7 +281,7 @@ const requiredButtons = [
 ];
 for (const [id, btn] of requiredButtons) {
   if (!btn) {
-    console.error("[MM UI] Missing button:", id);
+    console.error("[FM UI] Missing button:", id);
   }
 }
 
@@ -580,7 +580,7 @@ async function promptForPsdCategoryOptions({ categories = [], defaultCategory = 
       let closeReason;
       if (typeof dialog.uxpShowModal === "function") {
         closeReason = await dialog.uxpShowModal({
-          title: "Memory Maker - Save PSD",
+          title: "Frame Mitra - Save PSD",
           resize: "none",
           size: { width: 340, height: 280 }
         });
@@ -1994,7 +1994,7 @@ function getLicenseManagerInstance() {
 
 async function ensureLicenseOperational() {
   if (!licenseManager) {
-    console.error("[MM License] Licensing runtime unavailable.");
+    console.error("[FM License] Licensing runtime unavailable.");
     return false;
   }
 
@@ -2002,7 +2002,7 @@ async function ensureLicenseOperational() {
     await licenseManager.initialize();
   } catch (error) {
     console.error(
-      "[MM License] Initialization failed:",
+      "[FM License] Initialization failed:",
       error?.message || error
     );
     return false;
@@ -2136,7 +2136,7 @@ async function handleStartTrialFlow() {
       toast.show(msg, "error");
     }
   } catch (err) {
-    console.error("[MM License] Start trial error:", err);
+    console.error("[FM License] Start trial error:", err);
     if (ui.licenseStatusMessage) {
       ui.licenseStatusMessage.textContent = "Failed to start trial. Please check network connection.";
     }
@@ -2253,7 +2253,7 @@ function updateLicenseDialogUI() {
       if (ui.licenseBuyBtn) {
         ui.licenseBuyBtn.textContent = "BUY LICENSE";
         if (typeof ui.licenseBuyBtn.setAttribute === "function") {
-          ui.licenseBuyBtn.setAttribute("aria-label", "Buy MM Album Design Tools license via WhatsApp");
+          ui.licenseBuyBtn.setAttribute("aria-label", "Buy FM Album Designing Tools license via WhatsApp");
         }
       }
       if (ui.licenseBuyContactError) ui.licenseBuyContactError.hidden = true;
@@ -2264,7 +2264,7 @@ function updateLicenseDialogUI() {
       if (ui.licenseBuyBtn) {
         ui.licenseBuyBtn.textContent = "BUY LICENSE";
         if (typeof ui.licenseBuyBtn.setAttribute === "function") {
-          ui.licenseBuyBtn.setAttribute("aria-label", "Buy MM Album Design Tools license via WhatsApp");
+          ui.licenseBuyBtn.setAttribute("aria-label", "Buy FM Album Designing Tools license via WhatsApp");
         }
       }
       if (ui.licenseBuyContactError) ui.licenseBuyContactError.hidden = true;

@@ -18,7 +18,7 @@ const {
 
 const FOLDER_TOKEN_KEY = TOKEN_KEYS.SAVE_EDITED_PHOTOS;
 const DEVICE_STORAGE_KEY = "mm_edited_photos_device_type";
-const FILENAME_REGEX = /^Memory Maker (\d+) (LT|DT)\.jpe?g$/i;
+const FILENAME_REGEX = /^FM(\d+) (LT|DT)\.jpe?g$/i;
 
 function normalizeDeviceType(value) {
   if (typeof value !== "string") return null;
@@ -80,7 +80,7 @@ function buildEditedPhotoFileName(number, deviceType = "LT") {
   if (!normalized) {
     throw new Error(`Invalid device type "${deviceType}". Only "LT" or "DT" are allowed.`);
   }
-  return `Memory Maker ${number} ${normalized}.jpg`;
+  return `FM${number} ${normalized}.jpg`;
 }
 
 function isSmartObjectLayer(layer) {
@@ -232,7 +232,7 @@ async function executeSaveEditedPhotos(dependencies = {}, options = {}) {
     : async (fn, cmd) => {
         if (core && typeof core.executeAsModal === "function") {
           return core.executeAsModal(async executionContext => fn(executionContext), {
-            commandName: cmd || "MM Save Edited Photos"
+            commandName: cmd || "FM Save Edited Photos"
           });
         }
         return fn();
@@ -452,7 +452,7 @@ async function executeSaveEditedPhotos(dependencies = {}, options = {}) {
 
           successCount++;
           exportedFiles.push(currentFileName);
-        }, "MM Save Edited Photos");
+        }, "FM Save Edited Photos");
       } catch (layerErr) {
         const checkMainAfter = typeof findDocById === "function"
           ? findDocById(mainDocumentId, app)
@@ -500,7 +500,7 @@ async function executeSaveEditedPhotos(dependencies = {}, options = {}) {
               if (app && currentMainDoc && app.activeDocument !== currentMainDoc) {
                 app.activeDocument = currentMainDoc;
               }
-            }, "MM Cleanup Smart Object");
+            }, "FM Cleanup Smart Object");
           } catch (cleanupErr) {
             logDiagnostic({
               stage: "close-smart-object-cleanup",
@@ -541,7 +541,7 @@ async function executeSaveEditedPhotos(dependencies = {}, options = {}) {
             }
           }
         }
-      }, "MM Restore Selection");
+      }, "FM Restore Selection");
     } catch (restoreErr) {
       logDiagnostic({
         stage: "restore-selection",

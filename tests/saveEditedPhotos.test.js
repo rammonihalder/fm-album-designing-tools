@@ -202,12 +202,12 @@ test("2. Exact button order: OPEN PSD -> AUTO PHOTO FILL -> SWAP PHOTOS -> SAVE 
 
 test("3. Visible version is present in index.html", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v1.2.0") || html.includes("v1.1.0"), "index.html must display version");
+  assert.ok(html.includes("v1.4.0") || html.includes("v1.3.0") || html.includes("v1.2.0") || html.includes("v1.1.0"), "index.html must display version");
 });
 
 test("4. Manifest version is valid", () => {
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.ok(manifest.version === "1.2.0" || manifest.version === "1.1.0", "manifest.json version must be valid");
+  assert.ok(manifest.version === "1.4.0" || manifest.version === "1.3.0" || manifest.version === "1.2.0" || manifest.version === "1.1.0", "manifest.json version must be valid");
 });
 
 test("5. Plugin ID unchanged", () => {
@@ -388,11 +388,11 @@ test("Device helpers: getStoredDeviceType & saveDeviceType with storage", () => 
 });
 
 test("8 & 9. buildEditedPhotoFileName(number, deviceType)", () => {
-  assert.equal(buildEditedPhotoFileName(1, "LT"), "Memory Maker 1 LT.jpg");
-  assert.equal(buildEditedPhotoFileName(1, "DT"), "Memory Maker 1 DT.jpg");
-  assert.equal(buildEditedPhotoFileName(12, "DT"), "Memory Maker 12 DT.jpg");
-  assert.equal(buildEditedPhotoFileName(5, "lt"), "Memory Maker 5 LT.jpg");
-  assert.equal(buildEditedPhotoFileName(7, "dt"), "Memory Maker 7 DT.jpg");
+  assert.equal(buildEditedPhotoFileName(1, "LT"), "FM1 LT.jpg");
+  assert.equal(buildEditedPhotoFileName(1, "DT"), "FM1 DT.jpg");
+  assert.equal(buildEditedPhotoFileName(12, "DT"), "FM12 DT.jpg");
+  assert.equal(buildEditedPhotoFileName(5, "lt"), "FM5 LT.jpg");
+  assert.equal(buildEditedPhotoFileName(7, "dt"), "FM7 DT.jpg");
 
   assert.throws(() => buildEditedPhotoFileName(1, "OTHER"), /Invalid device type/);
 });
@@ -402,15 +402,16 @@ test("8 & 9. buildEditedPhotoFileName(number, deviceType)", () => {
 // ==========================================
 
 test("10, 11, 12. Regex recognizes LT and DT case-insensitively and with jpeg extensions", () => {
-  assert.equal(extractEditedPhotoNumber("Memory Maker 1 LT.jpg"), 1);
-  assert.equal(extractEditedPhotoNumber("Memory Maker 2 DT.jpg"), 2);
-  assert.equal(extractEditedPhotoNumber("Memory Maker 5 lt.JPG"), 5);
-  assert.equal(extractEditedPhotoNumber("Memory Maker 7 dt.jpeg"), 7);
-  assert.equal(extractEditedPhotoNumber("Memory Maker 12 DT.JPEG"), 12);
+  assert.equal(extractEditedPhotoNumber("FM1 LT.jpg"), 1);
+  assert.equal(extractEditedPhotoNumber("FM2 DT.jpg"), 2);
+  assert.equal(extractEditedPhotoNumber("FM5 lt.JPG"), 5);
+  assert.equal(extractEditedPhotoNumber("FM7 dt.jpeg"), 7);
+  assert.equal(extractEditedPhotoNumber("FM12 DT.JPEG"), 12);
 
-  assert.equal(extractEditedPhotoNumber("Memory Maker ABC LT.jpg"), null);
+  assert.equal(extractEditedPhotoNumber("FM ABC LT.jpg"), null);
   assert.equal(extractEditedPhotoNumber("Other 1 LT.jpg"), null);
-  assert.equal(extractEditedPhotoNumber("Memory Maker 1 OTHER.jpg"), null);
+  assert.equal(extractEditedPhotoNumber("FM1 OTHER.jpg"), null);
+  assert.equal(extractEditedPhotoNumber("Memory Maker 1 LT.jpg"), null, "legacy Memory Maker filename is ignored");
 });
 
 test("11. findNextEditedPhotoNumber([]) -> 1", () => {
@@ -419,23 +420,24 @@ test("11. findNextEditedPhotoNumber([]) -> 1", () => {
 });
 
 test("13. Existing [1 LT, 3 DT] -> next number 2 (gap filled)", () => {
-  assert.equal(findNextEditedPhotoNumber(["Memory Maker 1 LT.jpg", "Memory Maker 3 DT.jpg"]), 2);
+  assert.equal(findNextEditedPhotoNumber(["FM1 LT.jpg", "FM3 DT.jpg"]), 2);
 });
 
 test("14. Existing [1 DT, 2 LT, 3 DT] -> next number 4", () => {
   assert.equal(findNextEditedPhotoNumber([
-    "Memory Maker 1 DT.jpg",
-    "Memory Maker 2 LT.jpg",
-    "Memory Maker 3 DT.jpg"
+    "FM1 DT.jpg",
+    "FM2 LT.jpg",
+    "FM3 DT.jpg"
   ]), 4);
 });
 
 test("15. Unrelated files ignored by findNextEditedPhotoNumber", () => {
   assert.equal(findNextEditedPhotoNumber([
-    "Memory Maker ABC LT.jpg",
+    "FM ABC LT.jpg",
     "Other 1 LT.jpg",
     "photo.png",
-    "Memory Maker 1 LT.psd"
+    "FM1 LT.psd",
+    "Memory Maker 1 LT.jpg"
   ]), 1);
 });
 
@@ -443,16 +445,16 @@ test("17. Global shared numbering: LT and DT do NOT maintain separate sequences"
   // If destination has 1 LT, 2 LT, 3 DT:
   // Next number is 4, regardless of whether current device is LT or DT
   assert.equal(findNextEditedPhotoNumber([
-    "Memory Maker 1 LT.jpg",
-    "Memory Maker 2 LT.jpg",
-    "Memory Maker 3 DT.jpg"
+    "FM1 LT.jpg",
+    "FM2 LT.jpg",
+    "FM3 DT.jpg"
   ]), 4);
 
   // If destination has 1 DT, 3 LT:
   // Next number is 2 (fills gap)
   assert.equal(findNextEditedPhotoNumber([
-    "Memory Maker 1 DT.jpg",
-    "Memory Maker 3 LT.jpg"
+    "FM1 DT.jpg",
+    "FM3 LT.jpg"
   ]), 2);
 });
 
@@ -461,7 +463,7 @@ test("17. Global shared numbering: LT and DT do NOT maintain separate sequences"
 // ==========================================
 
 test("15. Current device DT + existing [1 LT, 3 DT] with 3 exports produce 2 DT, 4 DT, 5 DT", async () => {
-  const folder = createMockFolder("Folder", ["Memory Maker 1 LT.jpg", "Memory Maker 3 DT.jpg"]);
+  const folder = createMockFolder("Folder", ["FM1 LT.jpg", "FM3 DT.jpg"]);
   const storage = createMockStorage({ [DEVICE_STORAGE_KEY]: "DT" });
 
   const smart1 = { id: 101, kind: "smartObject", name: "SO 1" };
@@ -505,14 +507,14 @@ test("15. Current device DT + existing [1 LT, 3 DT] with 3 exports produce 2 DT,
   assert.equal(result.outcome, "success");
   assert.equal(result.successCount, 3);
   assert.deepEqual(createdFileNames, [
-    "Memory Maker 2 DT.jpg",
-    "Memory Maker 4 DT.jpg",
-    "Memory Maker 5 DT.jpg"
+    "FM2 DT.jpg",
+    "FM4 DT.jpg",
+    "FM5 DT.jpg"
   ]);
 });
 
 test("16. Current device LT with same setup produces 2 LT, 4 LT, 5 LT", async () => {
-  const folder = createMockFolder("Folder", ["Memory Maker 1 LT.jpg", "Memory Maker 3 DT.jpg"]);
+  const folder = createMockFolder("Folder", ["FM1 LT.jpg", "FM3 DT.jpg"]);
   const storage = createMockStorage({ [DEVICE_STORAGE_KEY]: "LT" });
 
   const smart1 = { id: 101, kind: "smartObject", name: "SO 1" };
@@ -556,9 +558,9 @@ test("16. Current device LT with same setup produces 2 LT, 4 LT, 5 LT", async ()
   assert.equal(result.outcome, "success");
   assert.equal(result.successCount, 3);
   assert.deepEqual(createdFileNames, [
-    "Memory Maker 2 LT.jpg",
-    "Memory Maker 4 LT.jpg",
-    "Memory Maker 5 LT.jpg"
+    "FM2 LT.jpg",
+    "FM4 LT.jpg",
+    "FM5 LT.jpg"
   ]);
 });
 
@@ -604,10 +606,10 @@ test("1 & 5. First run with no stored device type opens dialog and persists Lapt
   assert.equal(dialogPromptCalled, true, "dialog must open when no device type is stored");
   assert.equal(storage.getItem(DEVICE_STORAGE_KEY), "LT", "Laptop selection must persist LT");
   assert.equal(result.outcome, "success");
-  assert.deepEqual(createdFileNames, ["Memory Maker 1 LT.jpg"]);
+  assert.deepEqual(createdFileNames, ["FM1 LT.jpg"]);
 });
 
-test("6. Desktop selection persists DT and exports Memory Maker 1 DT.jpg", async () => {
+test("6. Desktop selection persists DT and exports FM1 DT.jpg", async () => {
   const storage = createMockStorage();
   const folder = createMockFolder("Dest");
   const smart = { id: 101, kind: "smartObject", name: "SO" };
@@ -645,7 +647,7 @@ test("6. Desktop selection persists DT and exports Memory Maker 1 DT.jpg", async
   assert.equal(dialogPromptCalled, true);
   assert.equal(storage.getItem(DEVICE_STORAGE_KEY), "DT", "Desktop selection must persist DT");
   assert.equal(result.outcome, "success");
-  assert.deepEqual(createdFileNames, ["Memory Maker 1 DT.jpg"]);
+  assert.deepEqual(createdFileNames, ["FM1 DT.jpg"]);
 });
 
 test("2 & 3. Stored LT or DT: dialog does not open on subsequent runs", async () => {
@@ -944,7 +946,7 @@ test("22-26. JPEG save uses opened Smart Object document, quality 12, exact file
   assert.equal(result.outcome, "success");
   assert.equal(savedDoc.id, 99, "22. must save opened PSB document, not main document");
   assert.equal(savedOpts.quality, 12, "23. quality must be exactly 12");
-  assert.equal(savedEntry.name, "Memory Maker 1 LT.jpg", "24. target filename exact");
+  assert.equal(savedEntry.name, "FM1 LT.jpg", "24. target filename exact");
   assert.equal(mainDocFlattened, false, "26. source main document not flattened");
 });
 
@@ -988,8 +990,8 @@ test("27-31. placedLayerEditContents invoked, identified, closed without saving,
 
   assert.equal(result.outcome, "success");
   assert.deepEqual(callLog, [
-    "open:101", "save:201:Memory Maker 1 LT.jpg", "close:201",
-    "open:102", "save:202:Memory Maker 2 LT.jpg", "close:202"
+    "open:101", "save:201:FM1 LT.jpg", "close:201",
+    "open:102", "save:202:FM2 LT.jpg", "close:202"
   ]);
   assert.equal(app.activeDocument.id, 1, "main document must be active at the end");
 });

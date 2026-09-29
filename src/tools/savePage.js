@@ -9,7 +9,7 @@ const BASE_FOLDER_TOKEN_KEY = TOKEN_KEYS.SAVE_PAGE;
 const PREFIX_STORAGE_KEY = "mmrlt_prefix";
 const OUTPUT_MODE_STORAGE_KEY = "mm_save_page_output_mode";
 const OUTPUT_MODES = Object.freeze(["psd", "jpeg", "both"]);
-const SERIAL_REGEX = /MMRLT(\d+)\.(psd|jpg|jpeg)$/i;
+const SERIAL_REGEX = /FMRLT(\d+)\.(psd|jpg|jpeg)$/i;
 const INVALID_FILENAME_CHARS = /[<>:"/\\|?*]/;
 
 function sanitizePrefix(input) {
@@ -55,9 +55,9 @@ function buildPageBaseName(prefix, number) {
   const sanitized = sanitizePrefix(prefix);
   const num = Number(number) || 1;
   if (sanitized) {
-    return `${sanitized}_MMRLT${num}`;
+    return `${sanitized}_FMRLT${num}`;
   }
-  return `MMRLT${num}`;
+  return `FMRLT${num}`;
 }
 
 function normalizeOutputMode(mode) {
@@ -391,7 +391,7 @@ async function executeSavePage(dependencies = {}, options = {}) {
       : async (fn, cmd) => {
           if (core && typeof core.executeAsModal === "function") {
             return core.executeAsModal(async executionContext => fn(executionContext), {
-              commandName: cmd || "MM Save Page"
+              commandName: cmd || "FM Save Page"
             });
           }
           return fn();
@@ -484,7 +484,7 @@ async function executeSavePage(dependencies = {}, options = {}) {
         jpegEntry,
         outputMode
       };
-    }, "MM Save Page");
+    }, "FM Save Page");
   } catch (modalError) {
     if (modalError instanceof DocumentClosedError || modalError?.name === "DocumentClosedError") {
       logDiagnostic({
@@ -559,7 +559,7 @@ function getDefaultDependencies() {
     saveDocumentCopyJpeg: psHelpers?.saveDocumentCopyJpeg,
     findDocumentById: psHelpers?.findDocumentById,
     executeModal: psHelpers?.executeSavePageModal || (core?.executeAsModal
-      ? (fn, cmd) => core.executeAsModal(async ctx => fn(ctx), { commandName: cmd || "MM Save Page" })
+      ? (fn, cmd) => core.executeAsModal(async ctx => fn(ctx), { commandName: cmd || "FM Save Page" })
       : async fn => fn())
   };
 }

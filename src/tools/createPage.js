@@ -9,7 +9,7 @@ const PRESETS = Object.freeze({
   "album-12x36": Object.freeze({
     id: "album-12x36",
     label: "12 × 36",
-    name: "MM Album 12x36",
+    name: "FM Album 12x36",
     widthPx: 36 * RESOLUTION,
     heightPx: 12 * RESOLUTION,
     background: "white",
@@ -18,7 +18,7 @@ const PRESETS = Object.freeze({
   "album-12x18": Object.freeze({
     id: "album-12x18",
     label: "12 × 18",
-    name: "MM Album 12x18",
+    name: "FM Album 12x18",
     widthPx: 18 * RESOLUTION,
     heightPx: 12 * RESOLUTION,
     background: "white",
@@ -27,7 +27,7 @@ const PRESETS = Object.freeze({
   "instagram-post": Object.freeze({
     id: "instagram-post",
     label: "Instagram Post",
-    name: "MM Instagram Post",
+    name: "FM Instagram Post",
     widthPx: 1080,
     heightPx: 1080,
     background: "white",
@@ -36,7 +36,7 @@ const PRESETS = Object.freeze({
   "facebook-post": Object.freeze({
     id: "facebook-post",
     label: "Facebook Post",
-    name: "MM Facebook Post",
+    name: "FM Facebook Post",
     widthPx: 1200,
     heightPx: 1500,
     background: "white",
@@ -45,7 +45,7 @@ const PRESETS = Object.freeze({
   "youtube-thumbnail": Object.freeze({
     id: "youtube-thumbnail",
     label: "YouTube Thumbnail",
-    name: "MM YouTube Thumbnail",
+    name: "FM YouTube Thumbnail",
     widthPx: 1280,
     heightPx: 720,
     background: "white",
@@ -97,7 +97,7 @@ function buildCustomSpec(options = {}) {
   return {
     id: "custom",
     label: "Custom",
-    name: "MM Custom Page",
+    name: "FM Custom Page",
     widthPx,
     heightPx,
     background: normalizeBackground(options.background),

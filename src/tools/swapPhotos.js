@@ -69,7 +69,7 @@ function planSwap(selectedLayers, allLayers) {
   const count = selectedLayers ? selectedLayers.length : 0;
 
   if (count !== 2 && count !== 3) {
-    console.warn(`[MM Swap Photos] [validate-selection] Invalid selection count: ${count}. Expected 2 or 3.`);
+    console.warn(`[FM Swap Photos] [validate-selection] Invalid selection count: ${count}. Expected 2 or 3.`);
     return {
       success: false,
       outcome: "invalid-selection",
@@ -82,7 +82,7 @@ function planSwap(selectedLayers, allLayers) {
   for (let i = 0; i < selectedLayers.length; i++) {
     const layer = selectedLayers[i];
     if (!isSmartObjectLayer(layer)) {
-      console.warn(`[MM Swap Photos] [validate-selection] Selected layer "${layer.name}" (id:${layer.id}, kind:${layer.kind}) is not a supported Smart Object.`);
+      console.warn(`[FM Swap Photos] [validate-selection] Selected layer "${layer.name}" (id:${layer.id}, kind:${layer.kind}) is not a supported Smart Object.`);
       return {
         success: false,
         outcome: "invalid-selection",
@@ -206,7 +206,7 @@ async function executeSwapPhotos(dependencies) {
             tempFileName: tempFiles[i] ? tempFiles[i].name : null
           });
 
-          console.log(`[MM Swap Photos] [${exportStage}] Exporting Smart Object contents for layer "${orderedLayers[i].name}" (id:${orderedLayers[i].id})`);
+          console.log(`[FM Swap Photos] [${exportStage}] Exporting Smart Object contents for layer "${orderedLayers[i].name}" (id:${orderedLayers[i].id})`);
           try {
             await deps.exportSmartObjectContents(orderedLayers[i], tempFiles[i]);
           } catch (exportErr) {
@@ -226,10 +226,10 @@ async function executeSwapPhotos(dependencies) {
           try {
             suspension = await executionContext.hostControl.suspendHistory({
               documentID: doc.id,
-              name: "MM Swap Photos"
+              name: "FM Swap Photos"
             });
           } catch (suspendError) {
-            console.warn("[MM Swap Photos] suspendHistory warning:", suspendError);
+          console.warn("[FM Swap Photos] suspendHistory warning:", suspendError);
           }
         }
 
@@ -246,7 +246,7 @@ async function executeSwapPhotos(dependencies) {
               sourceTempFileName: sourceTempFile ? sourceTempFile.name : null
             });
 
-            console.log(`[MM Swap Photos] [${replaceStage}] Replacing Smart Object contents of "${targetLayer.name}" (id:${targetLayer.id}) with exported file "${sourceTempFile && sourceTempFile.name}"`);
+          console.log(`[FM Swap Photos] [${replaceStage}] Replacing Smart Object contents of "${targetLayer.name}" (id:${targetLayer.id}) with exported file "${sourceTempFile && sourceTempFile.name}"`);
             try {
               await deps.replaceSmartObjectContents(targetLayer, sourceTempFile);
             } catch (replaceErr) {
@@ -267,13 +267,13 @@ async function executeSwapPhotos(dependencies) {
           }
         } catch (replacePhaseError) {
           setStage("rollback");
-          console.error(`[MM Swap Photos] [${currentStage}] Replacement error encountered. Attempting rollback:`, replacePhaseError);
+          console.error(`[FM Swap Photos] [${currentStage}] Replacement error encountered. Attempting rollback:`, replacePhaseError);
           if (doc && initialHistoryState) {
             try {
               doc.activeHistoryState = initialHistoryState;
-              console.log("[MM Swap Photos] [rollback] Restored initial history state.");
+              console.log("[FM Swap Photos] [rollback] Restored initial history state.");
             } catch (rollbackError) {
-              console.error("[MM Swap Photos] [rollback] Failed to restore history state:", rollbackError);
+              console.error("[FM Swap Photos] [rollback] Failed to restore history state:", rollbackError);
             }
           }
           throw replacePhaseError;
@@ -282,7 +282,7 @@ async function executeSwapPhotos(dependencies) {
             try {
               await executionContext.hostControl.resumeHistory(suspension);
             } catch (resumeErr) {
-              console.warn("[MM Swap Photos] Could not resume history suspension:", resumeErr);
+              console.warn("[FM Swap Photos] Could not resume history suspension:", resumeErr);
             }
           }
         }
@@ -298,14 +298,14 @@ async function executeSwapPhotos(dependencies) {
             await tempFile.delete();
           }
         } catch (cleanupError) {
-          console.warn(`[MM Swap Photos] [cleanup] Warning: could not delete temp file ${tempFile && tempFile.name}:`, cleanupError);
+          console.warn(`[FM Swap Photos] [cleanup] Warning: could not delete temp file ${tempFile && tempFile.name}:`, cleanupError);
         }
       }
     }
 
     if (executionError) {
       const failingStage = executionError.stage || currentStage;
-      console.error("[MM Swap Photos]", {
+      console.error("[FM Swap Photos]", {
         stage: failingStage,
         errorName: executionError.name,
         errorMessage: executionError.message,
@@ -331,7 +331,7 @@ async function executeSwapPhotos(dependencies) {
     };
   } catch (outerError) {
     const failingStage = outerError.stage || currentStage;
-    console.error("[MM Swap Photos]", {
+    console.error("[FM Swap Photos]", {
       stage: failingStage,
       errorName: outerError.name,
       errorMessage: outerError.message,

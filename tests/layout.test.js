@@ -668,12 +668,12 @@ function assertCommonLayout(layout) {
   // 11. destructive red class exists
   assert.ok(layout.removeBtnClass.includes("tool-action-destructive"), "Remove action must have tool-action-destructive styling");
 
-  // 12. footer contains: Developed by Rammoni Halder
-  assert.equal(layout.footerText, "Developed by Rammoni Halder", "Footer credit must be present");
+  // 12. footer contains: Developed by Hridita Innovations
+  assert.equal(layout.footerText, "Developed by Hridita Innovations", "Footer credit must be present");
 
-  assert.equal(layout.brandPrefix, "MEMORY MAKER", "Branded prefix must be MEMORY MAKER");
-  assert.equal(layout.title, "Album Design Tools", "Title must be Album Design Tools");
-  assert.ok(layout.version === "v1.2.0 DEV" || layout.version === "v1.2.0" || layout.version === "v1.1.0", "Version must match current version");
+  assert.equal(layout.brandPrefix, "FRAME MITRA", "Branded prefix must be FRAME MITRA");
+  assert.equal(layout.title, "FM Album Designing Tools", "Title must be FM Album Designing Tools");
+  assert.equal(layout.version, "v1.4.0", "Version must match current version");
   assert.equal(layout.popupCount, 0, "no workflow dialog should be open while idle");
   assert.equal(layout.toastVisible, true, "toast must be readable");
   assert.equal(layout.toastPosition, "static");
@@ -793,8 +793,8 @@ test("panel contract: satisfies all 14 layout and interaction specifications", (
   assert.ok(css.includes(".tool-action-destructive"), "CSS must define .tool-action-destructive");
   assert.ok(css.includes("#a83a3a"), "CSS must use #a83a3a background");
 
-  // 12. footer contains: Developed by Rammoni Halder
-  assert.ok(html.includes("Developed by Rammoni Halder"), "HTML must contain Developed by Rammoni Halder");
+  // 12. footer contains: Developed by Hridita Innovations
+  assert.ok(html.includes("Developed by Hridita Innovations"), "HTML must contain Developed by Hridita Innovations");
 
   // 13. keyboard activation helper exists
   assert.equal(typeof main.attachActionHandler, "function", "main.attachActionHandler must be exported");

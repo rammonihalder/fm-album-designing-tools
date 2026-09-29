@@ -1726,18 +1726,18 @@ test("72. existing paid dialog behavior remains unchanged", () => {
 // PART 4 — VERSION & METADATA TESTS (73 - 79)
 // =============================================================================
 
-test("73. manifest version = 1.3.0", () => {
+test("73. manifest version = 1.4.0", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "1.3.0");
+  assert.equal(manifest.version, "1.4.0");
 });
 
-test("74. PLUGIN_VERSION = 1.3.0", () => {
-  assert.equal(PLUGIN_VERSION, "1.3.0");
+test("74. PLUGIN_VERSION = 1.4.0", () => {
+  assert.equal(PLUGIN_VERSION, "1.4.0");
 });
 
-test("75. visible UI version = v1.3.0", () => {
+test("75. visible UI version = v1.4.0", () => {
   const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes('<span class="version">v1.3.0</span>'));
+  assert.ok(html.includes('<span class="version">v1.4.0</span>'));
 });
 
 test("76. plugin ID remains unchanged", () => {
@@ -2537,13 +2537,13 @@ test("97. [Prompt 18] WhatsApp number is: 917001514367", () => {
   assert.equal(mainModule.ADMIN_CONTACT_E164, "917001514367");
 });
 
-test("98. [Prompt 19] WhatsApp message exact value: I want to buy a license for MM Album Design Tools.", () => {
-  assert.equal(mainModule.ADMIN_WHATSAPP_MESSAGE, "I want to buy a license for MM Album Design Tools.");
+test("98. [Prompt 19] WhatsApp message exact value: I want to buy a license for FM Album Designing Tools.", () => {
+  assert.equal(mainModule.ADMIN_WHATSAPP_MESSAGE, "I want to buy a license for FM Album Designing Tools.");
 });
 
 test("99. [Prompt 20] Message is URL encoded", () => {
-  const expectedEncoded = encodeURIComponent("I want to buy a license for MM Album Design Tools.");
-  assert.equal(expectedEncoded, "I%20want%20to%20buy%20a%20license%20for%20MM%20Album%20Design%20Tools.");
+  const expectedEncoded = encodeURIComponent("I want to buy a license for FM Album Designing Tools.");
+  assert.equal(expectedEncoded, "I%20want%20to%20buy%20a%20license%20for%20FM%20Album%20Designing%20Tools.");
   const url = mainModule.getAdminWhatsAppUrl();
   assert.ok(url.includes(expectedEncoded));
 });
@@ -2551,7 +2551,7 @@ test("99. [Prompt 20] Message is URL encoded", () => {
 test("100. [Prompt 21] Expected URL starts: https://wa.me/917001514367?text=", () => {
   const url = mainModule.getAdminWhatsAppUrl();
   assert.ok(url.startsWith("https://wa.me/917001514367?text="));
-  assert.equal(url, "https://wa.me/917001514367?text=" + encodeURIComponent("I want to buy a license for MM Album Design Tools."));
+  assert.equal(url, "https://wa.me/917001514367?text=" + encodeURIComponent("I want to buy a license for FM Album Designing Tools."));
 });
 
 test("101. [Prompt 22] CONTACT ADMIN opens only after user click", () => {
@@ -2792,7 +2792,7 @@ test("121. [Buy License 2] BUY LICENSE is not red", () => {
 test("122. [Buy License 3] BUY LICENSE uses existing WhatsApp helper", () => {
   const testUrl = mainModule.getAdminWhatsAppUrl();
   assert.ok(typeof mainModule.handleBuyLicenseAction === "function");
-  assert.equal(testUrl, "https://wa.me/917001514367?text=" + encodeURIComponent("I want to buy a license for MM Album Design Tools."));
+  assert.equal(testUrl, "https://wa.me/917001514367?text=" + encodeURIComponent("I want to buy a license for FM Album Designing Tools."));
 });
 
 test("123. [Buy License 4] BUY LICENSE target number = 917001514367", () => {
@@ -2802,10 +2802,10 @@ test("123. [Buy License 4] BUY LICENSE target number = 917001514367", () => {
   assert.equal(mainModule.ADMIN_CONTACT_DISPLAY, "7001514367");
 });
 
-test("124. [Buy License 5] Pre-filled message is exactly: I want to buy a license for MM Album Design Tools.", () => {
-  assert.equal(mainModule.ADMIN_WHATSAPP_MESSAGE, "I want to buy a license for MM Album Design Tools.");
+test("124. [Buy License 5] Pre-filled message is exactly: I want to buy a license for FM Album Designing Tools.", () => {
+  assert.equal(mainModule.ADMIN_WHATSAPP_MESSAGE, "I want to buy a license for FM Album Designing Tools.");
   const url = mainModule.getAdminWhatsAppUrl();
-  assert.ok(url.includes("text=" + encodeURIComponent("I want to buy a license for MM Album Design Tools.")));
+  assert.ok(url.includes("text=" + encodeURIComponent("I want to buy a license for FM Album Designing Tools.")));
 });
 
 test("125. [Buy License 6] TRIAL still shows ACTIVATE LICENSE separately", () => {
@@ -2984,9 +2984,9 @@ test("135. [Req 4] UNACTIVATED shows: START 30-DAY FREE TRIAL", () => {
 test("136. [Req 5, 6, 7] BUY LICENSE click uses existing WhatsApp helper with target 917001514367 and exact message", () => {
   assert.equal(typeof mainModule.handleBuyLicenseAction, "function");
   assert.equal(mainModule.ADMIN_CONTACT_E164, "917001514367");
-  assert.equal(mainModule.ADMIN_WHATSAPP_MESSAGE, "I want to buy a license for MM Album Design Tools.");
+  assert.equal(mainModule.ADMIN_WHATSAPP_MESSAGE, "I want to buy a license for FM Album Designing Tools.");
   const url = mainModule.getAdminWhatsAppUrl();
-  assert.equal(url, "https://wa.me/917001514367?text=" + encodeURIComponent("I want to buy a license for MM Album Design Tools."));
+  assert.equal(url, "https://wa.me/917001514367?text=" + encodeURIComponent("I want to buy a license for FM Album Designing Tools."));
 });
 
 test("137. [Req 8, 9, 10] Clicking BUY LICENSE does not call /v1/trial/start, does not change state, does not set trialPreviouslyStarted", async () => {
@@ -3166,7 +3166,7 @@ test("142. [Req 26, 27, 28, 29, 30] ACTIVE/GRACE hides BUY LICENSE & purchase co
 });
 
 test("143. [Req 31, 32, 33] WhatsApp URL begins https://wa.me/917001514367?text= and uses encodeURIComponent on exact message", () => {
-  const exactMessage = "I want to buy a license for MM Album Design Tools.";
+  const exactMessage = "I want to buy a license for FM Album Designing Tools.";
   const url = mainModule.getAdminWhatsAppUrl();
   assert.equal(mainModule.ADMIN_WHATSAPP_MESSAGE, exactMessage);
   assert.ok(url.startsWith("https://wa.me/917001514367?text="));
