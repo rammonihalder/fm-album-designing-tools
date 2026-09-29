@@ -191,6 +191,53 @@ class LicenseApiClient {
       deviceHash
     });
   }
+
+  /**
+   * Starts a 30-day free trial for this device.
+   * POST /v1/trial/start
+   *
+   * @param {object} params
+   * @param {string} params.deviceHash
+   * @param {string} [params.deviceName]
+   * @param {string} [params.pluginVersion]
+   * @returns {Promise<{ ok: boolean, data?: object, error?: string, message?: string }>}
+   */
+  async startTrial({ deviceHash, deviceName, pluginVersion = PLUGIN_VERSION }) {
+    if (!deviceHash || typeof deviceHash !== "string") {
+      return { ok: false, error: "INVALID_ARGUMENT", message: "Device hash is required." };
+    }
+
+    return this._post("/v1/trial/start", {
+      deviceHash,
+      deviceName: deviceName || "Photoshop",
+      pluginVersion
+    });
+  }
+
+  /**
+   * Refreshes an active trial token.
+   * POST /v1/trial/refresh
+   *
+   * @param {object} params
+   * @param {string} params.token Current trial token
+   * @param {string} params.deviceHash
+   * @param {string} [params.pluginVersion]
+   * @returns {Promise<{ ok: boolean, data?: object, error?: string, message?: string }>}
+   */
+  async refreshTrial({ token, deviceHash, pluginVersion = PLUGIN_VERSION }) {
+    if (!token || typeof token !== "string") {
+      return { ok: false, error: "INVALID_ARGUMENT", message: "Token is required." };
+    }
+    if (!deviceHash || typeof deviceHash !== "string") {
+      return { ok: false, error: "INVALID_ARGUMENT", message: "Device hash is required." };
+    }
+
+    return this._post("/v1/trial/refresh", {
+      token,
+      deviceHash,
+      pluginVersion
+    });
+  }
 }
 
 /**

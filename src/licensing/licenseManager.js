@@ -15,6 +15,8 @@ const SAFE_USER_MESSAGES = Object.freeze({
   UNACTIVATED: "Activate MM Album Design Tools to continue.",
   ACTIVE: "License Active",
   GRACE: "License in Offline Grace. Please connect to the internet to refresh.",
+  TRIAL: "30-day free trial active.",
+  TRIAL_EXPIRED: "Your 30-day free trial has ended. Activate a license to continue.",
   EXPIRED: "License validation is required. Connect to the internet and try again.",
   REVOKED: "This license is no longer active.",
   SUSPENDED: "This license is temporarily unavailable. Please contact Memory Maker.",
@@ -197,26 +199,48 @@ class LicenseManager {
         // Check for severe clock rollback
         if (lastObserved > 0 && now < (lastObserved - CLOCK_ROLLBACK_TOLERANCE_SECONDS)) {
           this._logger.warn?.(`${LOG_PREFIX} System clock rollback detected. Online validation required.`);
-          // Attempt online refresh to recover
-          const refreshResult = await this._attemptOnlineRefresh({ token: rawTokenString, deviceHash: deviceId });
-          if (refreshResult.ok) {
+          if (payload.plan === "trial") {
+            const refreshResult = await this._attemptOnlineTrialRefresh({ token: rawTokenString, deviceHash: deviceId });
+            if (refreshResult.ok) {
+              return this.getSnapshot();
+            }
+            this._snapshot = normalizeSnapshot({
+              state: LICENSE_STATES.TRIAL_EXPIRED,
+              deviceId,
+              licenseId: payload.licenseId,
+              activationId: payload.activationId,
+              plan: payload.plan,
+              entitlements: payload.entitlements,
+              expiresAt: payload.expiresAt,
+              refreshAfter: payload.refreshAfter,
+              graceUntil: payload.graceUntil,
+              lastObservedTime: lastObserved,
+              reason: "clock-rollback",
+              userMessage: "System clock change detected. Connect to the internet to validate your trial."
+            });
+            return this.getSnapshot();
+          } else {
+            // Attempt online refresh to recover
+            const refreshResult = await this._attemptOnlineRefresh({ token: rawTokenString, deviceHash: deviceId });
+            if (refreshResult.ok) {
+              return this.getSnapshot();
+            }
+            // Block until online recovery succeeds
+            this._snapshot = normalizeSnapshot({
+              state: LICENSE_STATES.EXPIRED,
+              deviceId,
+              licenseId: payload.licenseId,
+              plan: payload.plan,
+              entitlements: payload.entitlements,
+              expiresAt: payload.expiresAt,
+              refreshAfter: payload.refreshAfter,
+              graceUntil: payload.graceUntil,
+              lastObservedTime: lastObserved,
+              reason: "clock-rollback",
+              userMessage: "System clock change detected. Connect to the internet to validate your license."
+            });
             return this.getSnapshot();
           }
-          // Block until online recovery succeeds
-          this._snapshot = normalizeSnapshot({
-            state: LICENSE_STATES.EXPIRED,
-            deviceId,
-            licenseId: payload.licenseId,
-            plan: payload.plan,
-            entitlements: payload.entitlements,
-            expiresAt: payload.expiresAt,
-            refreshAfter: payload.refreshAfter,
-            graceUntil: payload.graceUntil,
-            lastObservedTime: lastObserved,
-            reason: "clock-rollback",
-            userMessage: "System clock change detected. Connect to the internet to validate your license."
-          });
-          return this.getSnapshot();
         }
 
         // Update lastObservedTime monotonically
@@ -227,77 +251,159 @@ class LicenseManager {
         });
 
         // Evaluate token lifecycle against current time
-        if (now <= payload.refreshAfter) {
-          // Token is fresh and ACTIVE - NO NETWORK REQUEST
-          this._snapshot = normalizeSnapshot({
-            state: LICENSE_STATES.ACTIVE,
-            licenseId: payload.licenseId,
-            activationId: payload.activationId,
-            deviceId,
-            plan: payload.plan,
-            entitlements: payload.entitlements,
-            expiresAt: payload.expiresAt,
-            refreshAfter: payload.refreshAfter,
-            graceUntil: payload.graceUntil,
-            lastValidatedAt: metadata.lastValidatedAt || payload.issuedAt,
-            lastObservedTime: newObservedTime,
-            reason: "token-active",
-            userMessage: SAFE_USER_MESSAGES.ACTIVE
-          });
-        } else {
-          // Refresh is due (now > refreshAfter)
-          // Attempt ONE online refresh during initialization
-          this._logger.log?.(`${LOG_PREFIX} Token refresh due. Attempting online refresh...`);
-          const refreshResult = await this._attemptOnlineRefresh({
-            token: rawTokenString,
-            deviceHash: deviceId,
-            currentPayload: payload,
-            metadata
-          });
+        if (payload.plan === "trial") {
+          if (now >= payload.expiresAt) {
+            // Trial is expired - blocked immediately. Zero extra grace!
+            this._snapshot = normalizeSnapshot({
+              state: LICENSE_STATES.TRIAL_EXPIRED,
+              licenseId: payload.licenseId,
+              activationId: payload.activationId,
+              deviceId,
+              plan: payload.plan,
+              entitlements: payload.entitlements,
+              expiresAt: payload.expiresAt,
+              refreshAfter: payload.refreshAfter,
+              graceUntil: payload.graceUntil,
+              lastValidatedAt: metadata.lastValidatedAt || payload.issuedAt,
+              lastObservedTime: newObservedTime,
+              reason: "trial-expired",
+              userMessage: SAFE_USER_MESSAGES.TRIAL_EXPIRED
+            });
+          } else if (now <= payload.refreshAfter) {
+            // Trial token is fresh and TRIAL - NO NETWORK REQUEST
+            this._snapshot = normalizeSnapshot({
+              state: LICENSE_STATES.TRIAL,
+              licenseId: payload.licenseId,
+              activationId: payload.activationId,
+              deviceId,
+              plan: payload.plan,
+              entitlements: payload.entitlements,
+              expiresAt: payload.expiresAt,
+              refreshAfter: payload.refreshAfter,
+              graceUntil: payload.graceUntil,
+              lastValidatedAt: metadata.lastValidatedAt || payload.issuedAt,
+              lastObservedTime: newObservedTime,
+              reason: "trial-active",
+              userMessage: SAFE_USER_MESSAGES.TRIAL
+            });
+          } else {
+            // Trial refresh is due (now > refreshAfter and now < expiresAt)
+            this._logger.log?.(`${LOG_PREFIX} Trial token refresh due. Attempting online refresh...`);
+            const refreshResult = await this._attemptOnlineTrialRefresh({
+              token: rawTokenString,
+              deviceHash: deviceId,
+              currentPayload: payload,
+              metadata
+            });
 
-          if (!refreshResult.ok) {
-            // Check if failure is authoritative or network reachability
-            if (refreshResult.authoritativeState) {
-              this._snapshot = normalizeSnapshot({
-                state: refreshResult.authoritativeState,
-                deviceId,
-                licenseId: payload.licenseId,
-                plan: payload.plan,
-                entitlements: payload.entitlements,
-                reason: refreshResult.reason,
-                userMessage: refreshResult.userMessage
-              });
-            } else if (now <= payload.graceUntil && now <= payload.expiresAt) {
-              // Within offline grace period
-              this._snapshot = normalizeSnapshot({
-                state: LICENSE_STATES.GRACE,
-                licenseId: payload.licenseId,
-                activationId: payload.activationId,
-                deviceId,
-                plan: payload.plan,
-                entitlements: payload.entitlements,
-                expiresAt: payload.expiresAt,
-                refreshAfter: payload.refreshAfter,
-                graceUntil: payload.graceUntil,
-                lastValidatedAt: metadata.lastValidatedAt || payload.issuedAt,
-                lastObservedTime: newObservedTime,
-                reason: "offline-grace",
-                userMessage: SAFE_USER_MESSAGES.GRACE
-              });
-            } else {
-              // Grace expired
-              this._snapshot = normalizeSnapshot({
-                state: LICENSE_STATES.EXPIRED,
-                licenseId: payload.licenseId,
-                deviceId,
-                plan: payload.plan,
-                entitlements: payload.entitlements,
-                expiresAt: payload.expiresAt,
-                refreshAfter: payload.refreshAfter,
-                graceUntil: payload.graceUntil,
-                reason: "grace-expired",
-                userMessage: SAFE_USER_MESSAGES.EXPIRED
-              });
+            if (!refreshResult.ok) {
+              if (refreshResult.authoritativeState) {
+                this._snapshot = normalizeSnapshot({
+                  state: refreshResult.authoritativeState,
+                  deviceId,
+                  licenseId: payload.licenseId,
+                  activationId: payload.activationId,
+                  plan: payload.plan,
+                  entitlements: payload.entitlements,
+                  expiresAt: payload.expiresAt,
+                  refreshAfter: payload.refreshAfter,
+                  graceUntil: payload.graceUntil,
+                  reason: refreshResult.reason,
+                  userMessage: refreshResult.userMessage
+                });
+              } else {
+                // Network failure before expiresAt: trial works offline until original expiresAt!
+                this._snapshot = normalizeSnapshot({
+                  state: LICENSE_STATES.TRIAL,
+                  licenseId: payload.licenseId,
+                  activationId: payload.activationId,
+                  deviceId,
+                  plan: payload.plan,
+                  entitlements: payload.entitlements,
+                  expiresAt: payload.expiresAt,
+                  refreshAfter: payload.refreshAfter,
+                  graceUntil: payload.graceUntil,
+                  lastValidatedAt: metadata.lastValidatedAt || payload.issuedAt,
+                  lastObservedTime: newObservedTime,
+                  reason: "trial-offline-unexpired",
+                  userMessage: SAFE_USER_MESSAGES.TRIAL
+                });
+              }
+            }
+          }
+        } else {
+          if (now <= payload.refreshAfter) {
+            // Token is fresh and ACTIVE - NO NETWORK REQUEST
+            this._snapshot = normalizeSnapshot({
+              state: LICENSE_STATES.ACTIVE,
+              licenseId: payload.licenseId,
+              activationId: payload.activationId,
+              deviceId,
+              plan: payload.plan,
+              entitlements: payload.entitlements,
+              expiresAt: payload.expiresAt,
+              refreshAfter: payload.refreshAfter,
+              graceUntil: payload.graceUntil,
+              lastValidatedAt: metadata.lastValidatedAt || payload.issuedAt,
+              lastObservedTime: newObservedTime,
+              reason: "token-active",
+              userMessage: SAFE_USER_MESSAGES.ACTIVE
+            });
+          } else {
+            // Refresh is due (now > refreshAfter)
+            // Attempt ONE online refresh during initialization
+            this._logger.log?.(`${LOG_PREFIX} Token refresh due. Attempting online refresh...`);
+            const refreshResult = await this._attemptOnlineRefresh({
+              token: rawTokenString,
+              deviceHash: deviceId,
+              currentPayload: payload,
+              metadata
+            });
+
+            if (!refreshResult.ok) {
+              // Check if failure is authoritative or network reachability
+              if (refreshResult.authoritativeState) {
+                this._snapshot = normalizeSnapshot({
+                  state: refreshResult.authoritativeState,
+                  deviceId,
+                  licenseId: payload.licenseId,
+                  plan: payload.plan,
+                  entitlements: payload.entitlements,
+                  reason: refreshResult.reason,
+                  userMessage: refreshResult.userMessage
+                });
+              } else if (now <= payload.graceUntil && now <= payload.expiresAt) {
+                // Within offline grace period
+                this._snapshot = normalizeSnapshot({
+                  state: LICENSE_STATES.GRACE,
+                  licenseId: payload.licenseId,
+                  activationId: payload.activationId,
+                  deviceId,
+                  plan: payload.plan,
+                  entitlements: payload.entitlements,
+                  expiresAt: payload.expiresAt,
+                  refreshAfter: payload.refreshAfter,
+                  graceUntil: payload.graceUntil,
+                  lastValidatedAt: metadata.lastValidatedAt || payload.issuedAt,
+                  lastObservedTime: newObservedTime,
+                  reason: "offline-grace",
+                  userMessage: SAFE_USER_MESSAGES.GRACE
+                });
+              } else {
+                // Grace expired
+                this._snapshot = normalizeSnapshot({
+                  state: LICENSE_STATES.EXPIRED,
+                  licenseId: payload.licenseId,
+                  deviceId,
+                  plan: payload.plan,
+                  entitlements: payload.entitlements,
+                  expiresAt: payload.expiresAt,
+                  refreshAfter: payload.refreshAfter,
+                  graceUntil: payload.graceUntil,
+                  reason: "grace-expired",
+                  userMessage: SAFE_USER_MESSAGES.EXPIRED
+                });
+              }
             }
           }
         }
@@ -416,6 +522,89 @@ class LicenseManager {
   }
 
   /**
+   * Internal helper to attempt an online trial refresh.
+   * If successful, locally verifies the new token BEFORE saving.
+   * @private
+   */
+  async _attemptOnlineTrialRefresh({ token, deviceHash, currentPayload, metadata = {} }) {
+    if (!this._apiClient) {
+      return { ok: false, reason: "service-not-configured" };
+    }
+    try {
+      const response = await this._apiClient.refreshTrial({
+        token,
+        deviceHash,
+        pluginVersion: this._pluginVersion
+      });
+
+      if (response.ok && response.data?.token) {
+        const newToken = response.data.token;
+        const verification = await this._verifyToken(newToken, deviceHash);
+
+        if (!verification.ok || !verification.payload) {
+          this._logger.warn?.(`${LOG_PREFIX} Trial refresh returned invalid token:`, verification.error);
+          return { ok: false, reason: "invalid-server-token" };
+        }
+
+        const newPayload = verification.payload;
+        if (newPayload.plan !== "trial") {
+          return { ok: false, reason: "non-trial-token" };
+        }
+
+        const now = this._nowSeconds();
+
+        await this._storage.writeToken({ token: newToken, savedAt: Date.now() });
+        await this._storage.writeMetadata({
+          ...metadata,
+          lastValidatedAt: now,
+          lastObservedTime: now
+        });
+
+        this._currentToken = newToken;
+        this._snapshot = normalizeSnapshot({
+          state: LICENSE_STATES.TRIAL,
+          licenseId: newPayload.licenseId,
+          activationId: newPayload.activationId,
+          deviceId: deviceHash,
+          plan: newPayload.plan,
+          entitlements: newPayload.entitlements,
+          expiresAt: newPayload.expiresAt,
+          refreshAfter: newPayload.refreshAfter,
+          graceUntil: newPayload.graceUntil,
+          lastValidatedAt: now,
+          lastObservedTime: now,
+          reason: "trial-refreshed",
+          userMessage: SAFE_USER_MESSAGES.TRIAL
+        });
+
+        return { ok: true };
+      }
+
+      const errCode = response.error;
+      if (errCode === "TRIAL_EXPIRED") {
+        return {
+          ok: false,
+          authoritativeState: LICENSE_STATES.TRIAL_EXPIRED,
+          reason: "trial-expired",
+          userMessage: SAFE_USER_MESSAGES.TRIAL_EXPIRED
+        };
+      }
+      if (errCode === "TRIAL_REVOKED") {
+        return {
+          ok: false,
+          authoritativeState: LICENSE_STATES.REVOKED,
+          reason: "trial-revoked",
+          userMessage: SAFE_USER_MESSAGES.REVOKED
+        };
+      }
+
+      return { ok: false, reason: errCode || "network-error" };
+    } catch (err) {
+      return { ok: false, reason: err?.message || "network-exception" };
+    }
+  }
+
+  /**
    * Activates a license with a key.
    * Calls /v1/activate, strictly verifies the token locally BEFORE saving.
    *
@@ -494,11 +683,14 @@ class LicenseManager {
     const payload = verification.payload;
     const now = this._nowSeconds();
 
-    // Persist verified token and metadata
+    // Persist verified token and metadata, preserving trialPreviouslyStarted marker if present
+    const prevMetadata = (await this._storage.readMetadata()) || {};
     await this._storage.writeToken({ token, savedAt: Date.now() });
     await this._storage.writeMetadata({
+      ...prevMetadata,
       lastValidatedAt: now,
-      lastObservedTime: now
+      lastObservedTime: now,
+      trialPreviouslyStarted: prevMetadata.trialPreviouslyStarted === true
     });
 
     this._currentToken = token;
@@ -523,16 +715,176 @@ class LicenseManager {
   }
 
   /**
+   * Starts a 30-day free trial for this device.
+   * Calls /v1/trial/start, strictly verifies the token locally BEFORE saving.
+   *
+   * @returns {Promise<{ ok: boolean, error?: string, message?: string }>}
+   */
+  async startTrial() {
+    if (!this._apiClient || !this._verifier) {
+      return {
+        ok: false,
+        reason: "service-not-configured"
+      };
+    }
+
+    const deviceId = await this._getOrCreateDeviceId();
+    const deviceName = getGenericDeviceName();
+
+    this._logger.log?.(`${LOG_PREFIX} Starting trial on device...`);
+
+    const response = await this._apiClient.startTrial({
+      deviceHash: deviceId,
+      deviceName,
+      pluginVersion: this._pluginVersion
+    });
+
+    if (!response.ok) {
+      const errCode = response.error || "TRIAL_START_FAILED";
+      let userMsg = SAFE_USER_MESSAGES[errCode] || response.message || SAFE_USER_MESSAGES.DEFAULT_ERROR;
+
+      if (errCode === "TRIAL_EXPIRED") {
+        userMsg = SAFE_USER_MESSAGES.TRIAL_EXPIRED;
+        const prevMetadata = (await this._storage.readMetadata()) || {};
+        await this._storage.writeMetadata({
+          ...prevMetadata,
+          trialPreviouslyStarted: true
+        });
+        this._snapshot = normalizeSnapshot({
+          state: LICENSE_STATES.TRIAL_EXPIRED,
+          deviceId,
+          reason: "trial-expired",
+          userMessage: SAFE_USER_MESSAGES.TRIAL_EXPIRED
+        });
+      } else if (errCode === "TRIAL_REVOKED") {
+        userMsg = SAFE_USER_MESSAGES.REVOKED;
+        const prevMetadata = (await this._storage.readMetadata()) || {};
+        await this._storage.writeMetadata({
+          ...prevMetadata,
+          trialPreviouslyStarted: true
+        });
+        this._snapshot = normalizeSnapshot({
+          state: LICENSE_STATES.REVOKED,
+          deviceId,
+          reason: "trial-revoked",
+          userMessage: SAFE_USER_MESSAGES.REVOKED
+        });
+      }
+
+      return {
+        ok: false,
+        error: errCode,
+        message: userMsg
+      };
+    }
+
+    const token = response.data?.token;
+    if (!token) {
+      return {
+        ok: false,
+        error: "INVALID_SERVER_RESPONSE",
+        message: "Server did not return a signed trial token."
+      };
+    }
+
+    // Strictly verify token locally BEFORE writing to storage
+    const verification = await this._verifyToken(token, deviceId);
+    if (!verification.ok || !verification.payload) {
+      this._logger.warn?.(`${LOG_PREFIX} Trial token failed verification:`, verification.error);
+      return {
+        ok: false,
+        error: "TOKEN_VERIFICATION_FAILED",
+        message: "Server returned a token that failed local signature verification."
+      };
+    }
+
+    const payload = verification.payload;
+
+    if (payload.plan !== "trial") {
+      return {
+        ok: false,
+        error: "INVALID_TOKEN_PLAN",
+        message: "Server returned a non-trial token for trial start."
+      };
+    }
+
+    if (payload.deviceHash !== deviceId) {
+      return {
+        ok: false,
+        error: "DEVICE_MISMATCH",
+        message: "Token device binding mismatch."
+      };
+    }
+
+    if (payload.pluginId !== "in.memorymaker.albumplacer") {
+      return {
+        ok: false,
+        error: "PLUGIN_ID_MISMATCH",
+        message: "Token plugin ID mismatch."
+      };
+    }
+
+    const now = this._nowSeconds();
+    const prevMetadata = (await this._storage.readMetadata()) || {};
+
+    await this._storage.writeToken({ token, savedAt: Date.now() });
+    await this._storage.writeMetadata({
+      ...prevMetadata,
+      lastValidatedAt: now,
+      lastObservedTime: now,
+      trialPreviouslyStarted: true
+    });
+
+    this._currentToken = token;
+    this._snapshot = normalizeSnapshot({
+      state: LICENSE_STATES.TRIAL,
+      licenseId: payload.licenseId,
+      activationId: payload.activationId,
+      deviceId,
+      plan: payload.plan,
+      entitlements: payload.entitlements,
+      expiresAt: payload.expiresAt,
+      refreshAfter: payload.refreshAfter,
+      graceUntil: payload.graceUntil,
+      lastValidatedAt: now,
+      lastObservedTime: now,
+      reason: "trial-started",
+      userMessage: SAFE_USER_MESSAGES.TRIAL
+    });
+
+    this._logger.log?.(`${LOG_PREFIX} Trial started successfully. State: TRIAL`);
+    return { ok: true, message: "30-day free trial started." };
+  }
+
+  /**
    * Deactivates this computer with the server.
    * Requires online success before freeing local token.
    * Preserves persistent device ID.
+   * If trial was previously started, resolves trial against server.
+   * If trial was never started, returns to UNACTIVATED without calling trial API.
    *
    * @returns {Promise<{ ok: boolean, error?: string, message?: string }>}
    */
   async deactivate() {
+    if (this._snapshot?.plan === "trial") {
+      return {
+        ok: false,
+        error: "NOT_SUPPORTED",
+        message: "Trial activations cannot be deactivated."
+      };
+    }
+
+    const deviceId = await this._getOrCreateDeviceId();
+    const metadata = (await this._storage.readMetadata()) || {};
+    const hadTrial = metadata.trialPreviouslyStarted === true;
+
     if (!this._currentToken) {
-      // Already unactivated
+      // Already unactivated locally
       await this._storage.clearLicenseToken();
+      if (hadTrial) {
+        await this._storage.writeMetadata({ trialPreviouslyStarted: true });
+        return this._restoreTrialAfterDeactivation(deviceId);
+      }
       this._snapshot = normalizeSnapshot({
         state: LICENSE_STATES.UNACTIVATED,
         deviceId: this._deviceId,
@@ -541,7 +893,6 @@ class LicenseManager {
       return { ok: true, message: "License deactivated." };
     }
 
-    const deviceId = await this._getOrCreateDeviceId();
     this._logger.log?.(`${LOG_PREFIX} Deactivating license on server...`);
 
     const response = await this._apiClient.deactivate({
@@ -558,18 +909,101 @@ class LicenseManager {
       };
     }
 
-    // Online deactivation succeeded: clear cached token while RETAINING device ID
-    await this._storage.clearLicenseToken();
+    // Online deactivation succeeded: delete cached token while RETAINING device ID
+    await this._storage.deleteToken();
     this._currentToken = null;
 
-    this._snapshot = normalizeSnapshot({
-      state: LICENSE_STATES.UNACTIVATED,
-      deviceId,
-      userMessage: SAFE_USER_MESSAGES.UNACTIVATED
+    if (!hadTrial) {
+      // CASE A: User NEVER used trial
+      // Paid deactivation must NOT automatically start a trial!
+      await this._storage.deleteMetadata();
+      this._snapshot = normalizeSnapshot({
+        state: LICENSE_STATES.UNACTIVATED,
+        deviceId,
+        userMessage: SAFE_USER_MESSAGES.UNACTIVATED
+      });
+      this._logger.log?.(`${LOG_PREFIX} Deactivation complete. State: UNACTIVATED`);
+      return { ok: true, message: "This computer has been deactivated successfully." };
+    }
+
+    // User previously started a trial
+    // Retain trialPreviouslyStarted marker in metadata
+    await this._storage.writeMetadata({
+      trialPreviouslyStarted: true
     });
 
-    this._logger.log?.(`${LOG_PREFIX} Deactivation complete. Device ID preserved.`);
-    return { ok: true, message: "This computer has been deactivated successfully." };
+    return this._restoreTrialAfterDeactivation(deviceId);
+  }
+
+  /**
+   * Helper to restore trial state after paid deactivation when trialPreviouslyStarted === true.
+   * @private
+   */
+  async _restoreTrialAfterDeactivation(deviceId) {
+    this._logger.log?.(`${LOG_PREFIX} Resolving previous trial after paid deactivation...`);
+    try {
+      const trialResult = await this.startTrial();
+      if (trialResult.ok) {
+        // CASE B: Original trial still active and restored!
+        this._logger.log?.(`${LOG_PREFIX} Original trial restored successfully. State: TRIAL`);
+        return {
+          ok: true,
+          message: "This computer has been deactivated successfully. Previous trial restored."
+        };
+      }
+
+      // CASE C: Expired old trial
+      if (trialResult.error === "TRIAL_EXPIRED") {
+        this._snapshot = normalizeSnapshot({
+          state: LICENSE_STATES.TRIAL_EXPIRED,
+          deviceId,
+          reason: "trial-expired",
+          userMessage: SAFE_USER_MESSAGES.TRIAL_EXPIRED
+        });
+        return {
+          ok: true,
+          message: "This computer has been deactivated successfully. Trial has expired."
+        };
+      }
+
+      // CASE D: Revoked old trial
+      if (trialResult.error === "TRIAL_REVOKED") {
+        this._snapshot = normalizeSnapshot({
+          state: LICENSE_STATES.REVOKED,
+          deviceId,
+          reason: "trial-revoked",
+          userMessage: SAFE_USER_MESSAGES.REVOKED
+        });
+        return {
+          ok: true,
+          message: "This computer has been deactivated successfully. Trial was revoked."
+        };
+      }
+
+      // Network error or other failure during trial restoration: Fail closed!
+      this._snapshot = normalizeSnapshot({
+        state: LICENSE_STATES.ERROR,
+        deviceId,
+        reason: "network-error-restoring-trial",
+        userMessage: SAFE_USER_MESSAGES.NETWORK_ERROR
+      });
+      return {
+        ok: true,
+        message: "Deactivated successfully, but unable to restore trial due to network error."
+      };
+    } catch (err) {
+      // Network failure / unexpected error: Fail closed!
+      this._snapshot = normalizeSnapshot({
+        state: LICENSE_STATES.ERROR,
+        deviceId,
+        reason: "exception-restoring-trial",
+        userMessage: SAFE_USER_MESSAGES.NETWORK_ERROR
+      });
+      return {
+        ok: true,
+        message: "Deactivated successfully, but unable to restore trial due to network error."
+      };
+    }
   }
 
   /**
@@ -588,6 +1022,12 @@ class LicenseManager {
       return { ok: false, message: "No active license to refresh." };
     }
     const deviceId = await this._getOrCreateDeviceId();
+    if (this._snapshot?.plan === "trial") {
+      return await this._attemptOnlineTrialRefresh({
+        token: this._currentToken,
+        deviceHash: deviceId
+      });
+    }
     const result = await this._attemptOnlineRefresh({
       token: this._currentToken,
       deviceHash: deviceId

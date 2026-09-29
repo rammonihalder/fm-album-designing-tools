@@ -15,6 +15,8 @@ const LICENSE_STATES = Object.freeze({
   UNACTIVATED: "UNACTIVATED",
   ACTIVE: "ACTIVE",
   GRACE: "GRACE",
+  TRIAL: "TRIAL",
+  TRIAL_EXPIRED: "TRIAL_EXPIRED",
   EXPIRED: "EXPIRED",
   REVOKED: "REVOKED",
   SUSPENDED: "SUSPENDED",
@@ -53,7 +55,7 @@ function normalizeState(state, fallback = LICENSE_STATES.INVALID) {
  * @returns {boolean}
  */
 function isOperationalState(state) {
-  return state === LICENSE_STATES.ACTIVE || state === LICENSE_STATES.GRACE;
+  return state === LICENSE_STATES.ACTIVE || state === LICENSE_STATES.GRACE || state === LICENSE_STATES.TRIAL;
 }
 
 module.exports = {
