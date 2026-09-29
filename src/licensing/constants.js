@@ -27,7 +27,7 @@ const OFFLINE_GRACE_PERIOD_MS = OFFLINE_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000;
 
 const LOG_PREFIX = "[MM License]";
 
-const PLUGIN_VERSION = "1.1.0";
+const PLUGIN_VERSION = "1.2.0";
 
 module.exports = {
   STORAGE_KEYS,

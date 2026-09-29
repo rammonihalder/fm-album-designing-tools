@@ -670,6 +670,51 @@ async function saveDocumentCopyJpeg(doc, fileEntry, options = {}) {
   throw new Error("Photoshop saveAs.jpg API is not available on this document.");
 }
 
+async function saveDocumentCopyPng(doc, fileEntry, options = {}) {
+  let ps = options.photoshop || photoshop;
+  if (!ps && typeof require === "function") {
+    try { ps = require("photoshop"); } catch (_) {}
+  }
+  let lfs = options.localFileSystem || localFileSystem;
+  if (!lfs && typeof require === "function") {
+    try { lfs = require("uxp")?.storage?.localFileSystem; } catch (_) {}
+  }
+
+  if (doc && doc.saveAs && typeof doc.saveAs.png === "function") {
+    return doc.saveAs.png(fileEntry, options, true);
+  }
+
+  if (ps?.action && typeof ps.action.batchPlay === "function") {
+    let token = fileEntry?.token;
+    if (!token && lfs && typeof lfs.createSessionToken === "function") {
+      try { token = await lfs.createSessionToken(fileEntry); } catch (_) {}
+    }
+    if (!token) {
+      token = String(fileEntry?.nativePath || fileEntry?.name || fileEntry);
+    }
+    const results = await ps.action.batchPlay([
+      {
+        _obj: "save",
+        as: {
+          _obj: "PNGFormat",
+          method: { _enum: "PNGMethod", _value: "quick" }
+        },
+        in: {
+          _path: token,
+          _kind: "local"
+        },
+        copy: true,
+        lowerCase: true,
+        _options: { dialogOptions: "dontDisplay" }
+      }
+    ], {});
+    const failed = Array.isArray(results) && results.find(item => item?._obj === "error" || item?.result < 0 || (item?.executionStatus && item.executionStatus !== "success" && item.executionStatus !== 0));
+    if (failed) throw new Error(failed.message || "Photoshop PNG save operation failed.");
+    return results;
+  }
+  throw new Error("Photoshop saveAs.png API is not available on this document.");
+}
+
 async function executeSavePageModal(operationFn, commandName = "MM Save Page") {
   if (core && typeof core.executeAsModal === "function") {
     return core.executeAsModal(async executionContext => {
@@ -808,6 +853,58 @@ async function executeRemovePhotosModal(operationFn, commandName = "MM Remove Ph
   return operationFn();
 }
 
+async function executeTrimBatchPlay(ps, enumValue) {
+  const results = await ps.action.batchPlay([
+    {
+      _obj: "trim",
+      trimBasedOn: {
+        _enum: "trimBasedOn",
+        _value: enumValue
+      },
+      top: true,
+      bottom: true,
+      left: true,
+      right: true,
+      _isCommand: true,
+      _options: { dialogOptions: "dontDisplay" }
+    }
+  ], {});
+  const failed = Array.isArray(results) && results.find(item => item?._obj === "error" || item?.result < 0 || (item?.executionStatus && item.executionStatus !== "success" && item.executionStatus !== 0));
+  if (failed) throw new Error(failed.message || "Photoshop trim operation failed.");
+  return results;
+}
+
+async function trimTransparentPixels(doc, photoshopRef = photoshop) {
+  const ps = photoshopRef || require("photoshop");
+  if (ps?.app && doc) {
+    try { ps.app.activeDocument = doc; } catch (_) {}
+  }
+  let lastError = null;
+  const trimType = ps?.constants?.TrimType?.TRANSPARENT || "transparent";
+  if (doc && typeof doc.trim === "function") {
+    try {
+      await doc.trim(trimType, true, true, true, true);
+      return;
+    } catch (domError) {
+      lastError = domError;
+      if (!ps?.action || typeof ps.action.batchPlay !== "function") throw domError;
+    }
+  }
+  if (ps?.action && typeof ps.action.batchPlay === "function") {
+    try {
+      return await executeTrimBatchPlay(ps, "transparency");
+    } catch (batchError) {
+      try {
+        return await executeTrimBatchPlay(ps, "transparentPixels");
+      } catch (_) {
+        if (lastError) batchError.cause = lastError;
+        throw batchError;
+      }
+    }
+  }
+  throw new Error("Photoshop trim API is not available.");
+}
+
 module.exports = {
   inspectImageFiles,
   runPlacement,
@@ -836,6 +933,8 @@ module.exports = {
   findDocumentById,
   saveDocumentCopyPsd,
   saveDocumentCopyJpeg,
+  saveDocumentCopyPng,
+  trimTransparentPixels,
   px
 };
 

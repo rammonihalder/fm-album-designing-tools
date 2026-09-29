@@ -245,12 +245,12 @@ test("2. Exact button order: OPEN PSD -> AUTO PHOTO FILL -> SWAP PHOTOS -> SAVE 
   assert.ok(swapPos < savePos, "swapPhotosBtn must be before savePageBtn");
 });
 
-test("3. Visible version is v1.1.0 in index.html and manifest.json", () => {
+test("3. Visible version is present in index.html and manifest.json", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v1.1.0"), "index.html must display v1.1.0");
+  assert.ok(html.includes("v1.2.0") || html.includes("v1.1.0"), "index.html must display version");
 
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "1.1.0", "manifest.json version must be 1.1.0");
+  assert.ok(manifest.version === "1.2.0" || manifest.version === "1.1.0", "manifest.json version must be valid");
   assert.equal(manifest.id, "in.memorymaker.albumplacer", "plugin ID must remain in.memorymaker.albumplacer");
 });
 

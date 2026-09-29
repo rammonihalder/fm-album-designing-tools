@@ -257,17 +257,33 @@ async function executeOpenPsd(dependencies = {}, options = {}) {
     throw new Error("Missing required selectPsdFiles dependency.");
   }
 
-  const storage = dependencies.storage || (typeof localStorage !== "undefined" ? localStorage : null);
-  const localFileSystem = dependencies.localFileSystem || null;
+  const storage = dependencies.storage !== undefined
+    ? dependencies.storage
+    : (typeof localStorage !== "undefined" ? localStorage : null);
+  let localFileSystem = dependencies.localFileSystem !== undefined
+    ? dependencies.localFileSystem
+    : null;
+  if (!localFileSystem) {
+    try {
+      const uxp = require("uxp");
+      localFileSystem = uxp?.storage?.localFileSystem || null;
+    } catch (_) {}
+  }
 
   let restoredFolder = null;
   if (localFileSystem && storage) {
     try {
-      restoredFolder = await restoreFolderFromToken(TOKEN_KEYS.OPEN_PSD, localFileSystem, storage);
+      const restore = dependencies.restoreFolderFromToken || restoreFolderFromToken;
+      restoredFolder = await restore(TOKEN_KEYS.OPEN_PSD, localFileSystem, storage);
     } catch (_) {}
   }
 
-  const fileEntries = await selectPsdFiles({ initialLocation: restoredFolder });
+  const pickerOptions = {};
+  if (restoredFolder) {
+    pickerOptions.initialLocation = restoredFolder;
+  }
+
+  const fileEntries = await selectPsdFiles(pickerOptions);
   if (!fileEntries || !fileEntries.length) {
     return {
       outcome: "cancelled",
@@ -277,13 +293,23 @@ async function executeOpenPsd(dependencies = {}, options = {}) {
     };
   }
 
-  if (localFileSystem && storage && fileEntries.length > 0) {
+  if (fileEntries.length > 0 && localFileSystem && storage) {
     try {
-      const parentFolder = await getParentFolder(fileEntries[0], localFileSystem);
-      if (parentFolder) {
-        await saveFolderToken(TOKEN_KEYS.OPEN_PSD, parentFolder, localFileSystem, storage);
+      const firstFile = fileEntries[0];
+      let parentFolder = null;
+      if (firstFile && firstFile.parent && (firstFile.parent.isFolder || !firstFile.parent.isFile)) {
+        parentFolder = firstFile.parent;
+      } else if (firstFile) {
+        const getParent = dependencies.getParentFolder || getParentFolder;
+        parentFolder = await getParent(firstFile, localFileSystem);
       }
-    } catch (_) {}
+      if (parentFolder) {
+        const save = dependencies.saveFolderToken || saveFolderToken;
+        await save(TOKEN_KEYS.OPEN_PSD, parentFolder, localFileSystem, storage);
+      }
+    } catch (saveErr) {
+      console.warn("[MM Open PSD] Could not save folder token:", saveErr);
+    }
   }
 
   const total = fileEntries.length;
@@ -519,6 +545,10 @@ function getDefaultDependencies() {
     storage: typeof localStorage !== "undefined" ? localStorage : null,
     localFileSystem: fs,
     selectPsdFiles: async (pickerOptions = {}) => {
+      const fileSystem = fs || (typeof require !== "undefined" ? require("uxp")?.storage?.localFileSystem : null);
+      if (!fileSystem || typeof fileSystem.getFileForOpening !== "function") {
+        throw new Error("File selection API is not available.");
+      }
       const opts = {
         types: ["psd"],
         allowMultiple: true
@@ -526,7 +556,7 @@ function getDefaultDependencies() {
       if (pickerOptions && pickerOptions.initialLocation) {
         opts.initialLocation = pickerOptions.initialLocation;
       }
-      const result = await fs.getFileForOpening(opts);
+      const result = await fileSystem.getFileForOpening(opts);
       if (!result) return null;
       const files = Array.isArray(result) ? result : [result];
       return files.length > 0 ? files : null;
