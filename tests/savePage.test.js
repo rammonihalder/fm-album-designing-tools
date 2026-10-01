@@ -247,10 +247,10 @@ test("2. Exact button order: OPEN PSD -> AUTO PHOTO FILL -> SWAP PHOTOS -> SAVE 
 
 test("3. Visible version is present in index.html and manifest.json", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v1.4.0") || html.includes("v1.3.0") || html.includes("v1.2.0") || html.includes("v1.1.0"), "index.html must display version");
+  assert.ok(html.includes("v1.4.1") || html.includes("v1.3.0") || html.includes("v1.2.0") || html.includes("v1.1.0"), "index.html must display version");
 
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.ok(manifest.version === "1.4.0" || manifest.version === "1.3.0" || manifest.version === "1.2.0" || manifest.version === "1.1.0", "manifest.json version must be valid");
+  assert.ok(manifest.version === "1.4.1" || manifest.version === "1.3.0" || manifest.version === "1.2.0" || manifest.version === "1.1.0", "manifest.json version must be valid");
   assert.equal(manifest.id, "in.memorymaker.albumplacer", "plugin ID must remain in.memorymaker.albumplacer");
 });
 

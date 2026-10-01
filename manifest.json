@@ -2,7 +2,7 @@
   "manifestVersion": 5,
   "id": "in.memorymaker.albumplacer",
   "name": "FM Album Designing Tools",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "main": "index.html",
   "icons": [
     {

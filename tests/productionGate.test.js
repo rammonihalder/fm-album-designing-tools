@@ -617,15 +617,15 @@ test("26. plugin ID remains in.memorymaker.albumplacer", () => {
   assert.equal(manifest.id, "in.memorymaker.albumplacer");
 });
 
-test("27. manifest version and PLUGIN_VERSION are both 1.4.0", () => {
+test("27. manifest version and PLUGIN_VERSION are both 1.4.1", () => {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8")
   );
-  assert.equal(manifest.version, "1.4.0");
-  assert.equal(PLUGIN_VERSION, "1.4.0");
+  assert.equal(manifest.version, "1.4.1");
+  assert.equal(PLUGIN_VERSION, "1.4.1");
 
   const indexHtml = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
-  assert.ok(indexHtml.includes('<span class="version">v1.4.0</span>'));
+  assert.ok(indexHtml.includes('<span class="version">v1.4.1</span>'));
 });
 
 test("28. productionConfig API domain matches manifest network permission", () => {

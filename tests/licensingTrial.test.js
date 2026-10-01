@@ -1726,18 +1726,18 @@ test("72. existing paid dialog behavior remains unchanged", () => {
 // PART 4 — VERSION & METADATA TESTS (73 - 79)
 // =============================================================================
 
-test("73. manifest version = 1.4.0", () => {
+test("73. manifest version = 1.4.1", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "1.4.0");
+  assert.equal(manifest.version, "1.4.1");
 });
 
-test("74. PLUGIN_VERSION = 1.4.0", () => {
-  assert.equal(PLUGIN_VERSION, "1.4.0");
+test("74. PLUGIN_VERSION = 1.4.1", () => {
+  assert.equal(PLUGIN_VERSION, "1.4.1");
 });
 
-test("75. visible UI version = v1.4.0", () => {
+test("75. visible UI version = v1.4.1", () => {
   const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes('<span class="version">v1.4.0</span>'));
+  assert.ok(html.includes('<span class="version">v1.4.1</span>'));
 });
 
 test("76. plugin ID remains unchanged", () => {
