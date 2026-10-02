@@ -673,7 +673,7 @@ function assertCommonLayout(layout) {
 
   assert.equal(layout.brandPrefix, "FRAME MITRA", "Branded prefix must be FRAME MITRA");
   assert.equal(layout.title, "FM Album Designing Tools", "Title must be FM Album Designing Tools");
-  assert.equal(layout.version, "v1.4.0", "Version must match current version");
+  assert.equal(layout.version, "v1.4.1", "Version must match current version");
   assert.equal(layout.popupCount, 0, "no workflow dialog should be open while idle");
   assert.equal(layout.toastVisible, true, "toast must be readable");
   assert.equal(layout.toastPosition, "static");

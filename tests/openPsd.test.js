@@ -64,10 +64,10 @@ test("3. AUTO PHOTO FILL appears BEFORE SWAP PHOTOS", () => {
 
 test("4. Visible version is present in index.html and manifest.json", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("v1.4.0"), "index.html must display version");
+  assert.ok(html.includes("v1.4.1"), "index.html must display version");
 
   const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../manifest.json"), "utf8"));
-  assert.equal(manifest.version, "1.4.0", "manifest.json version must be valid");
+  assert.equal(manifest.version, "1.4.1", "manifest.json version must be valid");
   assert.equal(manifest.id, "9beaddeb", "plugin ID must be 9beaddeb for Adobe Marketplace build");
 });
 
