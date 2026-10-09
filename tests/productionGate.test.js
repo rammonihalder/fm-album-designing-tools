@@ -331,7 +331,10 @@ test("16. all current tool buttons are wrapped in wrapProtectedAction()", () => 
     "ui.pngMaskBtn",
     "ui.pngTextBtn",
     "ui.clipArtBtn",
-    "ui.changeBackgroundBtn"
+    "ui.changeBackgroundBtn",
+    "ui.quickBrightnessBtn",
+    "ui.quickLevelsBtn",
+    "ui.quickCurvesBtn"
   ];
 
   for (const btn of expectedGatedButtons) {
@@ -342,7 +345,7 @@ test("16. all current tool buttons are wrapped in wrapProtectedAction()", () => 
     );
   }
 
-  // Ensure no attachActionHandler call uses an unwrapped handler
+  // Every QUICK EDIT action remains behind the existing license gate.
   const allAttachCalls = mainSrc.match(/attachActionHandler\([^;]+\);/g) || [];
   assert.equal(allAttachCalls.length, expectedGatedButtons.length);
   for (const call of allAttachCalls) {

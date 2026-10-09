@@ -71,6 +71,10 @@ const ui = {
   flipPhotoBtn: $("flipPhotoBtn"),
   savePageBtn: $("savePageBtn"),
   saveEditedPhotosBtn: $("saveEditedPhotosBtn"),
+  quickBrightnessBtn: $("quickBrightnessBtn"),
+  quickLevelsBtn: $("quickLevelsBtn"),
+  quickCurvesBtn: $("quickCurvesBtn"),
+  quickEditReport: $("quickEditReport"),
   savePsdCategoryBtn: $("savePsdCategoryBtn"),
   removePhotosBtn: $("removePhotosBtn"),
   addFrameBtn: $("addFrameBtn"),
@@ -276,6 +280,9 @@ const requiredButtons = [
   ["flipPhotoBtn", ui.flipPhotoBtn],
   ["savePageBtn", ui.savePageBtn],
   ["saveEditedPhotosBtn", ui.saveEditedPhotosBtn],
+  ["quickBrightnessBtn", ui.quickBrightnessBtn],
+  ["quickLevelsBtn", ui.quickLevelsBtn],
+  ["quickCurvesBtn", ui.quickCurvesBtn],
   ["savePsdCategoryBtn", ui.savePsdCategoryBtn],
   ["removePhotosBtn", ui.removePhotosBtn],
   ["addFrameBtn", ui.addFrameBtn],
@@ -311,6 +318,9 @@ function setButtonsDisabled(disabled) {
     ui.flipPhotoBtn,
     ui.savePageBtn,
     ui.saveEditedPhotosBtn,
+    ui.quickBrightnessBtn,
+    ui.quickLevelsBtn,
+    ui.quickCurvesBtn,
     ui.savePsdCategoryBtn,
     ui.removePhotosBtn,
     ui.addFrameBtn,
@@ -1581,6 +1591,61 @@ async function handleFlipPhoto() {
     console.error("Flip Photo error:", error);
     toast.show("Photo flip failed", "error");
     return { success: false, outcome: "error", error, message: "Photo flip failed" };
+  } finally {
+    running = false;
+    setButtonsDisabled(false);
+  }
+}
+
+function formatQuickEditReport(kind, result) {
+  const labels = { brightness: "Auto Brightness/Contrast", levels: "Auto Levels", curves: "Auto Curves" };
+  const lines = [`${labels[kind] || "QUICK EDIT"}: ${result.successCount || 0} saved, ${result.failedCount || 0} failed`];
+  for (const item of result.items || []) {
+    const state = ["applied", "updated"].includes(item.outcome) ? "saved" :
+      item.outcome === "saved-close-failed" ? `save completed; close failed: ${item.message || "unknown error"}` :
+      item.message || item.outcome;
+    lines.push(`${item.layerName || `Layer ${item.layerId}`}: ${state}`);
+  }
+  if (result.restoreError) lines.push(`Album selection: ${result.restoreError}`);
+  return lines.join("\n");
+}
+
+async function handleQuickEdit(kind) {
+  if (running) return { success: false, outcome: "busy" };
+  running = true;
+  setButtonsDisabled(true);
+  toast.dismiss();
+  if (ui.quickEditReport) ui.quickEditReport.hidden = true;
+  const labels = {
+    brightness: "Auto Brightness/Contrast",
+    levels: "Auto Levels",
+    curves: "Auto Curves"
+  };
+  try {
+    const { runAlbumQuickEdit } = require("./src/tools/albumQuickEdit");
+    const result = await runAlbumQuickEdit(kind);
+    if (ui.quickEditReport) {
+      ui.quickEditReport.textContent = formatQuickEditReport(kind, result);
+      ui.quickEditReport.hidden = false;
+    }
+    const firstFailure = result.items?.find(item => !["applied", "updated"].includes(item.outcome));
+    const count = result.successCount || 0;
+    if (result.success) {
+      toast.show(`${labels[kind]} saved in ${count} photo Smart Object${count === 1 ? "" : "s"}. Check the album in Photoshop.`, "success");
+    } else if (count) {
+      toast.show(`${labels[kind]}: ${count} saved, ${result.failedCount} failed. ${firstFailure?.message || result.restoreError || "Check the album."}`, "warning");
+    } else {
+      toast.show(firstFailure?.message || result.restoreError || `${labels[kind]} could not be applied.`, "error");
+    }
+    return result;
+  } catch (error) {
+    console.error("Quick Edit error:", error);
+    if (ui.quickEditReport) {
+      ui.quickEditReport.textContent = error?.message || "QUICK EDIT failed.";
+      ui.quickEditReport.hidden = false;
+    }
+    toast.show(error?.message || "Quick Edit failed.", "error");
+    return { success: false, outcome: "error", error };
   } finally {
     running = false;
     setButtonsDisabled(false);
@@ -3021,6 +3086,9 @@ attachActionHandler(ui.openPsdBtn, wrapProtectedAction(handleOpenPsd));
 attachActionHandler(ui.autoPhotoFillBtn, wrapProtectedAction(handleAutoPhotoFill));
 attachActionHandler(ui.swapPhotosBtn, wrapProtectedAction(handleSwapPhotos));
 attachActionHandler(ui.flipPhotoBtn, wrapProtectedAction(handleFlipPhoto));
+attachActionHandler(ui.quickBrightnessBtn, wrapProtectedAction(() => handleQuickEdit("brightness")));
+attachActionHandler(ui.quickLevelsBtn, wrapProtectedAction(() => handleQuickEdit("levels")));
+attachActionHandler(ui.quickCurvesBtn, wrapProtectedAction(() => handleQuickEdit("curves")));
 attachActionHandler(ui.savePageBtn, wrapProtectedAction(handleSavePage));
 attachActionHandler(ui.saveEditedPhotosBtn, wrapProtectedAction(handleSaveEditedPhotos));
 attachActionHandler(ui.savePsdCategoryBtn, wrapProtectedAction(handleSavePsdCategory));
@@ -3065,6 +3133,8 @@ if (typeof module !== "undefined" && module.exports) {
     handleAutoPhotoFill,
     handleSwapPhotos,
     handleFlipPhoto,
+    handleQuickEdit,
+    formatQuickEditReport,
     handleSavePage,
     handleSaveEditedPhotos,
     handleSavePsdCategory,

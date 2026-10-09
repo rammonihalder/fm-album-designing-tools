@@ -1,0 +1,15 @@
+async function actionCommands() {
+    let commands = [
+        // Brightness/Contrast
+        {
+            "_obj": "brightnessEvent",
+            "auto": true,
+            "useLegacy": false
+        }
+    ];
+    return await require("photoshop").action.batchPlay(commands, {});
+}
+
+console.log(
+    await require("photoshop").core.executeAsModal(actionCommands, {"commandName": "Action Commands"})
+);

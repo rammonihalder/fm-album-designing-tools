@@ -1,0 +1,17 @@
+async function test() {
+    let commands = [
+        {
+            "_obj": "levels",
+            "auto": true
+        }
+    ];
+
+    return await require("photoshop").action.batchPlay(commands, {});
+}
+
+console.log(
+    await require("photoshop").core.executeAsModal(
+        test,
+        {"commandName": "Auto Tone Test"}
+    )
+);

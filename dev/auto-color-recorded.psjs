@@ -1,0 +1,18 @@
+async function test() {
+    let commands = [
+        {
+            "_obj": "levels",
+            "autoBlackWhite": true,
+            "autoNeutrals": true
+        }
+    ];
+
+    return await require("photoshop").action.batchPlay(commands, {});
+}
+
+console.log(
+    await require("photoshop").core.executeAsModal(
+        test,
+        {"commandName": "Action Commands"}
+    )
+);

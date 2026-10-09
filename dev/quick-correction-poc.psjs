@@ -1,0 +1,147 @@
+// Development-only Photoshop UXP script. Run one correction at a time.
+// Change this value to "autoColor", "autoWhiteBalance", or "autoLight".
+const SELECTED_CORRECTION = "autoColor";
+
+const quickCorrectionPoc = (() => {
+  function resultFor(correction, doc) {
+    return {
+      correction,
+      targetDocument: doc ? { id: doc.id, name: doc.name } : null,
+      command: null,
+      candidate: null,
+      status: "blocked",
+      commandAccepted: false,
+      modifiedIntendedDocument: false,
+      historyStateAdded: null,
+      visibleEffect: "not-applicable",
+      error: null
+    };
+  }
+
+  function historyCount(doc) {
+    const count = doc && doc.historyStates && doc.historyStates.length;
+    return Number.isInteger(count) ? count : null;
+  }
+
+  function isErrorDescriptor(item) {
+    return !item || item._obj === "error" ||
+      (typeof item.result === "number" && item.result < 0) ||
+      (item.executionStatus !== undefined && item.executionStatus !== "success" && item.executionStatus !== 0);
+  }
+
+  function selectedPixelLayer(doc, constants) {
+    const layers = Array.from(doc.layers || []);
+    const selected = Array.from(doc.activeLayers || []);
+    if (layers.length !== 1 || selected.length !== 1 || selected[0].id !== layers[0].id) return null;
+    const layer = selected[0];
+    const kind = String(layer.kind || "").toLowerCase();
+    const normalKind = constants && constants.LayerKind && constants.LayerKind.NORMAL;
+    if (layer.isBackgroundLayer || (normalKind !== undefined && layer.kind === normalKind) ||
+        kind === "normal" || kind === "pixel" || layer.kind === 1) return layer;
+    return null;
+  }
+
+  async function run(correction, photoshop) {
+    let ps = photoshop;
+    if (!ps) {
+      try { ps = require("photoshop"); } catch (_) {}
+    }
+    const doc = ps && ps.app && ps.app.activeDocument;
+    const report = resultFor(correction, doc);
+    if (!doc || !Number.isInteger(doc.id)) {
+      report.error = "No active Photoshop document.";
+      return report;
+    }
+    if (!/\.psb$/i.test(String(doc.name || ""))) {
+      report.error = "This PoC accepts only an active PSB. Open an embedded photo Smart Object first.";
+      return report;
+    }
+    const layer = selectedPixelLayer(doc, ps.constants);
+    if (!layer) {
+      report.error = "This PoC requires a PSB with exactly one selected pixel/background layer.";
+      return report;
+    }
+    if (correction === "autoWhiteBalance") {
+      report.status = "unsupported";
+      report.error = "No verified native Auto White Balance UXP command. Nothing was changed.";
+      return report;
+    }
+    if (correction === "autoColor") {
+      report.command = "autoColor";
+      report.candidate = "Photoshop Auto Color; batchPlay event name is an unverified candidate";
+    } else if (correction === "autoLight") {
+      report.command = "autoTone";
+      report.candidate = "Photoshop Auto Tone as an explicit candidate for Auto Light; equivalence is unverified";
+    } else {
+      report.error = "Unknown correction name.";
+      return report;
+    }
+    if (!ps.core || typeof ps.core.executeAsModal !== "function" ||
+        !ps.action || typeof ps.action.batchPlay !== "function") {
+      report.status = "unsupported";
+      report.error = "Photoshop executeAsModal or batchPlay is unavailable.";
+      return report;
+    }
+
+    report.visibleEffect = "manual-check-required";
+
+    const targetId = doc.id;
+    const targetLayerId = layer.id;
+    const beforeHistory = historyCount(doc);
+    try {
+      await ps.core.executeAsModal(async () => {
+        const active = ps.app.activeDocument;
+        if (!active || active.id !== targetId ||
+            !selectedPixelLayer(active, ps.constants) ||
+            active.activeLayers[0].id !== targetLayerId) {
+          throw new Error("Active PSB or selected pixel layer changed before the command.");
+        }
+        const response = await ps.action.batchPlay([{
+          _obj: report.command,
+          _options: { dialogOptions: "silent" }
+        }], {});
+        if (!Array.isArray(response) || response.length !== 1 || isErrorDescriptor(response[0])) {
+          const error = Array.isArray(response) && response[0];
+          throw new Error((error && error.message) || "Photoshop did not confirm the command.");
+        }
+        report.commandAccepted = true;
+      }, { commandName: `Quick Correction PoC: ${report.command}` });
+      const sameDocument = ps.app.activeDocument && ps.app.activeDocument.id === targetId;
+      const afterHistory = historyCount(doc);
+      report.historyStateAdded = beforeHistory !== null && afterHistory !== null
+        ? afterHistory > beforeHistory : null;
+      report.modifiedIntendedDocument = sameDocument && report.historyStateAdded ? true : null;
+      report.status = sameDocument ? "accepted-needs-visual-check" : "target-unverified";
+      if (!sameDocument) report.error = "The active document changed; target modification cannot be confirmed.";
+    } catch (error) {
+      report.status = "failed";
+      report.error = String(error && error.message || error);
+      report.commandAccepted = false;
+      report.modifiedIntendedDocument = null;
+      const afterHistory = historyCount(doc);
+      report.historyStateAdded = beforeHistory !== null && afterHistory !== null
+        ? afterHistory > beforeHistory : null;
+    }
+    return report;
+  }
+
+  return { run };
+})();
+
+// The flag is set only by the focused Node.js tests. Photoshop runs this block.
+if (!globalThis.__QUICK_CORRECTION_POC_TEST__) {
+  quickCorrectionPoc.run(SELECTED_CORRECTION).then(async report => {
+    console.log("[Quick Correction PoC]", JSON.stringify(report, null, 2));
+    const ps = require("photoshop");
+    if (ps.core && typeof ps.core.showAlert === "function") {
+      await ps.core.showAlert(
+        `${report.correction}: ${report.status}\n` +
+        `Command: ${report.command || "none"}\n` +
+        `Accepted: ${report.commandAccepted}\n` +
+        `New history state: ${report.historyStateAdded}\n` +
+        `Visible effect: check manually\n` +
+        (report.error || "Inspect the active PSB and History panel; do not save it yet.")
+      );
+    }
+  }).catch(error => console.error("[Quick Correction PoC] Unexpected failure", error));
+}

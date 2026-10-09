@@ -1049,6 +1049,79 @@ dialog#licenseDialog,
 /* -------------------------------------------------------------
  * Create Album / Create Page
  * ------------------------------------------------------------- */
+.quick-edit-section {
+  margin-top: 14px;
+  margin-bottom: 14px;
+  padding: 10px;
+  background: #232323;
+  border: 1px solid #363636;
+  border-radius: 8px;
+}
+
+.quick-edit-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.quick-edit-row {
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 8px;
+}
+
+.quick-edit-row:last-child { margin-bottom: 0; }
+.quick-edit-row .quick-edit-action:first-child { margin-right: 8px; }
+
+.quick-edit-action {
+  flex: 1;
+  min-width: 0;
+  height: 56px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  border: 1px solid #3e5945;
+  border-left: 3px solid #54a968;
+  border-radius: 6px;
+  background: #292f2b;
+  color: #e7eee8;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quick-edit-copy { display: flex; flex-direction: column; min-width: 0; }
+.quick-edit-title { font-size: 11px; font-weight: 700; line-height: 1.2; }
+.quick-edit-subtitle { margin-top: 2px; color: #aab6ad; font-size: 9px; font-weight: 400; line-height: 1.2; }
+.quick-edit-action:hover { background: #334138; border-color: #69b77a; }
+.quick-edit-action:active { background: #263b2d; border-color: #7bc58a; }
+.quick-edit-action:focus { outline: 1px solid #9addaa; outline-offset: -2px; }
+.quick-edit-action.is-disabled { opacity: .55; cursor: default; pointer-events: none; }
+.quick-edit-action.quick-edit-unavailable,
+.quick-edit-action.quick-edit-unavailable:hover,
+.quick-edit-action.quick-edit-unavailable:active {
+  background: #292b2b;
+  border-color: #414545;
+  border-left-color: #575d59;
+  color: #9aa39c;
+  cursor: default;
+  pointer-events: none;
+}
+.quick-edit-unavailable .quick-edit-subtitle { color: #828d85; }
+
+.quick-edit-report {
+  margin-top: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+  color: var(--text);
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: break-word;
+}
+.quick-edit-report[hidden] { display: none; }
+
 .create-album-section {
   margin-top: 14px;
   margin-bottom: 0;
@@ -1373,6 +1446,9 @@ dialog#licenseDialog,
   .panel { padding: 8px; }
   h1 { font-size: 16px; }
   .create-page-grid { grid-template-columns: 1fr; }
+  .quick-edit-row { flex-direction: column; }
+  .quick-edit-row .quick-edit-action:first-child { margin-right: 0; margin-bottom: 8px; }
+  .quick-edit-row .quick-edit-action { width: 100%; flex: none; }
   .page-preset-action { width: 100%; }
   .tool-row {
     flex-direction: column;
