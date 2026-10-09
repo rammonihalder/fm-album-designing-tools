@@ -1429,3 +1429,20 @@ dialog#licenseDialog,
     transition: none;
   }
 }
+
+@media (min-width: 291px) and (max-width: 360px) {
+  .tool-icon-slot,
+  .tool-balance-slot {
+    width: 28px;
+    min-width: 28px;
+  }
+
+  .tool-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .tool-label {
+    font-size: 9px;
+  }
+}
