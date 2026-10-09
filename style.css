@@ -1446,3 +1446,98 @@ dialog#licenseDialog,
     font-size: 9px;
   }
 }
+
+/* Photoshop-centered Save Result popup */
+.save-result-dialog {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.save-result-card {
+  width: 300px;
+  box-sizing: border-box;
+  padding: 22px 24px 20px;
+  border-radius: 12px;
+  background: #242424;
+  border: 1px solid #4a4a4a;
+  text-align: center;
+  color: #ffffff;
+}
+
+.save-result-icon {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 25px;
+  font-weight: 700;
+  background: rgba(46, 163, 106, 0.18);
+  border: 1px solid #2ea36a;
+  color: #74d69c;
+}
+
+.save-result-title {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.3px;
+}
+
+.save-result-format {
+  margin-top: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #d8d8d8;
+}
+
+.save-result-reason {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #444444;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #cfcfcf;
+  overflow-wrap: break-word;
+}
+
+.save-result-reason[hidden] {
+  display: none;
+}
+
+/* Partial save */
+.save-result-dialog.is-warning .save-result-icon {
+  background: rgba(228, 166, 60, 0.18);
+  border-color: #e4a63c;
+  color: #f5c46b;
+}
+
+/* Save failed */
+.save-result-dialog.is-error .save-result-icon {
+  background: rgba(228, 106, 106, 0.18);
+  border-color: #e46a6a;
+  color: #ff8c8c;
+}
+
+.save-result-dialog.is-error .save-result-title {
+  color: #ff9a9a;
+}
+
+.save-result-path {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #444444;
+  font-size: 10px;
+  line-height: 1.45;
+  color: #a9c7ff;
+  text-align: left;
+  overflow-wrap: break-word;
+}
+
+.save-result-path[hidden] {
+  display: none;
+}

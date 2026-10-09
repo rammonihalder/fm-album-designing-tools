@@ -185,10 +185,18 @@ test("6. Auto Photo Fill uses toast summary", () => {
   assert.equal(res6.type, "error");
 });
 
-test("7. no completion dialog exists", () => {
+test("7. transient Save Page completion dialog exists", () => {
   const htmlPath = path.resolve(__dirname, "../index.html");
   const html = fs.readFileSync(htmlPath, "utf8");
-  assert.equal(/resultDialog/i.test(html), false, "no resultDialog ID should exist in index.html");
+
+  assert.ok(
+    /<dialog[^>]+id="saveResultDialog"/i.test(html),
+    "saveResultDialog should exist in index.html"
+  );
+
+  assert.ok(/id="saveResultTitle"/i.test(html), "saveResultTitle should exist");
+  assert.ok(/id="saveResultPath"/i.test(html), "saveResultPath should exist");
+  assert.ok(/id="saveResultReason"/i.test(html), "saveResultReason should exist");
 });
 
 test("8. no permanent result block remains if it is no longer required", () => {

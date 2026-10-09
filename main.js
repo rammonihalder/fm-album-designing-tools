@@ -150,6 +150,13 @@ const ui = {
   dialogSaveBtn: $("savePageDialogSaveBtn"),
   dialogCancelBtn: $("savePageDialogCancelBtn"),
 
+  saveResultDialog: $("saveResultDialog"),
+  saveResultIcon: $("saveResultIcon"),
+  saveResultTitle: $("saveResultTitle"),
+  saveResultFormat: $("saveResultFormat"),
+  saveResultPath: $("saveResultPath"),
+  saveResultReason: $("saveResultReason"),
+
 
   // Save Edited Photos Dialogs
   deviceDialog: $("editedPhotosDeviceDialog"),
@@ -1802,6 +1809,263 @@ async function promptForFolderBrowser({ initialFolder, tool } = {}) {
   }
 }
 
+function getSaveResultErrorMessage(result) {
+  const error = result?.error;
+  const raw = String(
+    error?.message ||
+    error?.description ||
+    error ||
+    ""
+  ).trim();
+
+  if (/2\s*gb|2\s*gigabyte/i.test(raw)) {
+    return "PSD exceeds Photoshop's 2 GB PSD file-size limit.";
+  }
+
+  return raw || "";
+}
+
+function buildCenteredSaveResult(result) {
+  if (!result || result.outcome === "cancelled") return null;
+
+  const reason = getSaveResultErrorMessage(result);
+
+  switch (result.outcome) {
+    case "success":
+      return {
+        type: "success",
+        icon: "✓",
+        title: "SAVED SUCCESSFULLY",
+        format:
+          result.outputMode === "psd"
+            ? "PSD ONLY"
+            : result.outputMode === "jpeg"
+              ? "JPG ONLY"
+              : "JPG + PSD",
+        reason: "",
+        duration: 2000
+      };
+
+    case "jpeg-failed":
+      if (result.outputMode === "both") {
+        return {
+          type: "warning",
+          icon: "!",
+          title: "PARTIALLY SAVED",
+          format: "PSD saved • JPG failed",
+          reason: reason || "JPEG could not be saved.",
+          duration: 5000
+        };
+      }
+
+      return {
+        type: "error",
+        icon: "×",
+        title: "SAVE FAILED",
+        format: "JPG could not be saved",
+        reason: reason || "JPEG save failed.",
+        duration: 5000
+      };
+
+    case "psd-failed":
+      return {
+        type: "error",
+        icon: "×",
+        title: "SAVE FAILED",
+        format: "PSD could not be saved",
+        reason: reason || "PSD save failed.",
+        duration: 5000
+      };
+
+    case "no-document":
+      return {
+        type: "error",
+        icon: "×",
+        title: "SAVE FAILED",
+        format: "No document is open",
+        reason: "",
+        duration: 4000
+      };
+
+    case "document-closed":
+      return {
+        type: "error",
+        icon: "×",
+        title: "SAVE FAILED",
+        format: "Document is no longer open",
+        reason: reason,
+        duration: 5000
+      };
+
+    case "invalid-prefix":
+      return {
+        type: "error",
+        icon: "×",
+        title: "SAVE FAILED",
+        format: "Invalid prefix",
+        reason: reason,
+        duration: 4000
+      };
+
+    case "error":
+    default:
+      return {
+        type: "error",
+        icon: "×",
+        title: "SAVE FAILED",
+        format: "Page could not be saved",
+        reason: reason || "An unexpected save error occurred.",
+        duration: 5000
+      };
+  }
+}
+
+async function getSaveEntryNativePath(entry) {
+  if (!entry) return "";
+
+  try {
+    if (entry.nativePath) {
+      return String(entry.nativePath);
+    }
+  } catch (_) {}
+
+  try {
+    const fs = require("uxp")?.storage?.localFileSystem;
+    if (fs && typeof fs.getNativePath === "function") {
+      const path = await fs.getNativePath(entry);
+      if (path) return String(path);
+    }
+  } catch (_) {}
+
+  return "";
+}
+
+function getParentPath(path) {
+  const value = String(path || "").trim();
+  if (!value) return "";
+
+  const lastBackslash = value.lastIndexOf("\\");
+  const lastSlash = value.lastIndexOf("/");
+  const lastSeparator = Math.max(lastBackslash, lastSlash);
+
+  return lastSeparator > 0
+    ? value.slice(0, lastSeparator)
+    : value;
+}
+
+async function buildSaveResultPathText(result) {
+  if (!result) return "";
+
+  const psdPath = getParentPath(
+    await getSaveEntryNativePath(result.psdEntry)
+  );
+
+  const jpegPath = getParentPath(
+    await getSaveEntryNativePath(result.jpegEntry)
+  );
+
+  if (result.outcome === "success") {
+    if (result.outputMode === "psd" && psdPath) {
+      return `Saved to:\n${psdPath}`;
+    }
+
+    if (result.outputMode === "jpeg" && jpegPath) {
+      return `Saved to:\n${jpegPath}`;
+    }
+
+    if (result.outputMode === "both") {
+      const lines = [];
+
+      if (psdPath) lines.push(`PSD: ${psdPath}`);
+      if (jpegPath) lines.push(`JPG: ${jpegPath}`);
+
+      return lines.length
+        ? `Saved to:\n${lines.join("\n")}`
+        : "";
+    }
+  }
+
+  if (result.outcome === "jpeg-failed" && psdPath) {
+    return `PSD saved to:\n${psdPath}`;
+  }
+
+  return "";
+}
+
+async function showSaveResultPopup(result) {
+  const popup = buildCenteredSaveResult(result);
+  const dialog = ui.saveResultDialog;
+
+  if (!popup || !dialog) return;
+
+  const pathText = await buildSaveResultPathText(result);
+
+  dialog.classList.remove("is-warning", "is-error");
+
+  if (popup.type === "warning") {
+    dialog.classList.add("is-warning");
+  } else if (popup.type === "error") {
+    dialog.classList.add("is-error");
+  }
+
+  if (ui.saveResultIcon) {
+    ui.saveResultIcon.textContent = popup.icon;
+  }
+
+  if (ui.saveResultTitle) {
+    ui.saveResultTitle.textContent = popup.title;
+  }
+
+  if (ui.saveResultFormat) {
+    ui.saveResultFormat.textContent = popup.format || "";
+  }
+
+  if (ui.saveResultPath) {
+    ui.saveResultPath.textContent = pathText || "";
+    ui.saveResultPath.hidden = !pathText;
+  }
+
+  if (ui.saveResultReason) {
+    ui.saveResultReason.textContent = popup.reason || "";
+    ui.saveResultReason.hidden = !popup.reason;
+  }
+
+  let timer = null;
+
+  try {
+    timer = setTimeout(() => {
+      try {
+        if (dialog.open && typeof dialog.close === "function") {
+          dialog.close("timeout");
+        }
+      } catch (_) {}
+    }, popup.duration);
+
+    if (typeof dialog.uxpShowModal === "function") {
+      await dialog.uxpShowModal({
+        title: "Frame Mitra",
+        resize: "none",
+        size: { width: 320, height: popup.reason ? 245 : pathText ? 225 : 165 }
+      });
+    } else if (typeof dialog.showModal === "function") {
+      const shown = dialog.showModal();
+      if (shown && typeof shown.then === "function") {
+        await shown;
+      }
+    }
+  } catch (error) {
+    console.error("[SAVE RESULT POPUP]", error);
+  } finally {
+    if (timer) clearTimeout(timer);
+
+    try {
+      if (dialog.open && typeof dialog.close === "function") {
+        dialog.close();
+      }
+    } catch (_) {}
+  }
+}
+
 async function handleSavePage(event) {
   if (running) return;
   running = true;
@@ -1815,13 +2079,13 @@ async function handleSavePage(event) {
       useRememberedDirectly: Boolean(event?.shiftKey)
     });
 
-    const summary = buildSavePageToast(result);
-    toast.show(summary.message, summary.type);
+    await showSaveResultPopup(result);
     return result;
   } catch (error) {
     console.error("Save Page error:", error);
-    toast.show("Save Page failed", "error");
-    return { outcome: "error", error };
+    const result = { outcome: "error", error };
+    await showSaveResultPopup(result);
+    return result;
   } finally {
     running = false;
     setButtonsDisabled(false);

@@ -71,11 +71,11 @@ test("4. Visible version is present in index.html and manifest.json", () => {
   assert.equal(manifest.id, "9beaddeb", "plugin ID must be 9beaddeb for Adobe Marketplace build");
 });
 
-test("5. Panel contains no long descriptive tool cards or permanent result panels", () => {
+test("5. Panel contains no permanent result panels; transient save-result dialog is allowed", () => {
   const html = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
-  assert.equal(/id="resultDialog"/i.test(html), false, "no resultDialog allowed");
-  assert.equal(/id="resultPanel"/i.test(html), false, "no resultPanel allowed");
-  assert.equal(/card/i.test(html), false, "no descriptive card allowed");
+  assert.equal(/id="resultPanel"/i.test(html), false, "no permanent resultPanel allowed");
+  assert.equal(/resultPanelMessage/i.test(html), false, "no permanent resultPanelMessage allowed");
+  assert.ok(/<dialog[^>]+id="saveResultDialog"/i.test(html), "transient saveResultDialog should exist");
 });
 
 test("6. Existing toast system remains present in index.html", () => {
