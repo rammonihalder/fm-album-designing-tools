@@ -101,6 +101,7 @@ test("moves only source files whose complete placement succeeded", async () => {
 
   const result = await executeAutoPhotoFill(harness.ui, harness.dependencies);
   assert.equal(result.placedCount, 1);
+  assert.equal(result.movedCount, 1);
   assert.deepEqual(harness.calls.movedFiles.map(item => item.name), ["portrait.jpg"]);
   assert.ok(harness.calls.dialogs[0].lines.includes("1 photo placed successfully."));
   assert.ok(harness.calls.dialogs[0].lines.includes("1 photo failed."));

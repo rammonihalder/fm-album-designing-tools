@@ -1495,6 +1495,18 @@ dialog#licenseDialog,
   color: #d8d8d8;
 }
 
+.save-result-details {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #cfcfcf;
+  white-space: pre-line;
+}
+
+.save-result-details[hidden] {
+  display: none;
+}
+
 .save-result-reason {
   margin-top: 12px;
   padding-top: 10px;
@@ -1503,6 +1515,7 @@ dialog#licenseDialog,
   line-height: 1.45;
   color: #cfcfcf;
   overflow-wrap: break-word;
+  white-space: pre-line;
 }
 
 .save-result-reason[hidden] {

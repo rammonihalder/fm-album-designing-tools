@@ -277,6 +277,7 @@ async function executeAutoPhotoFill(ui, dependencies) {
     return {
       outcome: hasFailures ? "completed-with-errors" : "complete",
       placedCount: summary.placedCount,
+      movedCount: moveResult.moved.length,
       failedPhotos,
       placeholderFailures,
       unmatchedPlaceholders: matchResult.unmatchedPlaceholders,

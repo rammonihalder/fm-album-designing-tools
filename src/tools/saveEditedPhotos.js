@@ -327,6 +327,7 @@ async function executeSaveEditedPhotos(dependencies = {}, options = {}) {
   // 6. Stage: scan-number & per-layer sequential processing
   let successCount = 0;
   let failedCount = 0;
+  let firstFailureError = null;
   const exportedFiles = [];
   const assignedNumbers = new Set();
 
@@ -468,7 +469,9 @@ async function executeSaveEditedPhotos(dependencies = {}, options = {}) {
           return {
             outcome: "document-closed",
             successCount,
-            failedCount: failedCount + (smartObjectLayers.length - i)
+            failedCount: failedCount + (smartObjectLayers.length - i),
+            destinationFolder: destFolder,
+            firstFailureError: firstFailureError || layerErr
           };
         }
 
@@ -486,6 +489,7 @@ async function executeSaveEditedPhotos(dependencies = {}, options = {}) {
         });
 
         failedCount++;
+        if (!firstFailureError) firstFailureError = layerErr;
 
         // Error cleanup: if smartDoc was opened, close it without saving
         if (smartDocOpened) {
@@ -557,7 +561,9 @@ async function executeSaveEditedPhotos(dependencies = {}, options = {}) {
       outcome: "failed",
       successCount: 0,
       failedCount,
-      exportedFiles
+      exportedFiles,
+      destinationFolder: destFolder,
+      firstFailureError
     };
   }
 
@@ -565,7 +571,9 @@ async function executeSaveEditedPhotos(dependencies = {}, options = {}) {
     outcome: "success",
     successCount,
     failedCount,
-    exportedFiles
+    exportedFiles,
+    destinationFolder: destFolder,
+    firstFailureError
   };
 }
 

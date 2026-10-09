@@ -154,6 +154,7 @@ const ui = {
   saveResultIcon: $("saveResultIcon"),
   saveResultTitle: $("saveResultTitle"),
   saveResultFormat: $("saveResultFormat"),
+  saveResultDetails: $("saveResultDetails"),
   saveResultPath: $("saveResultPath"),
   saveResultReason: $("saveResultReason"),
 
@@ -1518,13 +1519,18 @@ async function handleAutoPhotoFill() {
       showDialog: async () => {}
     });
     setStatus(null);
-    const summary = buildAutoPhotoFillToast(result);
-    toast.show(summary.message, summary.type);
+    const popup = buildAutoPhotoFillResult(result);
+    if (popup) {
+      await showResultPopup(popup);
+    } else {
+      const summary = buildAutoPhotoFillToast(result);
+      toast.show(summary.message, summary.type);
+    }
     return result;
   } catch (error) {
     console.error("Auto Photo Fill error:", error);
     setStatus(null);
-    toast.show("Auto Photo Fill failed", "error");
+    await showResultPopup(buildAutoPhotoFillResult({ outcome: "error", error }));
     return { outcome: "error", error };
   } finally {
     running = false;
@@ -1825,6 +1831,99 @@ function getSaveResultErrorMessage(result) {
   return raw || "";
 }
 
+function resultCount(count, singular, plural) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function getResultErrorText(error) {
+  return String(error?.message || error?.description || (typeof error === "string" ? error : "")).trim();
+}
+
+function firstFailureReason(result, groups) {
+  for (const group of groups) {
+    const entry = result?.[group]?.[0];
+    if (entry) {
+      const reason = getResultErrorText(entry.error || entry);
+      if (reason) return reason;
+    }
+  }
+  return getResultErrorText(result?.error);
+}
+
+function buildAutoPhotoFillResult(result) {
+  if (!result || ["cancelled", "no-placeholders", "invalid-placeholders"].includes(result.outcome)) return null;
+
+  if (result.outcome === "error") {
+    return {
+      type: "error", icon: "×", title: "PHOTO FILL FAILED",
+      reason: getResultErrorText(result.error) || "Photo fill could not be completed.",
+      reasonLabel: true, duration: 5000
+    };
+  }
+
+  const filled = result.placedCount || 0;
+  const failedPhotos = result.failedPhotos?.length || 0;
+  const failedPlaceholders = result.placeholderFailures?.length || 0;
+  const failedMoves = result.moveFailures?.length || 0;
+  const unmatchedPlaceholders = result.unmatchedPlaceholders?.length || 0;
+  const unmatchedPhotos = result.unmatchedPhotos?.length || 0;
+  const hasErrors = failedPhotos + failedPlaceholders + failedMoves > 0;
+  const detailLines = [];
+
+  if (failedPhotos) detailLines.push(resultCount(failedPhotos, "PHOTO FAILED", "PHOTOS FAILED"));
+  if (failedPlaceholders) detailLines.push(resultCount(failedPlaceholders, "PLACEHOLDER FAILED", "PLACEHOLDERS FAILED"));
+  if (failedMoves) detailLines.push(resultCount(failedMoves, "MOVE FAILED", "MOVES FAILED"));
+  if (unmatchedPlaceholders) detailLines.push(resultCount(unmatchedPlaceholders, "PLACEHOLDER SKIPPED", "PLACEHOLDERS SKIPPED"));
+  if (unmatchedPhotos) detailLines.push(resultCount(unmatchedPhotos, "PHOTO UNUSED", "PHOTOS UNUSED"));
+  if (!hasErrors && !unmatchedPlaceholders && !unmatchedPhotos) detailLines.push("All selected placeholders filled");
+  detailLines.push(`Album Used: ${resultCount(result.movedCount || 0, "photo moved", "photos moved")}`);
+
+  return {
+    type: hasErrors ? "warning" : "success",
+    icon: hasErrors ? "!" : "✓",
+    title: hasErrors ? "COMPLETED WITH ISSUES" : "PHOTO FILL COMPLETE",
+    summary: resultCount(filled, "PHOTO FILLED", "PHOTOS FILLED"),
+    detailLines,
+    reason: hasErrors ? firstFailureReason(result, ["failedPhotos", "placeholderFailures", "moveFailures"]) || "Some items could not be processed." : "",
+    reasonLabel: true,
+    duration: hasErrors ? 5000 : 3000
+  };
+}
+
+function buildSaveEditedPhotosResult(result) {
+  if (!result || ["cancelled", "no-document", "no-smart-objects"].includes(result.outcome)) return null;
+
+  const saved = result.successCount || 0;
+  const failed = result.failedCount || 0;
+  const reason = getResultErrorText(result.firstFailureError || result.error);
+
+  if (result.outcome === "success" && saved > 0 && failed === 0) {
+    return {
+      type: "success", icon: "✓", title: "EDITED PHOTOS SAVED",
+      summary: resultCount(saved, "PHOTO SAVED", "PHOTOS SAVED"),
+      pathEntry: result.destinationFolder,
+      duration: 3000
+    };
+  }
+
+  if (saved > 0 && failed > 0) {
+    return {
+      type: "warning", icon: "!", title: "PARTIALLY SAVED",
+      summary: `${saved} SAVED • ${failed} FAILED`,
+      pathEntry: result.destinationFolder,
+      reason: reason || "Some edited photos could not be saved.",
+      reasonLabel: true, duration: 5000
+    };
+  }
+
+  return {
+    type: "error", icon: "×", title: "EXPORT FAILED",
+    summary: `${saved} SAVED • ${failed} FAILED`,
+    reason: reason || "Edited photos could not be exported.",
+    reasonLabel: true, duration: 5000
+  };
+}
+
 function buildCenteredSaveResult(result) {
   if (!result || result.outcome === "cancelled") return null;
 
@@ -1992,13 +2091,17 @@ async function buildSaveResultPathText(result) {
   return "";
 }
 
-async function showSaveResultPopup(result) {
-  const popup = buildCenteredSaveResult(result);
+async function buildEditedPhotosPathText(popup) {
+  const path = await getSaveEntryNativePath(popup?.pathEntry);
+  return path ? `Saved to:\n${path}` : "";
+}
+
+async function showResultPopup(popup) {
   const dialog = ui.saveResultDialog;
 
   if (!popup || !dialog) return;
 
-  const pathText = await buildSaveResultPathText(result);
+  const pathText = popup.pathText || await buildEditedPhotosPathText(popup);
 
   dialog.classList.remove("is-warning", "is-error");
 
@@ -2017,7 +2120,13 @@ async function showSaveResultPopup(result) {
   }
 
   if (ui.saveResultFormat) {
-    ui.saveResultFormat.textContent = popup.format || "";
+    ui.saveResultFormat.textContent = popup.summary || popup.format || "";
+  }
+
+  if (ui.saveResultDetails) {
+    const details = (popup.detailLines || []).join("\n");
+    ui.saveResultDetails.textContent = details;
+    ui.saveResultDetails.hidden = !details;
   }
 
   if (ui.saveResultPath) {
@@ -2026,7 +2135,9 @@ async function showSaveResultPopup(result) {
   }
 
   if (ui.saveResultReason) {
-    ui.saveResultReason.textContent = popup.reason || "";
+    ui.saveResultReason.textContent = popup.reason
+      ? `${popup.reasonLabel ? "Reason:\n" : ""}${popup.reason}`
+      : "";
     ui.saveResultReason.hidden = !popup.reason;
   }
 
@@ -2042,10 +2153,11 @@ async function showSaveResultPopup(result) {
     }, popup.duration);
 
     if (typeof dialog.uxpShowModal === "function") {
+      const detailHeight = (popup.detailLines || []).length * 17;
       await dialog.uxpShowModal({
         title: "Frame Mitra",
         resize: "none",
-        size: { width: 320, height: popup.reason ? 245 : pathText ? 225 : 165 }
+        size: { width: 320, height: (popup.reason ? 245 : pathText ? 225 : 165) + detailHeight }
       });
     } else if (typeof dialog.showModal === "function") {
       const shown = dialog.showModal();
@@ -2064,6 +2176,13 @@ async function showSaveResultPopup(result) {
       }
     } catch (_) {}
   }
+}
+
+async function showSaveResultPopup(result) {
+  const popup = buildCenteredSaveResult(result);
+  if (!popup) return;
+  popup.pathText = await buildSaveResultPathText(result);
+  await showResultPopup(popup);
 }
 
 async function handleSavePage(event) {
@@ -2179,12 +2298,17 @@ async function handleSaveEditedPhotos(event) {
       browseFolder: promptForFolderBrowser,
       useRememberedDirectly: Boolean(event?.shiftKey)
     });
-    const summary = buildSaveEditedPhotosToast(result);
-    toast.show(summary.message, summary.type);
+    const popup = buildSaveEditedPhotosResult(result);
+    if (popup) {
+      await showResultPopup(popup);
+    } else {
+      const summary = buildSaveEditedPhotosToast(result);
+      toast.show(summary.message, summary.type);
+    }
     return result;
   } catch (error) {
     console.error("Save Edited Photos error:", error);
-    toast.show("Edited photo export failed", "error");
+    await showResultPopup(buildSaveEditedPhotosResult({ outcome: "error", error }));
     return { outcome: "error", error };
   } finally {
     running = false;
@@ -2928,10 +3052,13 @@ if (typeof module !== "undefined" && module.exports) {
     promptForSaveFrameDialog,
     handleSaveFrame,
     buildAutoPhotoFillToast,
+    buildAutoPhotoFillResult,
     buildOpenPsdToast,
     buildFlipPhotoToast,
     buildSavePageToast,
     buildSaveEditedPhotosToast,
+    buildSaveEditedPhotosResult,
+    buildEditedPhotosPathText,
     buildSavePsdCategoryToast,
     buildRemovePhotosToast,
     handleOpenPsd,

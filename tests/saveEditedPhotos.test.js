@@ -345,6 +345,7 @@ test("10. Non-Smart-Object selected layers skipped", async () => {
 
   assert.equal(result.outcome, "success");
   assert.equal(result.successCount, 2);
+  assert.equal(result.destinationFolder, folder);
   assert.deepEqual(processedLayerIds, [101, 102], "text layer 201 must be skipped");
 });
 
@@ -1037,6 +1038,8 @@ test("32-35. JPEG failure after Smart Object open: PSB document closes without s
 
   assert.equal(result.successCount, 1);
   assert.equal(result.failedCount, 1);
+  assert.equal(result.destinationFolder, folder);
+  assert.equal(result.firstFailureError?.message, "JPEG disk error");
   assert.deepEqual(closedDocs, [201, 202], "32. failing PSB 201 must still be closed");
   assert.equal(app.documents.length, 1, "35. no orphan PSB left open");
 

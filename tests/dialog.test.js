@@ -118,13 +118,13 @@ function harness({ count = 6, placeholders = 5, moveFails = false } = {}) {
     "savePsdCategoryDialog", "savePsdCategorySelect", "savePsdCustomNameInput", "savePsdDeleteOriginalCheckbox", "savePsdDeleteWarning", "savePsdDialogSaveBtn", "savePsdDialogCancelBtn",
     "savePsdOrientationDialog", "orientationLandscapeInput", "orientationPortraitInput", "orientationSquareInput", "orientationContinueBtn", "orientationCancelBtn",
     "savePsdDeleteConfirmDialog", "savePsdConfirmDeleteBtn", "savePsdCancelDeleteBtn",
-    "resultPanel", "resultPanelTitle", "resultPanelMessage",
-    "resultDialog", "resultDialogTitle", "resultDialogMessage", "resultDialogOk"
+    "saveResultDialog", "saveResultIcon", "saveResultTitle", "saveResultFormat", "saveResultDetails", "saveResultPath", "saveResultReason"
   ];
   for (const id of ids) {
     elements.set(id, {
       children: [], textContent: "", className: "", hidden: true, listeners: {},
       scrolls: 0, focused: false, value: "", checked: false, disabled: false,
+      classList: { remove() {}, add() {} },
       get firstChild() { return this.children[0]; },
       appendChild(child) { this.children.push(child); },
       removeChild(child) { this.children.splice(this.children.indexOf(child), 1); },
@@ -244,23 +244,27 @@ function harness({ count = 6, placeholders = 5, moveFails = false } = {}) {
   };
 }
 
-test("real completion shows five placements plus one extra in the panel without any popup", async () => {
+test("real completion shows five placements plus one unused photo in the centered popup", async () => {
   const h = harness();
   await h.run();
   assert.equal(h.outcome.placedCount, 5);
-  assert.equal(h.modalCalls, 0);
-  assert.equal(h.elements.get("toast").hidden, false);
-  assert.equal(h.elements.get("toast").textContent, "5 photos filled • 1 skipped");
+  assert.equal(h.modalCalls, 1);
+  assert.equal(h.elements.get("saveResultTitle").textContent, "PHOTO FILL COMPLETE");
+  assert.equal(h.elements.get("saveResultFormat").textContent, "5 PHOTOS FILLED");
+  assert.equal(h.elements.get("saveResultDetails").textContent, "1 PHOTO UNUSED\nAlbum Used: 5 photos moved");
+  assert.equal(h.elements.get("toast").hidden, true);
   assert.equal(h.elements.get("autoPhotoFillBtn").disabled, false);
 });
 
-test("failed moves preserve completion and report the move failures in toast without a popup", async () => {
+test("failed moves preserve completion and report the move failures in the centered popup", async () => {
   const h = harness({ moveFails: true });
   await h.run();
-  assert.equal(h.modalCalls, 0);
+  assert.equal(h.modalCalls, 1);
   assert.equal(h.outcome.placedCount, 5);
-  assert.equal(h.elements.get("toast").hidden, false);
-  assert.equal(h.elements.get("toast").textContent, "5 photos filled • 1 skipped • 5 moves failed");
+  assert.equal(h.elements.get("saveResultTitle").textContent, "COMPLETED WITH ISSUES");
+  assert.match(h.elements.get("saveResultDetails").textContent, /5 MOVES FAILED/);
+  assert.match(h.elements.get("saveResultReason").textContent, /permission denied/);
+  assert.equal(h.elements.get("toast").hidden, true);
 });
 
 test("no-placeholder warning remains readable and does not open the picker or broken modal", async () => {
