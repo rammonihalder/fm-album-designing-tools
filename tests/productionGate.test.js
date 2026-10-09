@@ -617,15 +617,15 @@ test("26. plugin ID in manifest is 9beaddeb", () => {
   assert.equal(manifest.id, "9beaddeb");
 });
 
-test("27. manifest version and PLUGIN_VERSION are both 1.4.1", () => {
+test("27. manifest version and PLUGIN_VERSION are both 1.4.2", () => {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8")
   );
-  assert.equal(manifest.version, "1.4.1");
-  assert.equal(PLUGIN_VERSION, "1.4.1");
+  assert.equal(manifest.version, "1.4.2");
+  assert.equal(PLUGIN_VERSION, "1.4.2");
 
   const indexHtml = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
-  assert.ok(indexHtml.includes('<span class="version">v1.4.1</span>'));
+  assert.ok(indexHtml.includes('<span class="version">v1.4.2</span>'));
 });
 
 test("28. productionConfig API domain matches manifest network permission", () => {

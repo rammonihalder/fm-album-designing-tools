@@ -11,7 +11,7 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf
 test("v1.4 manifest uses the Frame Mitra product name and version without changing plugin ID", () => {
   const manifest = JSON.parse(read("manifest.json"));
   assert.equal(manifest.name, "FM Album Designing Tools");
-  assert.equal(manifest.version, "1.4.1");
+  assert.equal(manifest.version, "1.4.2");
   assert.equal(manifest.id, "9beaddeb");
   assert.equal(manifest.entrypoints[0].label.default, "FM Album Designing Tools");
 });
@@ -20,14 +20,14 @@ test("v1.4 panel exposes exact Frame Mitra brand, product, version, footer, and 
   const html = read("index.html");
   assert.match(html, />FRAME MITRA</);
   assert.match(html, />FM Album Designing Tools</);
-  assert.match(html, />v1\.4\.1</);
+  assert.match(html, />v1\.4\.2</);
   assert.match(html, />Developed by Hridita Innovations</);
   assert.match(html, /aria-label="Buy FM Album Designing Tools license via WhatsApp"/);
 });
 
 test("v1.4 licensing constants use exact purchase copy and preserve WhatsApp contact", () => {
   const constants = require("../src/licensing/constants");
-  assert.equal(constants.PLUGIN_VERSION, "1.4.1");
+  assert.equal(constants.PLUGIN_VERSION, "1.4.2");
   assert.equal(constants.ADMIN_CONTACT_DISPLAY, "7001514367");
   assert.equal(constants.ADMIN_CONTACT_E164, "917001514367");
   assert.equal(constants.ADMIN_WHATSAPP_MESSAGE, "I want to buy a license for FM Album Designing Tools.");

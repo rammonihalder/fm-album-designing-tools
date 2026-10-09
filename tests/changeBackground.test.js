@@ -978,7 +978,7 @@ test("48. Licensing runtime has no DEV bypass and manifest version is valid", ()
   assert.equal(main.DEV_LICENSE_BYPASS, undefined);
   assert.equal(main.setDevLicenseBypass, undefined);
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8"));
-  assert.ok(manifest.version === "1.4.1" || manifest.version === "1.3.0" || manifest.version === "1.2.0");
+  assert.ok(manifest.version === "1.4.2" || manifest.version === "1.3.0" || manifest.version === "1.2.0");
 });
 
 // =============================================================

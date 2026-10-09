@@ -88,14 +88,14 @@ test("2. manifest name remains 'FM Album Designing Tools'", () => {
   assert.match(html, />FRAME MITRA</);
 });
 
-test("3. manifest version remains 1.4.1", () => {
+test("3. manifest version remains 1.4.2", () => {
   const manifest = readManifest();
-  assert.equal(manifest.version, "1.4.1");
+  assert.equal(manifest.version, "1.4.2");
   assert.equal(manifest.manifestVersion, 5);
-  assert.equal(PLUGIN_VERSION, "1.4.1");
+  assert.equal(PLUGIN_VERSION, "1.4.2");
 
   const html = readIndexHtml();
-  assert.match(html, /v1\.4\.1/);
+  assert.match(html, /v1\.4\.2/);
 });
 
 test("4. Photoshop host remains unchanged", () => {

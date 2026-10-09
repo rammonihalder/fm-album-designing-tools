@@ -1,4 +1,4 @@
-# FM Album Designing Tools v1.4.1
+# FM Album Designing Tools v1.4.2
 
 **Brand:** Frame Mitra | **Developer:** Hridita Innovations
 
