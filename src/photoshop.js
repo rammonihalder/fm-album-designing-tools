@@ -40,31 +40,142 @@ function readBounds(layer) {
   };
 }
 
-async function placeEmbedded(fileEntry) {
-  const token = await localFileSystem.createSessionToken(fileEntry);
+function isSmartObjectLayer(layer) {
+  if (!layer) return false;
+  const kind = String(layer.kind).toLowerCase();
+  const smartObjectKind = constants?.LayerKind?.SMARTOBJECT;
+  return kind === "smartobject" || kind === "5" ||
+    (smartObjectKind !== undefined && kind === String(smartObjectKind).toLowerCase());
+}
 
-  await action.batchPlay([
-    {
-      _obj: "placeEvent",
-      ID: 6,
-      null: {
-        _path: token,
-        _kind: "local"
-      },
-      freeTransformCenterState: {
-        _enum: "quadCenterState",
-        _value: "QCSAverage"
-      },
-      offset: {
-        _obj: "offset",
-        horizontal: { _unit: "pixelsUnit", _value: 0 },
-        vertical: { _unit: "pixelsUnit", _value: 0 }
-      },
-      _options: { dialogOptions: "dontDisplay" }
+function notePlacementCleanupError(error, cleanupError, fileEntry) {
+  if (!error.cleanupError) error.cleanupError = cleanupError;
+  console.warn(`Could not fully clean up placement for ${fileEntry.name}:`, cleanupError);
+}
+
+async function removeNewAlbumLayers(albumDocument, previousLayerIds) {
+  app.activeDocument = albumDocument;
+  const newLayers = Array.from(albumDocument.layers || []).filter(layer => !previousLayerIds.has(layer.id));
+  for (const layer of newLayers) await layer.delete();
+}
+
+async function duplicateConvertedLayer(sourceLayer, sourceDocument, albumDocument, previousLayerIds) {
+  function validateCopy(copy) {
+    app.activeDocument = albumDocument;
+    if (!copy || !copy.id || previousLayerIds.has(copy.id) ||
+        (copy.document && copy.document.id !== albumDocument.id) || !isSmartObjectLayer(copy)) {
+      throw new Error("Photoshop did not create exactly one embedded Smart Object layer in the album.");
     }
-  ], {});
 
-  return app.activeDocument.activeLayers[0];
+    // duplicate() returns the new target layer. Its document and fresh ID are
+    // authoritative when the target collection lags behind document switching.
+    if (copy.document?.id === albumDocument.id) return copy;
+
+    const created = Array.from(albumDocument.layers || []).filter(layer => !previousLayerIds.has(layer.id));
+    if (created.length !== 1 || created[0].id !== copy.id) {
+      throw new Error("Photoshop did not create exactly one embedded Smart Object layer in the album.");
+    }
+    return copy;
+  }
+
+  app.activeDocument = sourceDocument;
+  try {
+    return validateCopy(await sourceLayer.duplicate(albumDocument));
+  } catch (primaryError) {
+    // Native duplication may insert a layer before throwing or returning an invalid result.
+    await removeNewAlbumLayers(albumDocument, previousLayerIds);
+    app.activeDocument = sourceDocument;
+    if (typeof sourceDocument.duplicateLayers !== "function") throw primaryError;
+    const copies = Array.from(await sourceDocument.duplicateLayers([sourceLayer], albumDocument) || []);
+    if (copies.length !== 1) throw new Error("Photoshop did not return one Smart Object layer from the duplicate fallback.");
+    return validateCopy(copies[0]);
+  }
+}
+
+async function createEditableSmartObjectFromSource(fileEntry, albumDocument, executionContext) {
+  app.activeDocument = albumDocument;
+  const previousDocumentIds = snapshotDocumentIds(app.documents);
+  const previousLayerIds = new Set(Array.from(albumDocument.layers || [], layer => layer.id));
+  const hostControl = executionContext?.hostControl;
+  let sourceDocument = null;
+  let ownsSource = false;
+  let registered = false;
+  let sourceClosed = false;
+  let copiedLayer = null;
+  let failure = null;
+
+  try {
+    sourceDocument = await app.open(fileEntry);
+    const ownership = classifyOpenedDocument(sourceDocument, previousDocumentIds, albumDocument.id);
+    if (ownership.isAlbum) throw new Error("The album document cannot be used as a source photo.");
+    if (ownership.wasAlreadyOpen) throw new Error("The source photo is already open. Close it before AUTO PHOTO FILL so it is not modified.");
+    ownsSource = ownership.shouldClose;
+    if (!ownsSource) throw new Error("Photoshop did not open a temporary source photo document.");
+
+    if (hostControl?.registerAutoCloseDocument) {
+      await hostControl.registerAutoCloseDocument(sourceDocument.id);
+      registered = true;
+    }
+
+    app.activeDocument = sourceDocument;
+    const pixelLayer = Array.from(sourceDocument.layers || [])[0];
+    if (!pixelLayer || isSmartObjectLayer(pixelLayer)) {
+      throw new Error("The source photo did not open with a pixel layer to convert.");
+    }
+    await selectLayerById(pixelLayer.id);
+    if (sourceDocument.activeLayers?.[0]?.id !== pixelLayer.id) {
+      throw new Error("Could not select the source photo pixel layer.");
+    }
+
+    const conversion = await action.batchPlay([
+      { _obj: "newPlacedLayer", _options: { dialogOptions: "dontDisplay" } }
+    ], {});
+    const conversionError = conversion?.find(result => /error/i.test(result?._obj || "") || result?.result < 0);
+    if (conversionError) throw new Error(conversionError.message || "Could not convert the source photo to a Smart Object.");
+
+    const sourceSmartObject = sourceDocument.activeLayers?.[0];
+    if (!isSmartObjectLayer(sourceSmartObject)) {
+      throw new Error("Photoshop did not create a Smart Object from the source photo pixel layer.");
+    }
+    copiedLayer = await duplicateConvertedLayer(sourceSmartObject, sourceDocument, albumDocument, previousLayerIds);
+  } catch (error) {
+    failure = error;
+  } finally {
+    if (ownsSource && sourceDocument) {
+      try {
+        app.activeDocument = sourceDocument;
+        await sourceDocument.closeWithoutSaving();
+        sourceClosed = true;
+      } catch (closeError) {
+        if (failure) notePlacementCleanupError(failure, closeError, fileEntry);
+        else failure = closeError;
+      }
+    }
+    if (sourceClosed && registered && hostControl?.unregisterAutoCloseDocument) {
+      try {
+        await hostControl.unregisterAutoCloseDocument(sourceDocument.id);
+      } catch (unregisterError) {
+        if (failure) notePlacementCleanupError(failure, unregisterError, fileEntry);
+        else failure = unregisterError;
+      }
+    }
+    try {
+      app.activeDocument = albumDocument;
+    } catch (restoreError) {
+      if (failure) notePlacementCleanupError(failure, restoreError, fileEntry);
+      else failure = restoreError;
+    }
+  }
+
+  if (failure) {
+    try {
+      await removeNewAlbumLayers(albumDocument, previousLayerIds);
+    } catch (cleanupError) {
+      notePlacementCleanupError(failure, cleanupError, fileEntry);
+    }
+    throw failure;
+  }
+  return copiedLayer;
 }
 
 async function fitCover(placedLayer, targetLayer) {
@@ -90,23 +201,29 @@ async function fitCover(placedLayer, targetLayer) {
   await placedLayer.translate(targetCenterX - placedCenterX, targetCenterY - placedCenterY);
 }
 
-async function placePhotoOnPlaceholder(fileEntry, placeholder, options) {
+async function placePhotoOnPlaceholder(fileEntry, placeholder, options, albumDocument = app.activeDocument, executionContext) {
   let placed = null;
 
   try {
-    placed = await placeEmbedded(fileEntry);
+    placed = await createEditableSmartObjectFromSource(fileEntry, albumDocument, executionContext);
 
-    await placed.move(placeholder, constants.ElementPlacement.PLACEBEFORE);
+    app.activeDocument = albumDocument;
+    const currentPlaceholder = flattenDocLayers(albumDocument.layers, [])
+      .find(layer => layer.id === placeholder.id) || placeholder;
+    await placed.move(currentPlaceholder, constants.ElementPlacement.PLACEBEFORE);
 
     if (options.coverFit) {
-      await fitCover(placed, placeholder);
+      app.activeDocument = albumDocument;
+      await fitCover(placed, currentPlaceholder);
     }
 
     if (options.clipToPlaceholder) {
+      app.activeDocument = albumDocument;
       placed.isClippingMask = true;
     }
 
     if (options.renameLayer) {
+      app.activeDocument = albumDocument;
       placed.name = `Frame Mitra ${fileEntry.name}`;
     }
 
@@ -196,8 +313,9 @@ async function inspectImageFiles(fileEntries, onProgress) {
 
 async function runPlacement(items, options, onProgress) {
   return core.executeAsModal(async executionContext => {
+    const albumDocument = app.activeDocument;
     const suspension = await executionContext.hostControl.suspendHistory({
-      documentID: app.activeDocument.id,
+      documentID: albumDocument.id,
       name: "FM Album Designing Tools - Auto Photo Fill"
     });
     const placedItems = [];
@@ -206,7 +324,8 @@ async function runPlacement(items, options, onProgress) {
     try {
       for (let i = 0; i < items.length; i++) {
         try {
-          await placePhotoOnPlaceholder(items[i].file, items[i].layer, options);
+          app.activeDocument = albumDocument;
+          await placePhotoOnPlaceholder(items[i].file, items[i].layer, options, albumDocument, executionContext);
           placedItems.push(items[i]);
         } catch (error) {
           failedItems.push({ item: items[i], error });

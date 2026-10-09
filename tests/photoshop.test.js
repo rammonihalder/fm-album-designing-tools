@@ -7,14 +7,40 @@ const Module = require("node:module");
 function loadPhotoshopModule(placedLayer) {
   const originalLoad = Module._load;
   const modulePath = require.resolve("../src/photoshop");
+  const album = { id: 1, layers: [{ id: 44 }] };
+  const pixel = { id: 20, kind: "pixel" };
+  const source = { id: 2, layers: [pixel], activeLayers: [pixel], closeWithoutSaving() {} };
+  const app = {
+    activeDocument: album,
+    documents: [album],
+    async open() {
+      this.documents.push(source);
+      this.activeDocument = source;
+      return source;
+    }
+  };
+  placedLayer.id = 30;
+  placedLayer.kind = "smartObject";
+  placedLayer.document = album;
+  const converted = {
+    id: 21, kind: "smartObject",
+    async duplicate() {
+      album.layers.unshift(placedLayer);
+      return placedLayer;
+    }
+  };
 
   Module._load = function mockLoad(request, parent, isMain) {
     if (request === "photoshop") {
       return {
-        app: { activeDocument: { activeLayers: [placedLayer] } },
-        action: { batchPlay: async () => [] },
+        app,
+        action: { batchPlay: async descriptors => {
+          if (descriptors[0]._obj === "newPlacedLayer") source.activeLayers = [converted];
+          return [{ _obj: "success" }];
+        } },
         core: {},
         constants: {
+          LayerKind: { SMARTOBJECT: "smartObject" },
           ElementPlacement: { PLACEBEFORE: "placeBefore" },
           AnchorPosition: { MIDDLECENTER: "middleCenter" }
         }
