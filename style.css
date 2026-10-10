@@ -1046,6 +1046,19 @@ dialog#licenseDialog,
 
 
 
+/* Manual Adjust Light dialog: native UXP range input inside a separate dialog. */
+#adjustLightDialog { width: 350px; max-width: 94vw; padding: 0; }
+.adjust-light-dialog-content { display: flex; flex-direction: column; padding: 16px; gap: 10px; }
+.adjust-light-dialog-content h2 { color: #fff; font-size: 14px; font-weight: 700; margin: 0; }
+.adjust-light-hint { color: var(--muted); font-size: 10px; line-height: 1.4; margin: 0 0 6px; }
+.adjust-light-label-row, .adjust-light-ends { display: flex; justify-content: space-between; align-items: center; }
+.adjust-light-label-row label { color: #e5e5e5; font-size: 12px; font-weight: 600; }
+.adjust-light-label-row strong { color: #72d69c; font-size: 13px; min-width: 42px; text-align: right; }
+#adjustLightSlider { display: block; width: 100%; height: 28px; margin: 0; accent-color: #2ea36a; }
+.adjust-light-ends { color: var(--muted); font-size: 10px; }
+.adjust-light-buttons { display: flex; gap: 7px; margin-top: 7px; }
+.adjust-light-buttons .btn { flex: 1; min-width: 0; font-size: 10px; padding: 8px 5px; }
+
 /* -------------------------------------------------------------
  * Create Album / Create Page
  * ------------------------------------------------------------- */

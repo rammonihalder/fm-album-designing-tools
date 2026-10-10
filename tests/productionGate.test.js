@@ -334,7 +334,8 @@ test("16. all current tool buttons are wrapped in wrapProtectedAction()", () => 
     "ui.changeBackgroundBtn",
     "ui.quickBrightnessBtn",
     "ui.quickLevelsBtn",
-    "ui.quickCurvesBtn"
+    "ui.quickCurvesBtn",
+    "ui.adjustLightBtn"
   ];
 
   for (const btn of expectedGatedButtons) {

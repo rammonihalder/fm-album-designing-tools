@@ -3,6 +3,12 @@
 // The adjustment payloads below come from the existing Photoshop-recorded
 // commands. Host support and visible results still require Photoshop testing.
 const CORRECTIONS = {
+  light: {
+    name: "FM Adjust Light",
+    kindKey: "BRIGHTNESSCONTRAST",
+    type: { _obj: "brightnessEvent", useLegacy: false },
+    settings: { _obj: "brightnessEvent", brightness: 0, contrast: 0, useLegacy: false }
+  },
   brightness: {
     name: "FM Auto Brightness/Contrast",
     kindKey: "BRIGHTNESSCONTRAST",
@@ -48,6 +54,21 @@ const CORRECTIONS = {
     }
   }
 };
+
+function validateManualBrightness(value) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < -100 || value > 100) {
+    throw new Error("Adjust Light requires a whole-number Brightness value from -100 to +100.");
+  }
+  return value;
+}
+
+function getCorrectionSpec(key, brightness) {
+  const spec = CORRECTIONS[key];
+  if (!spec) throw new Error("Unknown Quick Edit correction.");
+  if (key !== "light") return spec;
+  // New descriptor each time: never mutate the shared automatic correction specs.
+  return { ...spec, settings: { ...spec.settings, brightness: validateManualBrightness(brightness) } };
+}
 
 function makeDescriptor(spec) {
   const using = { _obj: "adjustmentLayer", type: spec.type };
@@ -164,12 +185,11 @@ function assertCreatedAbovePhoto(doc, photoId, previousIds, expectedKind) {
   return added[0];
 }
 
-async function runCorrection(key, { photoshop, mode, modalContext } = {}) {
+async function runCorrection(key, { photoshop, mode, modalContext, brightness } = {}) {
+  const spec = getCorrectionSpec(key, brightness);
   const ps = photoshop || require("photoshop");
-  if (mode === "composite") return runCompositeCorrection(key, ps, modalContext);
+  if (mode === "composite") return runCompositeCorrection(spec, ps, modalContext);
   if (mode !== undefined && mode !== "photo") throw new Error("Unknown QUICK EDIT mode.");
-  const spec = CORRECTIONS[key];
-  if (!spec) throw new Error("Unknown Quick Edit correction.");
   const expectedKind = ps.constants?.LayerKind?.[spec.kindKey];
   if (expectedKind === undefined) throw new Error("Photoshop adjustment-layer type verification is unavailable.");
   if (typeof ps.core?.executeAsModal !== "function" ||
@@ -329,8 +349,7 @@ async function selectLayerById(ps, id, add = false) {
   await play(ps.action, command, "layer selection");
 }
 
-async function runCompositeCorrection(key, ps, providedContext) {
-  const spec = CORRECTIONS[key];
+async function runCompositeCorrection(spec, ps, providedContext) {
   const expectedKind = ps.constants?.LayerKind?.[spec.kindKey];
   if (expectedKind === undefined) {
     throw new Error("Photoshop adjustment-layer type verification is unavailable.");
@@ -421,5 +440,6 @@ async function runCompositeCorrection(key, ps, providedContext) {
 function autoBrightness(options) { return runCorrection("brightness", options); }
 function autoLevels(options) { return runCorrection("levels", options); }
 function autoCurves(options) { return runCorrection("curves", options); }
+function manualLight(options) { return runCorrection("light", options); }
 
-module.exports = { autoBrightness, autoLevels, autoCurves };
+module.exports = { autoBrightness, autoLevels, autoCurves, manualLight, validateManualBrightness };

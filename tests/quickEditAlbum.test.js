@@ -137,14 +137,14 @@ test("QUICK EDIT follows CREATE ALBUM with four static, visible controls", () =>
   const rowStarts = Array.from(section.matchAll(/<div class="quick-edit-row">/g), match => match.index);
   const rows = rowStarts.map((start, index) => section.slice(start, rowStarts[index + 1] ?? section.indexOf('id="quickEditReport"')));
   assert.equal(rows.length, 2, "four controls must occupy two visible rows");
-  assert.deepEqual(rows.map(row => Array.from(row.matchAll(/id="(quick\w+Btn)"/g), match => match[1])), [
-    ["quickBrightnessBtn", "quickLevelsBtn"], ["quickCurvesBtn", "quickWhiteBalanceBtn"]
+  assert.deepEqual(rows.map(row => Array.from(row.matchAll(/id="(quick\w+Btn|adjustLightBtn)"/g), match => match[1])), [
+    ["quickBrightnessBtn", "quickLevelsBtn"], ["quickCurvesBtn", "adjustLightBtn"]
   ]);
   const tiles = [
     ["quickBrightnessBtn", "Auto Brightness", "Brightness + Contrast"],
     ["quickLevelsBtn", "Auto Levels", "Tonal balance"],
     ["quickCurvesBtn", "Auto Curves", "Curves correction"],
-    ["quickWhiteBalanceBtn", "White Balance", "Coming soon"]
+    ["adjustLightBtn", "Adjust Light", "Brighter / Darker"]
   ];
   for (let index = 0; index < tiles.length; index++) {
     const [id, title, subtitle] = tiles[index];
@@ -174,7 +174,8 @@ test("QUICK EDIT follows CREATE ALBUM with four static, visible controls", () =>
   assert.match(main, /attachActionHandler\(ui\.quickBrightnessBtn, wrapProtectedAction\(\(\) => handleQuickEdit\("brightness"\)\)\)/);
   assert.match(main, /attachActionHandler\(ui\.quickLevelsBtn, wrapProtectedAction\(\(\) => handleQuickEdit\("levels"\)\)\)/);
   assert.match(main, /attachActionHandler\(ui\.quickCurvesBtn, wrapProtectedAction\(\(\) => handleQuickEdit\("curves"\)\)\)/);
-  assert.match(html, /id="quickWhiteBalanceBtn"[^>]*disabled/);
+  assert.doesNotMatch(html, /id="quickWhiteBalanceBtn"/);
+  assert.match(main, /attachActionHandler\(ui\.adjustLightBtn, wrapProtectedAction\(handleAdjustLight\)\)/);
   assert.doesNotMatch(section, /assets\/icons\/quick-|<img/);
   assert.doesNotMatch(main, /attachActionHandler\(ui\.quickWhiteBalanceBtn/);
 });

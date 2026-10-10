@@ -135,3 +135,73 @@ test('composite correction fails before changes if pixel selection is active',as
   assert.equal(f.calls.descriptors.length,0);
   assert.equal(f.inner.saves,0);
 });
+
+// Manual slider correction runs through the SAME verified composite PSB flow.
+test('Adjust Light applies exact positive, negative, and zero brightness with zero contrast', async () => {
+  for (const value of [-100, -35, 0, 40, 100]) {
+    const f = createHost();
+    const result = await runAlbumQuickEdit('light', { photoshop: f.ps, brightness: value });
+    assert.equal(result.successCount, 1);
+    const set = f.calls.descriptors.find(c => c._obj === 'set');
+    assert.ok(set);
+    assert.deepEqual(set.to, { _obj: 'brightnessEvent', brightness: value, contrast: 0, useLegacy: false });
+    assert.equal(f.inner.layers[0].name, 'FM Adjust Light [FMQE]');
+    assert.equal(f.inner.layers[0].isClippingMask, false);
+    assert.equal(f.inner.saves, 0);
+    assert.equal(f.inner.closes, 0);
+  }
+});
+
+test('Adjust Light repeated Apply updates exactly one managed layer without stacking', async () => {
+  const f = createHost();
+  const a = await runAlbumQuickEdit('light', { photoshop: f.ps, brightness: 80 });
+  const b = await runAlbumQuickEdit('light', { photoshop: f.ps, brightness: -30 });
+  const c = await runAlbumQuickEdit('light', { photoshop: f.ps, brightness: 0 });
+  assert.equal(a.items[0].outcome, 'applied');
+  assert.equal(b.items[0].outcome, 'updated');
+  assert.equal(c.items[0].outcome, 'updated');
+  assert.equal(f.inner.layers.filter(l => l.name === 'FM Adjust Light [FMQE]').length, 1);
+  assert.deepEqual(f.calls.descriptors.filter(d => d._obj === 'set').map(d => d.to.brightness), [80, -30, 0]);
+});
+
+test('Adjust Light does not interfere with existing Auto Brightness correction', async () => {
+  const f = createHost();
+  await runAlbumQuickEdit('brightness', { photoshop: f.ps });
+  await runAlbumQuickEdit('light', { photoshop: f.ps, brightness: 25 });
+  const final = await runAlbumQuickEdit('brightness', { photoshop: f.ps });
+  assert.equal(final.items[0].outcome, 'updated');
+  assert.equal(f.inner.layers.filter(l => l.name === 'FM Adjust Light [FMQE]').length, 1);
+  assert.equal(f.inner.layers.filter(l => l.name === 'FM Auto Brightness/Contrast [FMQE]').length, 1);
+});
+
+test('Adjust Light from Album PSD saves ONLY the opened inner PSB', async () => {
+  const f = createHost({ albumMode: true });
+  const result = await runAlbumQuickEdit('light', { photoshop: f.ps, brightness: -55 });
+  assert.equal(result.successCount, 1);
+  assert.equal(f.inner.saves, 1);
+  assert.equal(f.inner.closes, 1);
+  assert.equal(f.ps.app.activeDocument, f.album);
+  const set = f.calls.descriptors.find(c => c._obj === 'set');
+  assert.equal(set.to.brightness, -55);
+  assert.equal(set.to.contrast, 0);
+  assert.equal(f.album.save, undefined);
+});
+
+test('invalid Adjust Light values fail before opening or editing Photoshop', async () => {
+  for (const invalid of [undefined, NaN, Infinity, -101, 101, 10.5, '30', null]) {
+    const f = createHost({ albumMode: true });
+    await assert.rejects(runAlbumQuickEdit('light', { photoshop: f.ps, brightness: invalid }), /Brightness value/);
+    assert.equal(f.calls.descriptors.length, 0);
+    assert.equal(f.calls.modal, 0);
+    assert.equal(f.inner.saves, 0);
+  }
+});
+
+test('Adjust Light rolls back failed PSB adjustment rather than saving it', async () => {
+  const f = createHost({ albumMode: true, failOnSet: true });
+  const result = await runAlbumQuickEdit('light', { photoshop: f.ps, brightness: 30 });
+  assert.equal(result.successCount, 0);
+  assert.equal(result.failedCount, 1);
+  assert.equal(f.inner.saves, 0);
+  assert.equal(f.calls.resumed.includes(false), true);
+});

@@ -197,7 +197,7 @@
       <div class="section-heading-row">
         <div>
           <div class="section-eyebrow">QUICK EDIT</div>
-          <div class="section-helper">Select embedded photo Smart Objects in the Album PSD · Photoshop 25+</div>
+          <div class="section-helper">Select embedded album photos or open a photo PSB · Photoshop 25+</div>
         </div>
       </div>
       <div class="quick-edit-grid">
@@ -213,8 +213,8 @@
           <div id="quickCurvesBtn" class="quick-edit-action" role="button" tabindex="0">
             <span class="quick-edit-copy"><span class="quick-edit-title">Auto Curves</span><span class="quick-edit-subtitle">Curves correction</span></span>
           </div>
-          <div id="quickWhiteBalanceBtn" class="quick-edit-action quick-edit-unavailable" role="button" aria-disabled="true" tabindex="-1" title="Automatic Camera Raw white balance has not been verified">
-            <span class="quick-edit-copy"><span class="quick-edit-title">White Balance</span><span class="quick-edit-subtitle">Coming soon</span></span>
+          <div id="adjustLightBtn" class="quick-edit-action" role="button" tabindex="0">
+            <span class="quick-edit-copy"><span class="quick-edit-title">Adjust Light</span><span class="quick-edit-subtitle">Brighter / Darker</span></span>
           </div>
         </div>
       </div>
@@ -234,6 +234,25 @@
     </div>
   </main>
 
+
+  <!-- Manual light adjustment dialog; outside the main panel to avoid inline tool input overlap. -->
+  <dialog id="adjustLightDialog" aria-labelledby="adjustLightHeading">
+    <div class="adjust-light-dialog-content">
+      <h2 id="adjustLightHeading">ADJUST LIGHT</h2>
+      <p class="adjust-light-hint">Selected Album photos or an open photo PSB</p>
+      <div class="adjust-light-label-row">
+        <label for="adjustLightSlider">Brightness</label>
+        <strong id="adjustLightValue" aria-live="polite">0</strong>
+      </div>
+      <input id="adjustLightSlider" type="range" min="-100" max="100" step="1" value="0" />
+      <div class="adjust-light-ends"><span>Darker</span><span>Brighter</span></div>
+      <div class="adjust-light-buttons">
+        <button id="adjustLightResetBtn" class="btn" type="button">RESET</button>
+        <button id="adjustLightApplyBtn" class="btn primary" type="button">APPLY</button>
+        <button id="adjustLightCancelBtn" class="btn btn-cancel" type="button">CANCEL</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- Create Custom Page Dialog -->
   <dialog id="createCustomPageDialog">

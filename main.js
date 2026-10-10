@@ -74,6 +74,13 @@ const ui = {
   quickBrightnessBtn: $("quickBrightnessBtn"),
   quickLevelsBtn: $("quickLevelsBtn"),
   quickCurvesBtn: $("quickCurvesBtn"),
+  adjustLightBtn: $("adjustLightBtn"),
+  adjustLightDialog: $("adjustLightDialog"),
+  adjustLightSlider: $("adjustLightSlider"),
+  adjustLightValue: $("adjustLightValue"),
+  adjustLightResetBtn: $("adjustLightResetBtn"),
+  adjustLightApplyBtn: $("adjustLightApplyBtn"),
+  adjustLightCancelBtn: $("adjustLightCancelBtn"),
   quickEditReport: $("quickEditReport"),
   savePsdCategoryBtn: $("savePsdCategoryBtn"),
   removePhotosBtn: $("removePhotosBtn"),
@@ -283,6 +290,7 @@ const requiredButtons = [
   ["quickBrightnessBtn", ui.quickBrightnessBtn],
   ["quickLevelsBtn", ui.quickLevelsBtn],
   ["quickCurvesBtn", ui.quickCurvesBtn],
+  ["adjustLightBtn", ui.adjustLightBtn],
   ["savePsdCategoryBtn", ui.savePsdCategoryBtn],
   ["removePhotosBtn", ui.removePhotosBtn],
   ["addFrameBtn", ui.addFrameBtn],
@@ -321,6 +329,7 @@ function setButtonsDisabled(disabled) {
     ui.quickBrightnessBtn,
     ui.quickLevelsBtn,
     ui.quickCurvesBtn,
+    ui.adjustLightBtn,
     ui.savePsdCategoryBtn,
     ui.removePhotosBtn,
     ui.addFrameBtn,
@@ -1598,10 +1607,13 @@ async function handleFlipPhoto() {
 }
 
 function formatQuickEditReport(kind, result) {
-  const labels = { brightness: "Auto Brightness/Contrast", levels: "Auto Levels", curves: "Auto Curves" };
-  const lines = [`${labels[kind] || "QUICK EDIT"}: ${result.successCount || 0} saved, ${result.failedCount || 0} failed`];
+  const labels = { brightness: "Auto Brightness/Contrast", levels: "Auto Levels", curves: "Auto Curves", light: "Adjust Light" };
+  const directLight = kind === "light" && result.items?.length === 1 && result.items[0].layerId === null;
+  const lines = [directLight && result.success
+    ? "Adjust Light: applied to open PSB (not saved)"
+    : `${labels[kind] || "QUICK EDIT"}: ${result.successCount || 0} saved, ${result.failedCount || 0} failed`];
   for (const item of result.items || []) {
-    const state = ["applied", "updated"].includes(item.outcome) ? "saved" :
+    const state = ["applied", "updated"].includes(item.outcome) ? (directLight ? "applied — save the PSB manually" : "saved") :
       item.outcome === "saved-close-failed" ? `save completed; close failed: ${item.message || "unknown error"}` :
       item.message || item.outcome;
     lines.push(`${item.layerName || `Layer ${item.layerId}`}: ${state}`);
@@ -1610,7 +1622,7 @@ function formatQuickEditReport(kind, result) {
   return lines.join("\n");
 }
 
-async function handleQuickEdit(kind) {
+async function handleQuickEdit(kind, options = {}) {
   if (running) return { success: false, outcome: "busy" };
   running = true;
   setButtonsDisabled(true);
@@ -1619,11 +1631,12 @@ async function handleQuickEdit(kind) {
   const labels = {
     brightness: "Auto Brightness/Contrast",
     levels: "Auto Levels",
-    curves: "Auto Curves"
+    curves: "Auto Curves",
+    light: "Adjust Light"
   };
   try {
     const { runAlbumQuickEdit } = require("./src/tools/albumQuickEdit");
-    const result = await runAlbumQuickEdit(kind);
+    const result = await runAlbumQuickEdit(kind, options);
     if (ui.quickEditReport) {
       ui.quickEditReport.textContent = formatQuickEditReport(kind, result);
       ui.quickEditReport.hidden = false;
@@ -1631,7 +1644,10 @@ async function handleQuickEdit(kind) {
     const firstFailure = result.items?.find(item => !["applied", "updated"].includes(item.outcome));
     const count = result.successCount || 0;
     if (result.success) {
-      toast.show(`${labels[kind]} saved in ${count} photo Smart Object${count === 1 ? "" : "s"}. Check the album in Photoshop.`, "success");
+      const directOpenPsb = kind === "light" && result.items?.length === 1 && result.items[0].layerId === null;
+      toast.show(directOpenPsb
+        ? "Adjust Light applied to the open PSB. Save the PSB when ready."
+        : `${labels[kind]} saved in ${count} photo Smart Object${count === 1 ? "" : "s"}. Check the album in Photoshop.`, "success");
     } else if (count) {
       toast.show(`${labels[kind]}: ${count} saved, ${result.failedCount} failed. ${firstFailure?.message || result.restoreError || "Check the album."}`, "warning");
     } else {
@@ -1650,6 +1666,86 @@ async function handleQuickEdit(kind) {
     running = false;
     setButtonsDisabled(false);
   }
+}
+
+// The manual light dialog is a separate HTML/UXP modal, never a nested
+// Photoshop executeAsModal. Photoshop operations start only after Apply.
+async function promptForLightAdjustment() {
+  const dialog = ui.adjustLightDialog;
+  const slider = ui.adjustLightSlider;
+  const value = ui.adjustLightValue;
+  if (!dialog || !slider || !value || !ui.adjustLightApplyBtn ||
+      !ui.adjustLightResetBtn || !ui.adjustLightCancelBtn) {
+    throw new Error("Adjust Light controls are unavailable. Reload the plugin.");
+  }
+  slider.value = "0";
+  value.textContent = "0";
+  let confirmed = false;
+  let cancelled = false;
+  const updateValue = () => {
+    const n = Number(slider.value);
+    value.textContent = `${n > 0 ? "+" : ""}${n}`;
+  };
+  const onReset = () => { slider.value = "0"; updateValue(); };
+  const onApply = () => { confirmed = true; dialog.close?.("apply"); };
+  const onCancel = () => { cancelled = true; dialog.close?.("cancel"); };
+  const onKeydown = event => {
+    if (event.key === "Escape") { event.preventDefault(); onCancel(); }
+  };
+  slider.addEventListener("input", updateValue);
+  ui.adjustLightResetBtn.addEventListener("click", onReset);
+  ui.adjustLightApplyBtn.addEventListener("click", onApply);
+  ui.adjustLightCancelBtn.addEventListener("click", onCancel);
+  dialog.addEventListener("keydown", onKeydown);
+  try {
+    if (typeof dialog.uxpShowModal === "function") {
+      const closeReason = await dialog.uxpShowModal({
+        title: "Adjust Light", resize: "none", size: { width: 350, height: 250 }
+      });
+      if (cancelled || (!confirmed && closeReason !== "apply")) return { cancelled: true };
+    } else if (typeof dialog.showModal === "function") {
+      // HTML showModal is synchronous; wait for the dialog's close event.
+      await new Promise((resolve, reject) => {
+        const onClose = () => { dialog.removeEventListener("close", onClose); resolve(); };
+        dialog.addEventListener("close", onClose);
+        try { dialog.showModal(); } catch (error) {
+          dialog.removeEventListener("close", onClose);
+          reject(error);
+        }
+      });
+      if (cancelled || !confirmed) return { cancelled: true };
+    } else {
+      throw new Error("Photoshop UXP dialog support is unavailable.");
+    }
+    const brightness = Number(slider.value);
+    const { validateManualBrightness } = require("./src/tools/quickCorrections");
+    return { cancelled: false, brightness: validateManualBrightness(brightness) };
+  } finally {
+    slider.removeEventListener("input", updateValue);
+    ui.adjustLightResetBtn.removeEventListener("click", onReset);
+    ui.adjustLightApplyBtn.removeEventListener("click", onApply);
+    ui.adjustLightCancelBtn.removeEventListener("click", onCancel);
+    dialog.removeEventListener("keydown", onKeydown);
+  }
+}
+
+async function handleAdjustLight() {
+  if (running) return { success: false, outcome: "busy" };
+  running = true;
+  setButtonsDisabled(true);
+  let selection;
+  try {
+    selection = await promptForLightAdjustment();
+  } catch (error) {
+    console.error("Adjust Light dialog error:", error);
+    toast.show(error?.message || "Adjust Light is unavailable.", "error");
+    return { success: false, outcome: "error", error };
+  } finally {
+    running = false;
+    setButtonsDisabled(false);
+  }
+  if (selection.cancelled) return { success: false, outcome: "cancelled" };
+  return handleQuickEdit("light", { brightness: selection.brightness });
 }
 
 function promptForPrefix({ defaultPrefix = "", defaultOutputMode } = {}) {
@@ -3089,6 +3185,7 @@ attachActionHandler(ui.flipPhotoBtn, wrapProtectedAction(handleFlipPhoto));
 attachActionHandler(ui.quickBrightnessBtn, wrapProtectedAction(() => handleQuickEdit("brightness")));
 attachActionHandler(ui.quickLevelsBtn, wrapProtectedAction(() => handleQuickEdit("levels")));
 attachActionHandler(ui.quickCurvesBtn, wrapProtectedAction(() => handleQuickEdit("curves")));
+attachActionHandler(ui.adjustLightBtn, wrapProtectedAction(handleAdjustLight));
 attachActionHandler(ui.savePageBtn, wrapProtectedAction(handleSavePage));
 attachActionHandler(ui.saveEditedPhotosBtn, wrapProtectedAction(handleSaveEditedPhotos));
 attachActionHandler(ui.savePsdCategoryBtn, wrapProtectedAction(handleSavePsdCategory));
@@ -3134,6 +3231,8 @@ if (typeof module !== "undefined" && module.exports) {
     handleSwapPhotos,
     handleFlipPhoto,
     handleQuickEdit,
+    handleAdjustLight,
+    promptForLightAdjustment,
     formatQuickEditReport,
     handleSavePage,
     handleSaveEditedPhotos,

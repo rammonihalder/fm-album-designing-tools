@@ -202,16 +202,21 @@ test("Auto White Balance remains disabled and performs no Photoshop action", asy
   assert.equal(host.commands.length, 0);
 });
 
-test("QUICK EDIT controls are separate and White Balance is disabled", () => {
+test("QUICK EDIT controls replace White Balance with protected Adjust Light", () => {
   const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
   const main = fs.readFileSync(path.join(__dirname, "../main.js"), "utf8");
-  assert.match(html, /QUICK EDIT[\s\S]*?Select embedded photo Smart Objects in the Album PSD[^<]*Photoshop 25\+/);
+  assert.match(html, /QUICK EDIT[\s\S]*?Select embedded album photos or open a photo PSB[^<]*Photoshop 25\+/);
   for (const id of ["quickBrightnessBtn", "quickLevelsBtn", "quickCurvesBtn"]) {
     assert.match(html, new RegExp(`id="${id}"`));
     assert.match(main, new RegExp(`attachActionHandler\\(ui\\.${id}, wrapProtectedAction`));
   }
-  assert.match(html, /id="quickWhiteBalanceBtn"[^>]*disabled/);
-  assert.doesNotMatch(main, /attachActionHandler\(ui\.quickWhiteBalanceBtn/);
+  assert.doesNotMatch(html, /id="quickWhiteBalanceBtn"/);
+  assert.match(html, /id="adjustLightBtn"[^>]*role="button"/);
+  assert.match(main, /attachActionHandler\(ui\.adjustLightBtn, wrapProtectedAction\(handleAdjustLight\)\)/);
+  assert.match(html, /id="adjustLightDialog"/);
+  assert.match(html, /id="adjustLightSlider"[^>]*type="range"/);
+  assert.match(html, /id="adjustLightSlider"[^>]*min="-100" max="100" step="1"/);
+  assert.doesNotMatch(html.match(/<main[^>]*class="panel"[^>]*>([\s\S]*?)<\/main>/)?.[1] || "", /<input/i);
 });
 
 test("panel handler does not report an unsupported correction as success", async () => {

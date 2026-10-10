@@ -1,9 +1,9 @@
 "use strict";
 
-const { autoBrightness, autoLevels, autoCurves } = require("./quickCorrections");
+const { autoBrightness, autoLevels, autoCurves, manualLight, validateManualBrightness } = require("./quickCorrections");
 
-const ACTIONS = { brightness: autoBrightness, levels: autoLevels, curves: autoCurves };
-const LABELS = { brightness: "Auto Brightness/Contrast", levels: "Auto Levels", curves: "Auto Curves" };
+const ACTIONS = { brightness: autoBrightness, levels: autoLevels, curves: autoCurves, light: manualLight };
+const LABELS = { brightness: "Auto Brightness/Contrast", levels: "Auto Levels", curves: "Auto Curves", light: "Adjust Light" };
 
 function flatten(layers, output = []) {
   for (const layer of Array.from(layers || [])) {
@@ -97,10 +97,11 @@ function summarize(items, restoreError) {
   };
 }
 
-async function runAlbumQuickEdit(kind, { photoshop, applyCorrection } = {}) {
+async function runAlbumQuickEdit(kind, { photoshop, applyCorrection, brightness } = {}) {
   const ps = photoshop || require("photoshop");
   const apply = applyCorrection || ((requested, options) => ACTIONS[requested](options));
   if (!ACTIONS[kind]) throw new Error("Unknown QUICK EDIT correction.");
+  if (kind === "light") validateManualBrightness(brightness);
   if (typeof ps.core?.executeAsModal !== "function" || typeof ps.action?.batchPlay !== "function") {
     throw new Error("Photoshop modal execution or batchPlay is unavailable.");
   }
@@ -108,7 +109,7 @@ async function runAlbumQuickEdit(kind, { photoshop, applyCorrection } = {}) {
   // When launched inside an already-open photo PSB, operate in place.
   // Never save or close a user-opened document.
   if (album && Number.isInteger(album.id) && /\.psb$/i.test(String(album.name || album.title || ""))) {
-    const direct = await apply(kind, { photoshop: ps, mode: "composite" });
+    const direct = await apply(kind, { photoshop: ps, mode: "composite", brightness });
     if (!direct?.success || !["applied", "updated"].includes(direct.outcome)) {
       throw new Error(direct?.message || "The PSB correction was not applied.");
     }
@@ -192,7 +193,7 @@ async function runAlbumQuickEdit(kind, { photoshop, applyCorrection } = {}) {
           // Reuse the surrounding album modal context: nested executeAsModal
           // can collide with Photoshop's exclusive modal scope.
           if (context.isCancelled) throw new Error("QUICK EDIT was cancelled before correcting the inner PSB.");
-          const result = await apply(kind, { photoshop: ps, mode: "composite", modalContext: context });
+          const result = await apply(kind, { photoshop: ps, mode: "composite", modalContext: context, brightness });
           if (!result?.success || !["applied", "updated"].includes(result.outcome)) {
             throw new Error(result?.message || "The inner correction was not applied.");
           }
